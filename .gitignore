@@ -1,0 +1,42 @@
+# Node
+node_modules/
+.pnpm-store/
+
+# Next.js
+apps/web/.next/
+apps/web/out/
+
+# Environment variables
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Build outputs
+dist/
+build/
+
+# Logs
+*.log
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Prisma
+packages/database/prisma/dev.db
+packages/database/prisma/dev.db-journal
+
+# WhatsApp session (NUNCA commitar credenciais da sessão Baileys)
+apps/bot/auth_info_baileys/
+apps/bot/session/
+
+# TypeScript
+*.tsbuildinfo

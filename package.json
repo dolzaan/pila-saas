@@ -1,0 +1,23 @@
+{
+  "name": "finzap",
+  "private": true,
+  "version": "0.1.0",
+  "engines": {
+    "node": ">=20.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @finzap/web dev",
+    "build": "pnpm --filter @finzap/web build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test",
+    "db:generate": "pnpm --filter @finzap/database db:generate",
+    "db:migrate": "pnpm --filter @finzap/database db:migrate",
+    "db:push": "pnpm --filter @finzap/database db:push",
+    "db:seed": "pnpm --filter @finzap/database db:seed",
+    "db:studio": "pnpm --filter @finzap/database db:studio"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4"
+  }
+}

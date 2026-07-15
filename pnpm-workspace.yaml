@@ -1,0 +1,12 @@
+packages:
+  - "apps/*"
+  - "packages/*"
+
+# Ignora builds nativos que causam EPERM no Windows com antivírus/Defender ativo
+# Esses pacotes contêm binários pré-compilados que não precisam ser reconstruídos
+ignoredBuiltDependencies:
+  - unrs-resolver
+  - sharp
+  - esbuild
+  - "@prisma/engines"
+  - prisma

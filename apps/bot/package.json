@@ -1,0 +1,22 @@
+{
+  "name": "@finzap/bot",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "lint": "echo 'no eslint configured yet'",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@finzap/database": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.5.4",
+    "tsx": "^4.19.1",
+    "typescript": "^5.5.4",
+    "vitest": "^2.1.1"
+  }
+}
