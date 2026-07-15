@@ -22,7 +22,6 @@ SaaS que permite controlar finanças pessoais enviando mensagens de linguagem na
 ### Pré-requisitos
 
 - Node.js 20+
-- pnpm 9+
 - Docker Desktop (para Postgres e Redis)
 
 ### 1. Clonar e instalar dependências
@@ -30,7 +29,7 @@ SaaS que permite controlar finanças pessoais enviando mensagens de linguagem na
 ```bash
 git clone https://github.com/seu-usuario/finzap.git
 cd finzap
-pnpm install
+npm install --legacy-peer-deps
 ```
 
 ### 2. Configurar variáveis de ambiente
@@ -82,18 +81,19 @@ pnpm dev              # Next.js em http://localhost:3000
 
 ```bash
 # Desenvolvimento
-pnpm dev              # Inicia o Next.js em modo dev
+npm run dev              # Inicia o Next.js em modo dev
 
 # Build e qualidade
-pnpm build            # Build de produção
-pnpm lint             # ESLint em todos os pacotes
-pnpm test             # Vitest em todos os pacotes
+npm run build            # Build de produção
+npm run lint             # ESLint em todos os pacotes
+npm run test             # Vitest em todos os pacotes
 
 # Banco de dados
-pnpm db:migrate       # Aplica/cria migrações Prisma
-pnpm db:push          # Sync schema sem migração (só dev)
-pnpm db:seed          # Carrega dados iniciais
-pnpm db:studio        # Prisma Studio na porta 5555
+npm run db:generate      # Gera Prisma client
+npm run db:migrate       # Aplica/cria migrações Prisma
+npm run db:push          # Sync schema sem migração (só dev)
+npm run db:seed          # Carrega dados iniciais
+npm run db:studio        # Prisma Studio na porta 5555
 
 # Docker
 docker compose up -d        # Sobe Postgres + Redis

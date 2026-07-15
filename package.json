@@ -2,20 +2,23 @@
   "name": "finzap",
   "private": true,
   "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
-    "node": ">=20.0.0",
-    "pnpm": ">=9.0.0"
+    "node": ">=20.0.0"
   },
   "scripts": {
-    "dev": "pnpm --filter @finzap/web dev",
-    "build": "pnpm --filter @finzap/web build",
-    "lint": "pnpm -r lint",
-    "test": "pnpm -r test",
-    "db:generate": "pnpm --filter @finzap/database db:generate",
-    "db:migrate": "pnpm --filter @finzap/database db:migrate",
-    "db:push": "pnpm --filter @finzap/database db:push",
-    "db:seed": "pnpm --filter @finzap/database db:seed",
-    "db:studio": "pnpm --filter @finzap/database db:studio"
+    "dev": "npm run dev --workspace=apps/web",
+    "build": "npm run build --workspace=apps/web",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:generate": "npm run db:generate --workspace=packages/database",
+    "db:migrate": "npm run db:migrate --workspace=packages/database",
+    "db:push": "npm run db:push --workspace=packages/database",
+    "db:seed": "npm run db:seed --workspace=packages/database",
+    "db:studio": "npm run db:studio --workspace=packages/database"
   },
   "devDependencies": {
     "typescript": "^5.5.4"

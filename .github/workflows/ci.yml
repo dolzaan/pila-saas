@@ -48,34 +48,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "pnpm"
+          cache: "npm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: npm install --legacy-peer-deps
 
       - name: Generate Prisma client
-        run: pnpm db:generate
+        run: npm run db:generate
 
       - name: Run database migrations
-        run: pnpm --filter @finzap/database exec prisma migrate deploy
+        run: npm run --workspace=packages/database db:migrate
 
       - name: Lint
-        run: pnpm lint
+        run: npm run lint
 
       - name: Run tests
-        run: pnpm test
+        run: npm run test
 
       - name: Build Next.js app
-        run: pnpm build
-        env:
-          # Necessário para o build do Next.js não falhar sem DB real
-          SKIP_ENV_VALIDATION: true
+        run: npm run build

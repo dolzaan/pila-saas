@@ -11,7 +11,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@finzap/database": "workspace:*"
+    "@finzap/database": "*"
   },
   "devDependencies": {
     "@types/node": "^22.5.4",

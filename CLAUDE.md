@@ -10,24 +10,24 @@
 ```bash
 # Setup inicial (uma vez)
 docker compose up -d          # Postgres:5432 + Redis:6379
-pnpm install
-pnpm db:migrate               # Aplica migrações Prisma
-pnpm db:seed                  # Categorias padrão
+npm install
+npm run db:generate           # Gera Prisma client
+npm run db:migrate            # Aplica migrações
+npm run db:seed               # Categorias padrão
 
 # Desenvolvimento
-pnpm dev                      # Next.js em localhost:3000
-pnpm --filter @finzap/bot dev # Bot (Fase 3+) em localhost:3001/health
+npm run dev                   # Next.js em localhost:3000
 
 # Qualidade
-pnpm lint                     # ESLint em todos os workspaces
-pnpm test                     # Vitest em todos os workspaces
-pnpm build                    # Build de produção Next.js
+npm run lint                  # ESLint em todos os workspaces
+npm run test                  # Vitest em todos os workspaces
+npm run build                 # Build de produção Next.js
 
 # Banco de dados
-pnpm db:migrate               # Nova migração (prompt interativo)
-pnpm db:push                  # Sync schema sem migração (só dev!)
-pnpm db:studio                # GUI Prisma Studio em localhost:5555
-pnpm db:seed                  # Re-seed (idempotente)
+npm run db:migrate            # Nova migração (prompt interativo)
+npm run db:push               # Sync schema sem migração (só dev!)
+npm run db:studio             # GUI Prisma Studio em localhost:5555
+npm run db:seed               # Re-seed (idempotente)
 ```
 
 ---
@@ -46,8 +46,9 @@ finzap/
 
 ## Decisões Arquiteturais Fixadas
 
-### 1. Monorepo com pnpm workspaces (sem Turborepo)
-Simples e suficiente para o estágio atual. Turborepo pode ser adicionado se o tempo de CI > 5 min.
+### 1. npm workspaces (não pnpm)
+pnpm causava ERR_PNPM_EPERM no Windows (rename atômico de binários nativos bloqueado pelo Defender). Migrado para **npm workspaces** (nativo no npm 7+). CI usa npm também.
+**Não reverter para pnpm sem resolver o EPERM primeiro.**
 
 ### 2. Schema Prisma em `packages/database`
 Ambos `apps/web` e `apps/bot` importam de `@finzap/database`. **Não duplique o schema.**

@@ -8,14 +8,18 @@ import {
 
 describe("formatCurrency", () => {
   it("formata valores em BRL corretamente", () => {
-    expect(formatCurrency(1234.5)).toBe("R$ 1.234,50");
-    expect(formatCurrency(0)).toBe("R$ 0,00");
-    expect(formatCurrency(100)).toBe("R$ 100,00");
-    expect(formatCurrency("45.90")).toBe("R$ 45,90");
+    // Intl.NumberFormat usa espaço non-breaking (\u00A0) entre "R$" e o número
+    // em alguns sistemas — normalizamos para comparar apenas o conteúdo
+    const normalize = (s: string) => s.replace(/\s/g, " ").trim();
+    expect(normalize(formatCurrency(1234.5))).toBe("R$ 1.234,50");
+    expect(normalize(formatCurrency(0))).toBe("R$ 0,00");
+    expect(normalize(formatCurrency(100))).toBe("R$ 100,00");
+    expect(normalize(formatCurrency("45.90"))).toBe("R$ 45,90");
   });
 
   it("formata valores negativos", () => {
-    expect(formatCurrency(-100)).toBe("-R$ 100,00");
+    const normalize = (s: string) => s.replace(/\s/g, " ").trim();
+    expect(normalize(formatCurrency(-100))).toBe("-R$ 100,00");
   });
 });
 

@@ -1,13 +1,12 @@
+/* Google Fonts — deve vir antes de qualquer outra regra */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
 @import "tailwindcss";
 
 /* =============================================================================
    FinZap — Design System
    Paleta: tons de verde-esmeralda + cinza escuro (dark mode-first)
 ============================================================================= */
-
-/* Google Fonts */
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
-
 :root {
   /* Cores principais */
   --color-primary: #10b981;       /* emerald-500 */
