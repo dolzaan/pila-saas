@@ -41,8 +41,9 @@ export function BudgetForm({ category, currentBudget, onClose }: BudgetFormProps
       try {
         await setBudget(category.id, numericAmount);
         onClose();
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Erro inesperado.";
+        setError(message);
       }
     });
   }
@@ -52,8 +53,9 @@ export function BudgetForm({ category, currentBudget, onClose }: BudgetFormProps
       try {
         await deleteBudget(category.id);
         onClose();
-      } catch (err: any) {
-        setError(err.message);
+      } catch (err) {
+        const message = err instanceof Error ? err.message : "Erro inesperado.";
+        setError(message);
       }
     });
   }

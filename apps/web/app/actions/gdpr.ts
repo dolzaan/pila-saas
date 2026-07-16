@@ -2,14 +2,22 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
-import { signOut } from "@/lib/auth";
+import type { Prisma } from "@prisma/client";
+
+type UserExportData = Prisma.UserGetPayload<{
+  include: {
+    transactions: true;
+    categories: true;
+    budgets: true;
+    subscription: true;
+  };
+}>;
 
 export async function exportUserData() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Não autorizado");
 
-  const user = await prisma.user.findUnique({
+  const user: UserExportData | null = await prisma.user.findUnique({
     where: { id: session.user.id },
     include: {
       transactions: true,

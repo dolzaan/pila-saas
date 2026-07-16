@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
-import type { RecurringTransaction, RecurrenceInterval } from "@prisma/client";
+import type { RecurrenceInterval } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 

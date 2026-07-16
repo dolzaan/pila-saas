@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { Search, CalendarDays } from "lucide-react";
+import { CalendarDays } from "lucide-react";
 import { RecurringForm, DeleteRecurringButton } from "@/components/recurring/recurring-form";
 
 export const metadata: Metadata = {

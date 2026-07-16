@@ -8,16 +8,12 @@ type Props = {
   initialWhatsappNumber: string | null;
   initialPin: string | null;
   expiresAt: Date | null;
-  evolutionApiUrl: string;
-  evolutionInstanceName: string;
 };
 
 export default function WhatsappClient({ 
   initialWhatsappNumber, 
   initialPin, 
-  expiresAt,
-  evolutionApiUrl,
-  evolutionInstanceName 
+  expiresAt
 }: Props) {
   const [pin, setPin] = useState<string | null>(initialPin);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -74,9 +70,9 @@ export default function WhatsappClient({
         <div className="p-4 bg-gray-900/50 rounded-2xl border border-gray-800 text-sm text-left max-w-md w-full">
           <h3 className="font-semibold text-gray-300 mb-2">Exemplos do que você pode mandar:</h3>
           <ul className="list-disc pl-5 space-y-1 text-gray-400">
-            <li>"Gastei 45 no ifood"</li>
-            <li>"Recebi 5000 de salário"</li>
-            <li>"300 reais de gasolina"</li>
+            <li>&quot;Gastei 45 no ifood&quot;</li>
+            <li>&quot;Recebi 5000 de salário&quot;</li>
+            <li>&quot;300 reais de gasolina&quot;</li>
           </ul>
         </div>
 
