@@ -27,6 +27,9 @@ RUN npm run build
 FROM base AS runner
 WORKDIR /app
 
+# Runtime dependency for Prisma query engine detection on Alpine.
+RUN apk add --no-cache openssl
+
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
