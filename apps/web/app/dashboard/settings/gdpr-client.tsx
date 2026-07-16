@@ -20,8 +20,9 @@ export function GdprClient() {
         a.click();
         URL.revokeObjectURL(url);
         setMessage("✅ Dados exportados com sucesso!");
-      } catch (e: any) {
-        setMessage(`❌ Erro: ${e.message}`);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Erro inesperado.";
+        setMessage(`❌ Erro: ${message}`);
       }
     });
   }
@@ -35,8 +36,9 @@ export function GdprClient() {
       try {
         await deleteUserAccount();
         await signOut({ callbackUrl: "/register" });
-      } catch (e: any) {
-        setMessage(`❌ Erro ao excluir: ${e.message}`);
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "Erro inesperado.";
+        setMessage(`❌ Erro ao excluir: ${message}`);
       }
     });
   }

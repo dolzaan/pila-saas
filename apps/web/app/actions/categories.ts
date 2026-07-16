@@ -6,7 +6,7 @@ import { CategorySchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function createCategory(
-  state: any,
+  _state: unknown,
   formData: FormData
 ) {
   const session = await auth();

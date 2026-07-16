@@ -1,7 +1,7 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
@@ -14,6 +14,8 @@ export async function createCheckoutSession() {
   if (!session?.user?.email || !session?.user?.id) {
     throw new Error("Não autorizado");
   }
+
+  const stripe = getStripe();
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -60,6 +62,8 @@ export async function createCheckoutSession() {
 export async function createPortalSession() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Não autorizado");
+
+  const stripe = getStripe();
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },

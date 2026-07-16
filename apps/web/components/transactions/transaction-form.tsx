@@ -26,12 +26,6 @@ type TransactionFormProps = {
 
 export function TransactionForm({ categories, transactionToEdit }: TransactionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-  
   const action = transactionToEdit 
     ? updateTransaction.bind(null, transactionToEdit.id) 
     : createTransaction;
@@ -44,7 +38,7 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
 
   useEffect(() => {
     if (state?.success) {
-      setIsOpen(false);
+      queueMicrotask(() => setIsOpen(false));
     }
   }, [state]);
 
@@ -238,7 +232,7 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
         </button>
       )}
 
-      {isOpen && mounted && createPortal(modalContent, document.body)}
+      {isOpen && typeof document !== "undefined" && createPortal(modalContent, document.body)}
     </>
   );
 }

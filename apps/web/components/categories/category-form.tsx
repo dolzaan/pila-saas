@@ -10,7 +10,7 @@ export function CategoryForm() {
 
   useEffect(() => {
     if (state?.success) {
-      setIsOpen(false);
+      queueMicrotask(() => setIsOpen(false));
     }
   }, [state]);
 

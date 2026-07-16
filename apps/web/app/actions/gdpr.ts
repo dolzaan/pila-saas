@@ -2,8 +2,6 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { redirect } from "next/navigation";
-import { signOut } from "@/lib/auth";
 
 export async function exportUserData() {
   const session = await auth();

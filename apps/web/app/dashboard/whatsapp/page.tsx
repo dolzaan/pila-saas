@@ -51,8 +51,6 @@ export default async function WhatsappPage() {
             initialWhatsappNumber={user?.whatsappNumber || null}
             initialPin={activeLinkCode?.code || null}
             expiresAt={activeLinkCode?.expiresAt || null}
-            evolutionApiUrl={process.env.EVOLUTION_API_URL || ""}
-            evolutionInstanceName={process.env.EVOLUTION_INSTANCE_NAME || ""}
           />
         )}
       </div>

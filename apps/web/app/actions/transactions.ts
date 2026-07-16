@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { TransactionSchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
 
-export async function createTransaction(prevState: any, formData: FormData) {
+export async function createTransaction(_prevState: unknown, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Não autorizado." };
@@ -53,7 +53,7 @@ export async function createTransaction(prevState: any, formData: FormData) {
   }
 }
 
-export async function updateTransaction(id: string, prevState: any, formData: FormData) {
+export async function updateTransaction(id: string, _prevState: unknown, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Não autorizado." };

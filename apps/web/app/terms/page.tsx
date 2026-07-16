@@ -46,14 +46,14 @@ export default function TermsPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold text-white mt-8">4. Assinaturas e Pagamentos</h2>
           <p>
-            O acesso a funcionalidades premium (como a integração com IA via WhatsApp) requer uma assinatura do plano "Pro". Os pagamentos são processados de forma segura via Stripe. Você pode cancelar a sua assinatura a qualquer momento através do seu painel de configurações. O cancelamento interromperá cobranças futuras, mas não haverá reembolso proporcional de pagamentos já efetuados.
+            O acesso a funcionalidades premium (como a integração com IA via WhatsApp) requer uma assinatura do plano &quot;Pro&quot;. Os pagamentos são processados de forma segura via Stripe. Você pode cancelar a sua assinatura a qualquer momento através do seu painel de configurações. O cancelamento interromperá cobranças futuras, mas não haverá reembolso proporcional de pagamentos já efetuados.
           </p>
         </section>
 
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold text-white mt-8">5. Limitação de Responsabilidade</h2>
           <p>
-            O Pila é fornecido "como está". Não garantimos que a plataforma estará livre de erros ou que a inteligência artificial interpretará todas as mensagens do WhatsApp com 100% de exatidão. O usuário é responsável por conferir o painel web para garantir a precisão dos seus registros financeiros.
+            O Pila é fornecido &quot;como está&quot;. Não garantimos que a plataforma estará livre de erros ou que a inteligência artificial interpretará todas as mensagens do WhatsApp com 100% de exatidão. O usuário é responsável por conferir o painel web para garantir a precisão dos seus registros financeiros.
           </p>
         </section>
       </div>
