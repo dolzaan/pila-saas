@@ -60,6 +60,8 @@ services:
       - "3000:3000"
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql://finzap:finzap@postgres:5432/finzap?schema=public
     depends_on:
       - evolution-api
       - postgres
