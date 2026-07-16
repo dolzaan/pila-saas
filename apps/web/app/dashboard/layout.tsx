@@ -12,7 +12,8 @@ import {
   MessageSquare,
   Settings,
   LogOut,
-  CalendarDays
+  CalendarDays,
+  Shield
 } from "lucide-react";
 
 export default async function DashboardLayout({
@@ -68,6 +69,12 @@ export default async function DashboardLayout({
             <Settings className="w-5 h-5" />
             <span>Configurações</span>
           </Link>
+          {session.user.role === "ADMIN" && (
+            <Link href="/admin" className="nav-item" style={{ marginTop: 'auto', color: 'var(--primary)' }}>
+              <Shield className="w-5 h-5" />
+              <span>Admin Panel</span>
+            </Link>
+          )}
         </nav>
 
         <div className="sidebar-footer">

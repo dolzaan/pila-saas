@@ -42,6 +42,11 @@ enum RecurrenceInterval {
   YEARLY
 }
 
+enum Role {
+  USER
+  ADMIN
+}
+
 // =============================================================================
 // Models
 // =============================================================================
@@ -53,6 +58,7 @@ model User {
   emailVerified       DateTime?
   passwordHash        String?   // null para usuários OAuth
   image               String?
+  role                Role      @default(USER)
 
   // WhatsApp
   whatsappNumber      String?   @unique // formato: 5511999999999

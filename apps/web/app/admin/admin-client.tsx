@@ -1,0 +1,250 @@
+"use client";
+
+import { useState } from "react";
+import { 
+  updateUserRole, 
+  updateUserPassword, 
+  updateSubscriptionStatus, 
+  deleteUser 
+} from "@/app/actions/admin";
+import { Shield, Key, CreditCard, Trash2, Edit } from "lucide-react";
+import { format } from "date-fns";
+
+type User = {
+  id: string;
+  name: string | null;
+  email: string;
+  role: "USER" | "ADMIN";
+  createdAt: Date;
+  subscription: {
+    status: string;
+    plan: string;
+  } | null;
+};
+
+export default function AdminClient({ initialUsers }: { initialUsers: User[] }) {
+  const [users, setUsers] = useState<User[]>(initialUsers);
+  const [loading, setLoading] = useState(false);
+  const [editingPasswordId, setEditingPasswordId] = useState<string | null>(null);
+  const [newPassword, setNewPassword] = useState("");
+  
+  const [editingSubId, setEditingSubId] = useState<string | null>(null);
+  const [subStatus, setSubStatus] = useState<"ACTIVE" | "INACTIVE" | "TRIALING" | "PAST_DUE" | "CANCELED">("ACTIVE");
+  const [subPlan, setSubPlan] = useState("pro");
+
+  const handleRoleToggle = async (userId: string, currentRole: "USER" | "ADMIN") => {
+    if (!confirm(`Deseja mudar a permissão deste usuário?`)) return;
+    setLoading(true);
+    try {
+      const newRole = currentRole === "ADMIN" ? "USER" : "ADMIN";
+      await updateUserRole(userId, newRole);
+      setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
+    } catch (e: any) {
+      alert(e.message);
+    }
+    setLoading(false);
+  };
+
+  const handlePasswordUpdate = async (userId: string) => {
+    if (newPassword.length < 8) {
+      alert("A senha deve ter pelo menos 8 caracteres.");
+      return;
+    }
+    setLoading(true);
+    try {
+      await updateUserPassword(userId, newPassword);
+      alert("Senha atualizada com sucesso.");
+      setEditingPasswordId(null);
+      setNewPassword("");
+    } catch (e: any) {
+      alert(e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleSubscriptionUpdate = async (userId: string) => {
+    setLoading(true);
+    try {
+      await updateSubscriptionStatus(userId, subStatus, subPlan);
+      setUsers(users.map(u => u.id === userId ? { ...u, subscription: { status: subStatus, plan: subPlan } } : u));
+      setEditingSubId(null);
+      alert("Assinatura atualizada.");
+    } catch (e: any) {
+      alert(e.message);
+    }
+    setLoading(false);
+  };
+
+  const handleDelete = async (userId: string) => {
+    if (!confirm("Tem certeza absoluta? Isso apagará TODOS os dados do usuário!")) return;
+    setLoading(true);
+    try {
+      await deleteUser(userId);
+      setUsers(users.filter(u => u.id !== userId));
+    } catch (e: any) {
+      alert(e.message);
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-left text-sm text-gray-500 dark:text-gray-400">
+        <thead className="bg-gray-50 dark:bg-gray-700 text-gray-700 dark:text-gray-300">
+          <tr>
+            <th className="px-4 py-3">Usuário</th>
+            <th className="px-4 py-3">Permissão</th>
+            <th className="px-4 py-3">Assinatura</th>
+            <th className="px-4 py-3">Data de Cadastro</th>
+            <th className="px-4 py-3 text-right">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          {users.map(user => (
+            <tr key={user.id} className="border-b dark:border-gray-700">
+              <td className="px-4 py-3">
+                <p className="font-medium text-gray-900 dark:text-white">{user.name || "Sem nome"}</p>
+                <p className="text-xs">{user.email}</p>
+              </td>
+              <td className="px-4 py-3">
+                <button 
+                  onClick={() => handleRoleToggle(user.id, user.role)}
+                  disabled={loading}
+                  className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                    user.role === "ADMIN" 
+                      ? "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300" 
+                      : "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300"
+                  }`}
+                >
+                  {user.role}
+                </button>
+              </td>
+              <td className="px-4 py-3">
+                <p className="font-medium text-gray-900 dark:text-white">
+                  {user.subscription ? user.subscription.plan.toUpperCase() : "FREE"}
+                </p>
+                <p className={`text-xs ${
+                  user.subscription?.status === 'ACTIVE' ? 'text-green-500' : 'text-gray-400'
+                }`}>
+                  {user.subscription?.status || "N/A"}
+                </p>
+              </td>
+              <td className="px-4 py-3">
+                {format(new Date(user.createdAt), "dd/MM/yyyy")}
+              </td>
+              <td className="px-4 py-3 flex gap-2 justify-end">
+                <button 
+                  title="Alterar Senha"
+                  onClick={() => setEditingPasswordId(user.id)}
+                  className="p-1.5 text-blue-500 hover:bg-blue-50 rounded"
+                >
+                  <Key className="w-4 h-4" />
+                </button>
+                <button 
+                  title="Gerenciar Assinatura"
+                  onClick={() => {
+                    setEditingSubId(user.id);
+                    setSubStatus((user.subscription?.status as any) || "ACTIVE");
+                    setSubPlan(user.subscription?.plan || "pro");
+                  }}
+                  className="p-1.5 text-green-500 hover:bg-green-50 rounded"
+                >
+                  <CreditCard className="w-4 h-4" />
+                </button>
+                <button 
+                  title="Excluir Usuário"
+                  onClick={() => handleDelete(user.id)}
+                  className="p-1.5 text-red-500 hover:bg-red-50 rounded"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+
+      {/* Modals/Dialogs inline for simplicity */}
+      {editingPasswordId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-96">
+            <h3 className="text-lg font-bold mb-4 dark:text-white">Alterar Senha</h3>
+            <input 
+              type="password" 
+              placeholder="Nova Senha (min 8 carac.)"
+              className="w-full border p-2 rounded mb-4 bg-transparent text-gray-900 dark:text-white"
+              value={newPassword}
+              onChange={e => setNewPassword(e.target.value)}
+            />
+            <div className="flex justify-end gap-2">
+              <button 
+                className="px-4 py-2 border rounded dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700" 
+                onClick={() => setEditingPasswordId(null)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                onClick={() => handlePasswordUpdate(editingPasswordId)}
+                disabled={loading}
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editingSubId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-lg w-96">
+            <h3 className="text-lg font-bold mb-4 dark:text-white">Gerenciar Assinatura</h3>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">Plano</label>
+              <select 
+                value={subPlan}
+                onChange={e => setSubPlan(e.target.value)}
+                className="w-full border p-2 rounded bg-transparent dark:text-white"
+              >
+                <option value="free">Free</option>
+                <option value="pro">Pro</option>
+              </select>
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1 dark:text-gray-300">Status</label>
+              <select 
+                value={subStatus}
+                onChange={e => setSubStatus(e.target.value as any)}
+                className="w-full border p-2 rounded bg-transparent dark:text-white"
+              >
+                <option value="ACTIVE">ACTIVE</option>
+                <option value="INACTIVE">INACTIVE</option>
+                <option value="TRIALING">TRIALING</option>
+                <option value="PAST_DUE">PAST_DUE</option>
+                <option value="CANCELED">CANCELED</option>
+              </select>
+            </div>
+
+            <div className="flex justify-end gap-2">
+              <button 
+                className="px-4 py-2 border rounded dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700" 
+                onClick={() => setEditingSubId(null)}
+              >
+                Cancelar
+              </button>
+              <button 
+                className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                onClick={() => handleSubscriptionUpdate(editingSubId)}
+                disabled={loading}
+              >
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
