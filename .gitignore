@@ -40,3 +40,7 @@ apps/bot/session/
 
 # TypeScript
 *.tsbuildinfo
+
+# Evolution API
+evolution_instances/
+evolution_store/
