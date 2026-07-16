@@ -21,16 +21,18 @@ export async function POST(req: Request) {
     return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
   }
 
-  const session = event.data.object as Stripe.Checkout.Session;
-
   if (event.type === "checkout.session.completed") {
-    // Recupera os dados da assinatura completa
-    const subscription = await stripe.subscriptions.retrieve(
+    const session = event.data.object as Stripe.Checkout.Session;
+
+    const { data: subscription } = await stripe.subscriptions.retrieve(
       session.subscription as string
     );
 
     const userId = session.client_reference_id;
-    if (!userId) return new NextResponse("No user ID", { status: 400 });
+
+    if (!userId) {
+      return new NextResponse("No user ID", { status: 400 });
+    }
 
     await prisma.subscription.upsert({
       where: { userId },
@@ -51,8 +53,10 @@ export async function POST(req: Request) {
   }
 
   if (event.type === "invoice.payment_succeeded") {
-    const subscription = await stripe.subscriptions.retrieve(
-      session.subscription as string
+    const invoice = event.data.object as Stripe.Invoice;
+
+    const { data: subscription } = await stripe.subscriptions.retrieve(
+      invoice.subscription as string
     );
 
     await prisma.subscription.update({
@@ -65,12 +69,10 @@ export async function POST(req: Request) {
   }
 
   if (event.type === "customer.subscription.deleted") {
-    const subscription = await stripe.subscriptions.retrieve(
-      (event.data.object as Stripe.Subscription).id
-    );
+    const stripeSubscription = event.data.object as Stripe.Subscription;
 
     await prisma.subscription.update({
-      where: { stripeSubscriptionId: subscription.id },
+      where: { stripeSubscriptionId: stripeSubscription.id },
       data: {
         status: "CANCELED",
       },
