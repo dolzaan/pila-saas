@@ -1,38 +1,40 @@
+version: '3.3'
 
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: finzap_postgres
-    restart: unless-stopped
+  evolution-api:
+    image: evoapicloud/evolution-api:latest
+    container_name: evolution_api
     ports:
-      - "5432:5432"
+      - "8080:8080"
     environment:
-      POSTGRES_USER: finzap
-      POSTGRES_PASSWORD: finzap
-      POSTGRES_DB: finzap
+      - SERVER_URL=http://localhost:8080
+      - AUTHENTICATION_API_KEY=finzap-chave-secreta-123
+      - AUTHENTICATION_EXPOSE_IN_ENV=true
+      - DATABASE_PROVIDER=postgresql
+      - DATABASE_CONNECTION_URI=postgresql://evo:evo@evolution-postgres:5432/evolution?schema=public
+      - DATABASE_CONNECTION_CLIENT_NAME=evolution_api
+    depends_on:
+      - evolution-postgres
     volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finzap -d finzap"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - ./evolution_instances:/evolution/instances
+      - ./evolution_store:/evolution/store
 
-  redis:
-    image: redis:7-alpine
-    container_name: finzap_redis
-    restart: unless-stopped
+  evolution-postgres:
+    image: postgres:15-alpine
+    container_name: evolution_postgres
+    environment:
+      - POSTGRES_USER=evo
+      - POSTGRES_PASSWORD=evo
+      - POSTGRES_DB=evolution
+
+  web:
+    build:
+      context: .
+    container_name: finzap_web
     ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-volumes:
-  postgres_data:
-  redis_data:
+      - "3000:3000"
+    env_file:
+      - .env
+    depends_on:
+      - evolution-api
+      - evolution-postgres

@@ -1,7 +1,19 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { signOut } from "@/lib/auth";
+import {
+  LayoutDashboard,
+  CreditCard,
+  Tags,
+  Target,
+  LineChart,
+  MessageSquare,
+  Settings,
+  LogOut,
+  CalendarDays
+} from "lucide-react";
 
 export default async function DashboardLayout({
   children,
@@ -18,34 +30,42 @@ export default async function DashboardLayout({
     <div className="dashboard-layout">
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-header">
-          <span className="sidebar-logo-icon">💸</span>
-          <span className="sidebar-logo-text">FinZap</span>
+        <div className="sidebar-header flex items-center gap-2 mb-8">
+          <Image src="/logo-icon.png" alt="Pila Icon" width={32} height={32} />
+          <Image src="/logo-text.png" alt="Pila" width={60} height={24} />
         </div>
 
         <nav className="sidebar-nav" aria-label="Menu principal">
           <Link href="/dashboard" className="nav-item">
-            <span className="nav-icon">📊</span>
+            <LayoutDashboard className="w-5 h-5" />
             <span>Dashboard</span>
           </Link>
           <Link href="/dashboard/transactions" className="nav-item">
-            <span className="nav-icon">💳</span>
+            <CreditCard className="w-5 h-5" />
             <span>Transações</span>
           </Link>
+          <Link href="/dashboard/recurring" className="nav-item">
+            <CalendarDays className="w-5 h-5" />
+            <span>Contas Fixas</span>
+          </Link>
           <Link href="/dashboard/categories" className="nav-item">
-            <span className="nav-icon">🏷️</span>
+            <Tags className="w-5 h-5" />
             <span>Categorias</span>
           </Link>
           <Link href="/dashboard/budgets" className="nav-item">
-            <span className="nav-icon">🎯</span>
+            <Target className="w-5 h-5" />
             <span>Orçamentos</span>
           </Link>
           <Link href="/dashboard/reports" className="nav-item">
-            <span className="nav-icon">📈</span>
+            <LineChart className="w-5 h-5" />
             <span>Relatórios</span>
           </Link>
+          <Link href="/dashboard/whatsapp" className="nav-item">
+            <MessageSquare className="w-5 h-5" />
+            <span>WhatsApp</span>
+          </Link>
           <Link href="/dashboard/settings" className="nav-item">
-            <span className="nav-icon">⚙️</span>
+            <Settings className="w-5 h-5" />
             <span>Configurações</span>
           </Link>
         </nav>
@@ -72,7 +92,7 @@ export default async function DashboardLayout({
               className="btn-signout"
               title="Sair"
             >
-              <span aria-hidden="true">→</span>
+              <LogOut className="w-5 h-5" aria-hidden="true" />
               <span className="sr-only">Sair</span>
             </button>
           </form>

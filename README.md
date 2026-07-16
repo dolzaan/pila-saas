@@ -1,6 +1,6 @@
-# FinZap — Gestão Financeira Pessoal via WhatsApp
+# Pila — Gestão Financeira Pessoal via WhatsApp
 
-SaaS que permite controlar finanças pessoais enviando mensagens de linguagem natural para um bot no WhatsApp, com painel web completo.
+O **Pila** é uma plataforma SaaS (Software as a Service) open-source projetada para simplificar a gestão financeira pessoal. Em vez de usar planilhas complexas, você simplesmente manda um áudio ou texto pelo WhatsApp, e nossa Inteligência Artificial (Gemini) entende e registra o gasto ou receita automaticamente no seu painel web.
 
 ---
 

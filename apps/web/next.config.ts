@@ -18,10 +18,13 @@ const nextConfig: NextConfig = {
     ],
   },
 
+  // Habilita build standalone para Docker
+  output: "standalone",
+
   // Variáveis de ambiente expostas ao cliente (prefixo NEXT_PUBLIC_)
   // Adicionar aqui apenas o que é seguro expor
   env: {
-    NEXT_PUBLIC_APP_NAME: "FinZap",
+    NEXT_PUBLIC_APP_NAME: "Pila",
   },
 };
 

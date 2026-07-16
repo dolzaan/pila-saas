@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Entrar — FinZap",
-  description: "Faça login na sua conta FinZap para gerenciar suas finanças.",
+  title: "Entrar — Pila",
+  description: "Faça login na sua conta Pila para gerenciar suas finanças.",
 };
 
 export default function AuthLayout({

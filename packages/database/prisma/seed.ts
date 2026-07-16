@@ -35,21 +35,28 @@ async function main() {
 
   // Upsert categorias padrão (userId = null)
   for (const category of DEFAULT_CATEGORIES) {
-    await prisma.category.upsert({
+    const existing = await prisma.category.findFirst({
       where: {
-        userId_name: {
-          userId: null as unknown as string,
-          name: category.name,
-        },
-      },
-      update: { icon: category.icon },
-      create: {
         userId: null,
         name: category.name,
-        icon: category.icon,
-        kind: category.kind,
       },
     });
+
+    if (existing) {
+      await prisma.category.update({
+        where: { id: existing.id },
+        data: { icon: category.icon },
+      });
+    } else {
+      await prisma.category.create({
+        data: {
+          userId: null,
+          name: category.name,
+          icon: category.icon,
+          kind: category.kind,
+        },
+      });
+    }
   }
 
   console.log(

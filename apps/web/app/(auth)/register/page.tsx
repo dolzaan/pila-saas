@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -65,9 +66,9 @@ export default function RegisterPage() {
 
       <div className="auth-card">
         {/* Logo */}
-        <div className="auth-logo">
-          <span className="auth-logo-icon">💸</span>
-          <span className="auth-logo-text">FinZap</span>
+        <div className="flex flex-col items-center justify-center gap-2 mb-6">
+          <Image src="/logo-icon.png" alt="Pila Icon" width={64} height={64} className="drop-shadow-xl" />
+          <Image src="/logo-text.png" alt="Pila" width={100} height={40} className="drop-shadow-xl" />
         </div>
 
         <h1 className="auth-title">Comece de graça</h1>

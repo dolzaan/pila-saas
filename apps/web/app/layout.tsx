@@ -3,15 +3,15 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "FinZap — Finanças Pessoais pelo WhatsApp",
-    template: "%s — FinZap",
+    default: "Pila — Finanças Pessoais pelo WhatsApp",
+    template: "%s — Pila",
   },
   description:
     "Controle suas finanças pessoais registrando gastos e receitas diretamente pelo WhatsApp. Dashboard completo com relatórios, orçamentos e muito mais.",
   keywords: ["finanças pessoais", "controle financeiro", "WhatsApp", "orçamento", "gastos"],
-  authors: [{ name: "FinZap" }],
+  authors: [{ name: "Pila" }],
   openGraph: {
-    title: "FinZap — Finanças Pessoais pelo WhatsApp",
+    title: "Pila — Finanças Pessoais pelo WhatsApp",
     description: "Controle suas finanças pessoais registrando gastos pelo WhatsApp.",
     type: "website",
     locale: "pt_BR",

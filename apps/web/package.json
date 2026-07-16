@@ -13,13 +13,17 @@
   "dependencies": {
     "@auth/prisma-adapter": "^2.7.2",
     "@finzap/database": "*",
+    "@google/genai": "^2.11.0",
     "@prisma/client": "^5.19.0",
     "bcryptjs": "^2.4.3",
+    "date-fns": "^4.4.0",
+    "lucide-react": "^1.24.0",
     "next": "16.2.10",
     "next-auth": "^5.0.0-beta.25",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^2.13.0",
+    "stripe": "^22.3.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {
@@ -28,11 +32,11 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^2.1.1",
-    "@vitejs/plugin-react": "^4.3.1"
+    "vitest": "^2.1.1"
   }
 }

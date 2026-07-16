@@ -1,24 +1,9 @@
 import { describe, it, expect } from "vitest";
-import { z } from "zod";
-
-// Schemas de validação — estes serão usados nas rotas de API
-const RegisterSchema = z.object({
-  name: z.string().min(2).max(100),
-  email: z.string().email(),
-  password: z.string().min(8).max(128),
-});
-
-const WhatsappLinkCodeSchema = z.object({
-  code: z.string().regex(/^\d{6}$/, "Código deve ter 6 dígitos"),
-});
-
-const TransactionSchema = z.object({
-  amount: z.number().positive("Valor deve ser positivo"),
-  kind: z.enum(["EXPENSE", "INCOME"]),
-  description: z.string().max(255).optional(),
-  categoryId: z.string().cuid().optional(),
-  occurredAt: z.string().datetime().optional(),
-});
+import {
+  RegisterSchema,
+  WhatsappLinkCodeSchema,
+  TransactionSchema,
+} from "../lib/schemas";
 
 describe("RegisterSchema", () => {
   it("valida dados corretos", () => {

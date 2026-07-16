@@ -1,0 +1,77 @@
+### Teste 1: Tentar enviar mensagem com número não vinculado (Deve pedir PIN)
+POST http://localhost:3000/api/whatsapp/webhook
+Content-Type: application/json
+
+{
+  "event": "messages.upsert",
+  "instance": "FinZapBot",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "MSG_001"
+    },
+    "message": {
+      "conversation": "Olá bot, quanto gastei hoje?"
+    }
+  }
+}
+
+### Teste 2: Enviar PIN válido (Substitua o texto pelo PIN gerado no painel)
+POST http://localhost:3000/api/whatsapp/webhook
+Content-Type: application/json
+
+{
+  "event": "messages.upsert",
+  "instance": "FinZapBot",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "MSG_002"
+    },
+    "message": {
+      "conversation": "123456"
+    }
+  }
+}
+
+### Teste 3: Enviar despesa (Número já deve estar vinculado)
+POST http://localhost:3000/api/whatsapp/webhook
+Content-Type: application/json
+
+{
+  "event": "messages.upsert",
+  "instance": "FinZapBot",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "MSG_003"
+    },
+    "message": {
+      "conversation": "gastei 45 no mercado hoje de tarde"
+    }
+  }
+}
+
+### Teste 4: Enviar receita
+POST http://localhost:3000/api/whatsapp/webhook
+Content-Type: application/json
+
+{
+  "event": "messages.upsert",
+  "instance": "FinZapBot",
+  "data": {
+    "key": {
+      "remoteJid": "5511999999999@s.whatsapp.net",
+      "fromMe": false,
+      "id": "MSG_004"
+    },
+    "message": {
+      "extendedTextMessage": {
+        "text": "Recebi 5000 de salário"
+      }
+    }
+  }
+}

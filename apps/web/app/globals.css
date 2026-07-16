@@ -14,12 +14,12 @@
   --color-primary-light: #34d399; /* emerald-400 */
   --color-accent: #6366f1;        /* indigo-500 */
 
-  /* Backgrounds */
-  --color-bg: #0f172a;            /* slate-900 */
-  --color-bg-2: #1e293b;         /* slate-800 */
-  --color-bg-3: #334155;         /* slate-700 */
-  --color-surface: #1e293b;
-  --color-surface-hover: #263347;
+  /* Backgrounds (Dark Navy / Pila Theme) */
+  --color-bg: #0B0F19;            /* very dark navy */
+  --color-bg-2: #131A2A;          /* slightly lighter navy */
+  --color-bg-3: #1D263B;          /* lighter navy */
+  --color-surface: #131A2A;
+  --color-surface-hover: #1D263B;
 
   /* Texto */
   --color-text: #f8fafc;          /* slate-50 */
@@ -64,11 +64,6 @@
 /* =============================================================================
    Reset & Base
 ============================================================================= */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
 
 html {
   font-size: 16px;
@@ -128,7 +123,7 @@ img, svg { display: block; max-width: 100%; }
   z-index: 1;
   width: 100%;
   max-width: 440px;
-  background: rgba(30, 41, 59, 0.8);
+  background: rgba(19, 26, 42, 0.8); /* Navy surface */
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(255, 255, 255, 0.06);
