@@ -4,6 +4,12 @@ import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
+function getCurrentPeriodEnd(subscription: Stripe.Subscription) {
+  return new Date(
+    (subscription as any).current_period_end * 1000
+  );
+}
+
 export async function POST(req: Request) {
   const body = await req.text();
   const signature = (await headers()).get("Stripe-Signature") as string;
@@ -18,7 +24,9 @@ export async function POST(req: Request) {
     );
   } catch (error: any) {
     console.error("[Stripe Webhook Error]", error.message);
-    return new NextResponse(`Webhook Error: ${error.message}`, { status: 400 });
+    return new NextResponse(`Webhook Error: ${error.message}`, {
+      status: 400,
+    });
   }
 
   if (event.type === "checkout.session.completed") {
@@ -40,14 +48,14 @@ export async function POST(req: Request) {
         stripeSubscriptionId: subscription.id,
         status: "ACTIVE",
         plan: "pro",
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodEnd: getCurrentPeriodEnd(subscription),
       },
       create: {
         userId,
         stripeSubscriptionId: subscription.id,
         status: "ACTIVE",
         plan: "pro",
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodEnd: getCurrentPeriodEnd(subscription),
       },
     });
   }
@@ -63,7 +71,7 @@ export async function POST(req: Request) {
       where: { stripeSubscriptionId: subscription.id },
       data: {
         status: "ACTIVE",
-        currentPeriodEnd: new Date(subscription.current_period_end * 1000),
+        currentPeriodEnd: getCurrentPeriodEnd(subscription),
       },
     });
   }
