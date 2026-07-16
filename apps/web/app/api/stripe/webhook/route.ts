@@ -1,16 +1,21 @@
-import { stripe } from "@/lib/stripe";
+import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 function getCurrentPeriodEnd(subscription: Stripe.Subscription) {
-  return new Date(
-    (subscription as any).current_period_end * 1000
-  );
+  const currentPeriodEnd = subscription.items.data[0]?.current_period_end;
+
+  if (!currentPeriodEnd) {
+    throw new Error("Subscription period end not found");
+  }
+
+  return new Date(currentPeriodEnd * 1000);
 }
 
 export async function POST(req: Request) {
+  const stripe = getStripe();
   const body = await req.text();
   const signature = (await headers()).get("Stripe-Signature") as string;
 
@@ -22,9 +27,10 @@ export async function POST(req: Request) {
       signature,
       process.env.STRIPE_WEBHOOK_SECRET as string
     );
-  } catch (error: any) {
-    console.error("[Stripe Webhook Error]", error.message);
-    return new NextResponse(`Webhook Error: ${error.message}`, {
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("[Stripe Webhook Error]", message);
+    return new NextResponse(`Webhook Error: ${message}`, {
       status: 400,
     });
   }
@@ -61,26 +67,30 @@ export async function POST(req: Request) {
   }
 
   if (event.type === "invoice.payment_succeeded") {
-  const invoice = event.data.object as Stripe.Invoice;
+    const invoice = event.data.object as Stripe.Invoice;
 
-  const subscriptionId = (invoice as any).subscription as string;
+    const invoiceSubscription = invoice.parent?.subscription_details?.subscription;
+    const subscriptionId =
+      typeof invoiceSubscription === "string"
+        ? invoiceSubscription
+        : invoiceSubscription?.id;
 
-  if (!subscriptionId) {
-    return new NextResponse("No subscription ID", { status: 400 });
+    if (!subscriptionId) {
+      return new NextResponse("No subscription ID", { status: 400 });
+    }
+
+    const subscription = (await stripe.subscriptions.retrieve(
+      subscriptionId
+    )) as Stripe.Subscription;
+
+    await prisma.subscription.update({
+      where: { stripeSubscriptionId: subscription.id },
+      data: {
+        status: "ACTIVE",
+        currentPeriodEnd: getCurrentPeriodEnd(subscription),
+      },
+    });
   }
-
-  const subscription = (await stripe.subscriptions.retrieve(
-    subscriptionId
-  )) as Stripe.Subscription;
-
-  await prisma.subscription.update({
-    where: { stripeSubscriptionId: subscription.id },
-    data: {
-      status: "ACTIVE",
-      currentPeriodEnd: getCurrentPeriodEnd(subscription),
-    },
-  });
-}
 
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object as Stripe.Subscription;

@@ -191,7 +191,7 @@ export function DeleteRecurringButton({ id }: { id: string }) {
           setIsDeleting(true);
           try {
             await deleteRecurringTransaction(id);
-          } catch (e) {
+          } catch {
             alert("Erro ao deletar.");
             setIsDeleting(false);
           }
