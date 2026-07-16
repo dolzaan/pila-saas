@@ -61,20 +61,26 @@ export async function POST(req: Request) {
   }
 
   if (event.type === "invoice.payment_succeeded") {
-    const invoice = event.data.object as Stripe.Invoice;
+  const invoice = event.data.object as Stripe.Invoice;
 
-    const subscription = (await stripe.subscriptions.retrieve(
-      invoice.subscription as string
-    )) as Stripe.Subscription;
+  const subscriptionId = (invoice as any).subscription as string;
 
-    await prisma.subscription.update({
-      where: { stripeSubscriptionId: subscription.id },
-      data: {
-        status: "ACTIVE",
-        currentPeriodEnd: getCurrentPeriodEnd(subscription),
-      },
-    });
+  if (!subscriptionId) {
+    return new NextResponse("No subscription ID", { status: 400 });
   }
+
+  const subscription = (await stripe.subscriptions.retrieve(
+    subscriptionId
+  )) as Stripe.Subscription;
+
+  await prisma.subscription.update({
+    where: { stripeSubscriptionId: subscription.id },
+    data: {
+      status: "ACTIVE",
+      currentPeriodEnd: getCurrentPeriodEnd(subscription),
+    },
+  });
+}
 
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object as Stripe.Subscription;
