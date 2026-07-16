@@ -24,9 +24,9 @@ export async function POST(req: Request) {
   if (event.type === "checkout.session.completed") {
     const session = event.data.object as Stripe.Checkout.Session;
 
-    const { data: subscription } = await stripe.subscriptions.retrieve(
+    const subscription = (await stripe.subscriptions.retrieve(
       session.subscription as string
-    );
+    )) as Stripe.Subscription;
 
     const userId = session.client_reference_id;
 
@@ -55,9 +55,9 @@ export async function POST(req: Request) {
   if (event.type === "invoice.payment_succeeded") {
     const invoice = event.data.object as Stripe.Invoice;
 
-    const { data: subscription } = await stripe.subscriptions.retrieve(
+    const subscription = (await stripe.subscriptions.retrieve(
       invoice.subscription as string
-    );
+    )) as Stripe.Subscription;
 
     await prisma.subscription.update({
       where: { stripeSubscriptionId: subscription.id },
@@ -69,10 +69,10 @@ export async function POST(req: Request) {
   }
 
   if (event.type === "customer.subscription.deleted") {
-    const stripeSubscription = event.data.object as Stripe.Subscription;
+    const subscription = event.data.object as Stripe.Subscription;
 
     await prisma.subscription.update({
-      where: { stripeSubscriptionId: stripeSubscription.id },
+      where: { stripeSubscriptionId: subscription.id },
       data: {
         status: "CANCELED",
       },
