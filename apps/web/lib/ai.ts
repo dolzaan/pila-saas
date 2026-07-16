@@ -79,7 +79,7 @@ ${categoriesList || "Nenhuma categoria cadastrada."}`;
       }
     });
 
-    const resultText = response.text();
+    const resultText = response.text;;
     if (!resultText) return null;
 
     const data = JSON.parse(resultText) as AITransactionResult;
