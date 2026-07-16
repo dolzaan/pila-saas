@@ -5,7 +5,10 @@ import { prisma } from "@/lib/prisma";
 import { CategorySchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
 
-export async function createCategory(formData: FormData) {
+export async function createCategory(
+  state: any,
+  formData: FormData
+) {
   const session = await auth();
   if (!session?.user?.id) {
     return { error: "Não autorizado." };
