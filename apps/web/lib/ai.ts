@@ -15,16 +15,17 @@ export type ParsedTransaction = {
   replyMessage?: string;
 };
 
-export async function parseFinancialMessage(text: string, userContext?: string, imageBase64?: string): Promise<ParsedTransaction> {
+export async function parseFinancialMessage(text: string, userContext?: string, mediaBase64?: string, mediaMimeType?: string): Promise<ParsedTransaction> {
   const prompt = `
 Você é um assistente financeiro super inteligente para o WhatsApp, chamado "Pila Bot".
 Sua tarefa é ler a mensagem do usuário e extrair os dados da transação financeira, ou responder perguntas financeiras baseando-se no Contexto fornecido.
 
 REGRAS:
-1. Se a mensagem contiver um gasto ou ganho claro (ex: "Gastei 50 num lanche"), ou uma FOTO de nota fiscal/recibo, você DEVE retornar JSON com isTransaction: true e os dados da transação. Se for uma foto, leia o valor total e o nome do estabelecimento para adivinhar a categoria. ALÉM DISSO, improvise um \`replyMessage\` natural e amigável confirmando o registro.
-2. Se a mensagem for uma PERGUNTA sobre finanças (ex: "Quanto gastei hoje?"), USE EXCLUSIVAMENTE as informações da seção "CONTEXTO FINANCEIRO DO USUÁRIO" abaixo para responder com precisão. Retorne isTransaction: false e coloque a resposta na \`replyMessage\`.
-3. Se a mensagem for apenas um "Oi", retorne isTransaction: false e forneça uma \`replyMessage\` amigável e espirituosa.
-4. A resposta DEVE ser um JSON puro, sem marcações markdown ou blocos de código (não use \`\`\`json).
+1. Se a mensagem contiver um gasto/ganho claro (ex: "Gastei 50 num lanche"), ou um ÁUDIO/FOTO/PDF de nota fiscal, fatura, ou extrato, você DEVE retornar JSON com isTransaction: true e os dados da transação. Se for mídia, transcreva o áudio ou leia o valor total do arquivo. ALÉM DISSO, improvise um \`replyMessage\` natural confirmando o registro.
+2. ALERTA DE ORÇAMENTO (BUDGET): Se você identificar que esta transação fará o usuário estourar (ou chegar muito perto) do Limite do Orçamento cadastrado no "CONTEXTO FINANCEIRO", você DEVE incluir uma bronca amigável ou aviso no seu \`replyMessage\`.
+3. Se a mensagem for uma PERGUNTA sobre finanças, USE EXCLUSIVAMENTE as informações do "CONTEXTO FINANCEIRO" para responder com precisão. Retorne isTransaction: false e coloque a resposta na \`replyMessage\`.
+4. Se a mensagem for apenas um "Oi", retorne isTransaction: false e forneça uma \`replyMessage\` amigável e espirituosa.
+5. A resposta DEVE ser um JSON puro, sem marcações markdown ou blocos de código (não use \`\`\`json).
 
 CONTEXTO FINANCEIRO DO USUÁRIO:
 ${userContext || "Nenhum dado disponível."}
@@ -57,13 +58,13 @@ Mensagem do usuário: "${text}"
       };
     }
 
-    // Prepara o payload para texto ou multimodal (texto + imagem)
+    // Prepara o payload para texto ou multimodal (texto + áudio/imagem/pdf)
     let aiContents: any = prompt;
-    if (imageBase64) {
-      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+    if (mediaBase64 && mediaMimeType) {
+      const cleanBase64 = mediaBase64.replace(/^data:\w+\/[-+.\w]+;base64,/, "");
       aiContents = [
         prompt,
-        { inlineData: { data: cleanBase64, mimeType: "image/jpeg" } }
+        { inlineData: { data: cleanBase64, mimeType: mediaMimeType } }
       ];
     }
 

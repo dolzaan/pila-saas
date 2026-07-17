@@ -29,12 +29,20 @@ export async function POST(req: Request) {
     }
 
     const phoneNumber = remoteJid.split("@")[0];
-    const text = messageData.conversation || messageData.extendedTextMessage?.text || messageData.imageMessage?.caption || "";
+    const text = messageData.conversation 
+      || messageData.extendedTextMessage?.text 
+      || messageData.imageMessage?.caption 
+      || messageData.documentMessage?.caption
+      || "";
     
-    // Extrair Base64 se houver imagem (Requer webhookBase64: true na Evolution API)
-    const imageBase64 = messageData.base64 || body.data?.message?.base64 || body.data?.base64 || "";
+    // Extrair Base64 se houver mídia (Requer webhookBase64: true na Evolution API)
+    const mediaBase64 = messageData.base64 || body.data?.message?.base64 || body.data?.base64 || "";
+    let mediaMimeType = "";
+    if (messageData.imageMessage) mediaMimeType = messageData.imageMessage.mimetype || "image/jpeg";
+    if (messageData.audioMessage) mediaMimeType = messageData.audioMessage.mimetype || "audio/ogg";
+    if (messageData.documentMessage) mediaMimeType = messageData.documentMessage.mimetype || "application/pdf";
 
-    if (!text && !imageBase64) {
+    if (!text && !mediaBase64) {
       return NextResponse.json({ success: true, ignored: true });
     }
 
@@ -103,13 +111,33 @@ export async function POST(req: Request) {
       orderBy: { occurredAt: "desc" }
     });
 
+    // 5.1 Buscar Orçamentos do Usuário
+    const budgets = await prisma.budget.findMany({
+      where: { userId: user.id },
+      include: { category: true }
+    });
+
     let monthExpenses = 0;
     let monthIncomes = 0;
+    
+    // Calcular gastos por categoria para bater com o orçamento
+    const expensesByCategory: Record<string, number> = {};
     const contextLines = recentTransactions.map(t => {
       const val = Number(t.amount);
-      if (t.kind === "EXPENSE") monthExpenses += val;
+      if (t.kind === "EXPENSE") {
+        monthExpenses += val;
+        if (t.categoryId) {
+          expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + val;
+        }
+      }
       if (t.kind === "INCOME") monthIncomes += val;
       return `- ${t.occurredAt.toLocaleDateString("pt-BR")}: R$ ${val.toFixed(2)} - ${t.description} (${t.category?.name || 'Sem categoria'}) - ${t.kind === "EXPENSE" ? "Gasto" : "Ganho"}`;
+    });
+
+    const budgetLines = budgets.map(b => {
+      const spent = expensesByCategory[b.categoryId] || 0;
+      const limit = Number(b.amount);
+      return `- Orçamento de ${b.category.name}: Limite R$ ${limit.toFixed(2)} (Gasto atual: R$ ${spent.toFixed(2)} - Resta R$ ${(limit - spent).toFixed(2)})`;
     });
 
     const userContext = `
@@ -117,12 +145,15 @@ Resumo de ${startOfMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'num
 Total de Gastos: R$ ${monthExpenses.toFixed(2)}
 Total de Ganhos: R$ ${monthIncomes.toFixed(2)}
 
+Situação dos Orçamentos (Budgets) deste mês:
+${budgetLines.length > 0 ? budgetLines.join('\n') : "Nenhum orçamento configurado."}
+
 Últimas transações (máx 20):
 ${contextLines.slice(0, 20).join('\n')}
     `.trim();
 
-    // 6. Processar via IA com Contexto e possível Imagem
-    const aiResult = await parseFinancialMessage(text, userContext, imageBase64);
+    // 6. Processar via IA com Contexto e possível Mídia (Áudio, Imagem, PDF)
+    const aiResult = await parseFinancialMessage(text, userContext, mediaBase64, mediaMimeType);
 
     if (!aiResult.isTransaction) {
       const replyMessage = aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!";
