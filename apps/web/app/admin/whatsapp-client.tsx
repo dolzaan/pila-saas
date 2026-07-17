@@ -177,7 +177,14 @@ export default function WhatsappClient() {
         {status === "connecting" && !qrCode && (
           <div className="flex flex-col items-center text-gray-500">
             <Loader2 className="w-8 h-8 animate-spin mb-2" />
-            <p>Conectando...</p>
+            <p className="mb-4">Conectando...</p>
+            <button 
+              onClick={handleLogout}
+              disabled={loading}
+              className="text-sm px-4 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 font-medium transition-colors"
+            >
+              Cancelar / Limpar
+            </button>
           </div>
         )}
       </div>
