@@ -8,6 +8,8 @@ import { parseFinancialMessage } from "@/lib/ai";
 import { sendWhatsAppMessage } from "@/app/actions/admin-whatsapp";
 import { PILA_APP_URL, PILA_PUBLIC_KNOWLEDGE, PILA_REGISTER_URL } from "@/lib/pila-knowledge";
 import { createActivationToken } from "@/lib/account-activation";
+import { consumeEmailVerificationCode, issueEmailVerificationCode } from "@/lib/auth-tokens";
+import { sendEmail } from "@/lib/email";
 import {
   isCancellation,
   isConfirmation,
@@ -127,8 +129,14 @@ export async function POST(req: Request) {
 
     // 3.1. Se não encontrou, verificar se a mensagem é um PIN de vinculação
     if (!user) {
+      let onboarding = await prisma.whatsappOnboardingSession.findUnique({ where: { phone: phoneNumber } });
+      if (onboarding && onboarding.expiresAt <= new Date()) {
+        await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
+        onboarding = null;
+      }
+
       const pinMatch = text.match(/^\d{6}$/);
-      if (pinMatch) {
+      if (pinMatch && onboarding?.step !== "EMAIL_CODE") {
         const linkCode = await prisma.whatsappLinkCode.findFirst({
           where: {
             code: pinMatch[0],
@@ -163,18 +171,28 @@ export async function POST(req: Request) {
       const pinWasInvalid = /^\d{6}$/.test(text.trim());
 
       let replyMessage: string;
-      if (pinWasInvalid) {
-        replyMessage = `Esse código não é válido ou já expirou. Gere um novo código no painel: ${PILA_REGISTER_URL}`;
-      } else {
-        let onboarding = await prisma.whatsappOnboardingSession.findUnique({ where: { phone: phoneNumber } });
-        if (onboarding && onboarding.expiresAt <= new Date()) {
-          await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
-          onboarding = null;
-        }
-
-        if (onboarding && isCancellation(text)) {
+      if (onboarding && isCancellation(text)) {
           await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
           replyMessage = "Tudo bem, cancelei o cadastro. Quando quiser retomar, é só dizer “quero criar minha conta”.";
+      } else if (onboarding?.step === "EMAIL_CODE") {
+          const code = text.trim();
+          if (!/^\d{6}$/.test(code)) {
+            replyMessage = "Envie somente o código de 6 dígitos que chegou no seu e-mail, ou escreva “cancelar”.";
+          } else {
+            const identifier = `email-verify-whatsapp:${phoneNumber}`;
+            const valid = await consumeEmailVerificationCode(identifier, code);
+            if (!valid) {
+              replyMessage = "Código inválido ou expirado. Confira o e-mail e tente novamente. Após 5 tentativas, recomece o cadastro.";
+            } else {
+              await prisma.whatsappOnboardingSession.update({
+                where: { phone: phoneNumber },
+                data: { step: "CONFIRM" },
+              });
+              replyMessage = `✅ E-mail confirmado!\n\nConfira seus dados:\nNome: ${onboarding.name}\nE-mail: ${onboarding.email}\nWhatsApp: +${phoneNumber}\n\nAo confirmar, você aceita os Termos (${PILA_APP_URL}/terms) e a Política de Privacidade (${PILA_APP_URL}/privacy). Posso criar sua conta? Responda “sim” para confirmar ou “cancelar”.`;
+            }
+          }
+      } else if (pinWasInvalid) {
+          replyMessage = `Esse código não é válido ou já expirou. Gere um novo código no painel: ${PILA_REGISTER_URL}`;
         } else if (onboarding?.step === "NAME") {
           const parsedName = parseOnboardingName(text);
           if (!parsedName.success) {
@@ -196,11 +214,27 @@ export async function POST(req: Request) {
               await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
               replyMessage = `Esse e-mail já possui uma conta. Entre em ${PILA_APP_URL}/login e vincule este WhatsApp nas configurações.`;
             } else {
-              await prisma.whatsappOnboardingSession.update({
-                where: { phone: phoneNumber },
-                data: { email: parsedEmail.data, step: "CONFIRM" },
-              });
-              replyMessage = `Confira seus dados:\nNome: ${onboarding.name}\nE-mail: ${parsedEmail.data}\nWhatsApp: +${phoneNumber}\n\nAo confirmar, você aceita os Termos (${PILA_APP_URL}/terms) e a Política de Privacidade (${PILA_APP_URL}/privacy). Posso criar sua conta? Responda “sim” para confirmar ou “cancelar”.`;
+              const identifier = `email-verify-whatsapp:${phoneNumber}`;
+              await prisma.verificationToken.deleteMany({ where: { identifier } });
+              const verificationCode = await issueEmailVerificationCode(identifier);
+              const sent = verificationCode
+                ? await sendEmail({
+                    to: parsedEmail.data,
+                    template: "email-verification",
+                    name: onboarding.name,
+                    verificationCode,
+                  })
+                : false;
+              if (!sent) {
+                await prisma.verificationToken.deleteMany({ where: { identifier } });
+                replyMessage = "Não consegui enviar o código agora. Confira o e-mail e envie novamente em alguns instantes.";
+              } else {
+                await prisma.whatsappOnboardingSession.update({
+                  where: { phone: phoneNumber },
+                  data: { email: parsedEmail.data, step: "EMAIL_CODE" },
+                });
+                replyMessage = `Enviei um código de 6 dígitos para ${parsedEmail.data}. Digite o código aqui para confirmar seu e-mail. Ele vale por 10 minutos.`;
+              }
             }
           }
         } else if (onboarding?.step === "CONFIRM") {
@@ -218,6 +252,7 @@ export async function POST(req: Request) {
                 data: {
                   name: onboardingName,
                   email: onboardingEmail,
+                  emailVerified: new Date(),
                   whatsappNumber: phoneNumber,
                   whatsappVerifiedAt: new Date(),
                 },
@@ -253,7 +288,6 @@ export async function POST(req: Request) {
             replyMessage += `\n\nSite oficial: ${PILA_APP_URL}`;
           }
         }
-      }
 
       await sendWhatsAppMessage(remoteJid, replyMessage);
       return NextResponse.json({ success: true, replyMessage });

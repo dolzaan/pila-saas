@@ -11,6 +11,9 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [code, setCode] = useState("");
+  const [awaitingVerification, setAwaitingVerification] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -33,7 +36,32 @@ export default function RegisterPage() {
         return;
       }
 
-      // Faz login automaticamente após cadastro
+      setAwaitingVerification(true);
+      setNotice(`Enviamos um código de 6 dígitos para ${email}.`);
+    } catch {
+      setError("Erro inesperado. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleVerification(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+
+    try {
+      const response = await fetch("/api/auth/verify-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, code }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setError(data.error ?? "Código inválido ou expirado.");
+        return;
+      }
+
       const signInRes = await signIn("credentials", {
         email,
         password,
@@ -41,7 +69,7 @@ export default function RegisterPage() {
       });
 
       if (signInRes?.error) {
-        setError("Conta criada! Faça login para continuar.");
+        setError("E-mail confirmado! Faça login para continuar.");
         router.push("/login");
         return;
       }
@@ -50,6 +78,24 @@ export default function RegisterPage() {
       router.refresh();
     } catch {
       setError("Erro inesperado. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function resendCode() {
+    setError(null);
+    setNotice(null);
+    setLoading(true);
+    try {
+      await fetch("/api/auth/send-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      setNotice("Se o código anterior expirou, um novo código foi enviado.");
+    } catch {
+      setError("Não foi possível reenviar o código.");
     } finally {
       setLoading(false);
     }
@@ -76,6 +122,41 @@ export default function RegisterPage() {
           Gerencie suas finanças pelo WhatsApp em minutos
         </p>
 
+        {awaitingVerification ? (
+          <form onSubmit={handleVerification} className="auth-form" noValidate>
+            <div className="form-group">
+              <label htmlFor="verification-code" className="form-label">
+                Código recebido por e-mail
+              </label>
+              <input
+                id="verification-code"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                className="form-input"
+                placeholder="000000"
+                value={code}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
+                autoComplete="one-time-code"
+                disabled={loading}
+                required
+                autoFocus
+              />
+            </div>
+
+            {notice && <div className="form-success" role="status">{notice}</div>}
+            {error && <div className="form-error" role="alert">{error}</div>}
+
+            <button type="submit" className="btn-primary" disabled={loading || code.length !== 6}>
+              {loading ? "Confirmando..." : "Confirmar e-mail"}
+            </button>
+            <button type="button" className="btn-google" onClick={resendCode} disabled={loading}>
+              Reenviar código
+            </button>
+          </form>
+        ) : (
+        <>
         {/* Google OAuth */}
         <button
           id="btn-google-register"
@@ -192,6 +273,8 @@ export default function RegisterPage() {
             <Link href="/privacy" className="auth-link">Política de Privacidade</Link>.
           </p>
         </form>
+        </>
+        )}
 
         <p className="auth-footer">
           Já tem conta?{" "}

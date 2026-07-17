@@ -2,10 +2,11 @@ type EmailTemplate = "password-reset" | "email-verification";
 
 type EmailInput = {
   to: string;
-  template: EmailTemplate;
   name?: string | null;
-  actionUrl: string;
-};
+} & (
+  | { template: "password-reset"; actionUrl: string }
+  | { template: "email-verification"; verificationCode: string }
+);
 
 const templateEnvironment: Record<EmailTemplate, string> = {
   "password-reset": "EMAILJS_RESET_TEMPLATE_ID",
@@ -34,8 +35,9 @@ export async function sendEmail(input: EmailInput) {
       template_params: {
         to_email: input.to,
         to_name: input.name || "cliente",
-        action_url: input.actionUrl,
-        expires_in: input.template === "password-reset" ? "30 minutos" : "24 horas",
+        action_url: "actionUrl" in input ? input.actionUrl : "",
+        verification_code: "verificationCode" in input ? input.verificationCode : "",
+        expires_in: input.template === "password-reset" ? "30 minutos" : "10 minutos",
       },
     }),
   });

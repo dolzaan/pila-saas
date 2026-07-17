@@ -45,12 +45,13 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
             name: true,
             email: true,
             passwordHash: true,
+            emailVerified: true,
             image: true,
             role: true,
           },
         });
 
-        if (!user || !user.passwordHash) return null;
+        if (!user || !user.passwordHash || !user.emailVerified) return null;
 
         const valid = await bcrypt.compare(password, user.passwordHash);
         if (!valid) return null;
