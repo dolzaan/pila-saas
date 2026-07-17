@@ -42,30 +42,27 @@ export async function POST(req: Request) {
     });
 
     if (!user) {
-      await sendWhatsAppMessage(
-        remoteJid,
-        "Olá! Não encontrei sua conta no Pila SaaS. Por favor, acesse o painel e vincule seu número de WhatsApp nas configurações."
-      );
-      return NextResponse.json({ success: true, reply: "User not found" });
+      const replyMessage = "Olá! Não encontrei sua conta no Pila SaaS. Por favor, acesse o painel e vincule seu número de WhatsApp nas configurações.";
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, replyMessage });
     }
 
     // 4. Validar assinatura/paywall
     const subStatus = getUserSubscriptionStatus(user.createdAt, user.subscription);
     
     if (subStatus.status === "EXPIRED" && user.role !== "ADMIN") {
-      await sendWhatsAppMessage(
-        remoteJid,
-        "⚠️ Seu período de testes acabou! Acesse o painel para assinar o plano Pro e continuar usando o bot."
-      );
-      return NextResponse.json({ success: true, reply: "Paywall blocked" });
+      const replyMessage = "⚠️ Seu período de testes acabou! Acesse o painel para assinar o plano Pro e continuar usando o bot.";
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, replyMessage });
     }
 
     // 5. Processar via IA
     const aiResult = await parseFinancialMessage(text);
 
     if (!aiResult.isTransaction) {
-      await sendWhatsAppMessage(remoteJid, aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!");
-      return NextResponse.json({ success: true, reply: "Non-transaction message" });
+      const replyMessage = aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!";
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, replyMessage });
     }
 
     // 6. Salvar no Banco de Dados
@@ -106,12 +103,10 @@ export async function POST(req: Request) {
 
     // 7. Responder sucesso usando a mensagem improvisada pela IA
     const fallbackMessage = `✅ Gasto registrado: R$ ${Number(aiResult.amount).toFixed(2)} em ${aiResult.categoryName}`;
-    await sendWhatsAppMessage(
-      remoteJid,
-      aiResult.replyMessage || fallbackMessage
-    );
+    const replyMessage = aiResult.replyMessage || fallbackMessage;
+    await sendWhatsAppMessage(remoteJid, replyMessage);
 
-    return NextResponse.json({ success: true, processed: true });
+    return NextResponse.json({ success: true, processed: true, replyMessage });
 
   } catch (error: any) {
     console.error("[Webhook WhatsApp] Erro:", error);

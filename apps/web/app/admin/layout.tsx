@@ -32,13 +32,21 @@ export default async function AdminLayout({
             <ShieldCheck className="w-8 h-8 text-primary" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin FinZap</h1>
           </div>
-          <Link 
-            href="/dashboard" 
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Voltar ao App
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link 
+              href="/admin/simulator" 
+              className="flex items-center gap-2 text-sm font-medium bg-[#00a884] text-white px-3 py-1.5 rounded-lg hover:bg-[#008f6f] transition-colors"
+            >
+              Simulador WhatsApp
+            </Link>
+            <Link 
+              href="/dashboard" 
+              className="flex items-center gap-2 text-sm font-medium text-gray-600 dark:text-gray-300 hover:text-primary transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Voltar ao App
+            </Link>
+          </div>
         </div>
       </header>
 
