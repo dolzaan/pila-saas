@@ -110,6 +110,9 @@ export default function LoginPage() {
               autoComplete="email"
               disabled={loading}
             />
+            <div style={{ textAlign: "right", marginTop: 8 }}>
+              <Link href="/forgot-password" className="auth-link">Esqueci minha senha</Link>
+            </div>
           </div>
 
           <div className="form-group">

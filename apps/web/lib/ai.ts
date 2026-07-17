@@ -18,6 +18,9 @@ export type ParsedTransaction = {
   isReminder?: boolean;
   dueDate?: string; // Formato ISO "YYYY-MM-DD"
   isReport?: boolean;
+  reminderAction?: "MARK_PAID" | "SNOOZE";
+  reminderDescription?: string;
+  snoozeUntil?: string;
 };
 
 const ParsedTransactionSchema = z.object({
@@ -30,12 +33,18 @@ const ParsedTransactionSchema = z.object({
   isReminder: z.boolean().optional(),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   isReport: z.boolean().optional(),
+  reminderAction: z.enum(["MARK_PAID", "SNOOZE"]).optional(),
+  reminderDescription: z.string().trim().max(255).optional(),
+  snoozeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
 }).superRefine((value, context) => {
   if (value.isTransaction && (!value.amount || !value.kind)) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "Transação sem valor ou tipo" });
   }
   if (value.isReminder && (!value.amount || !value.description || !value.dueDate)) {
     context.addIssue({ code: z.ZodIssueCode.custom, message: "Lembrete incompleto" });
+  }
+  if (value.reminderAction === "SNOOZE" && !value.snoozeUntil) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Adiamento sem nova data" });
   }
 });
 
@@ -50,12 +59,13 @@ REGRAS:
 1. GASTOS E GANHOS: Se a mensagem contiver um gasto/ganho claro (ex: "Gastei 50 num lanche"), ou uma FOTO/ÁUDIO/PDF de recibo, retorne JSON com isTransaction: true e os dados da transação. Se for mídia, transcreva o áudio ou leia o valor total do arquivo. Improvise um \`replyMessage\` natural confirmando o registro.
 2. ALERTA DE ORÇAMENTO (BUDGET): Se identificar que a transação fará o usuário estourar (ou chegar muito perto) do Limite do Orçamento cadastrado no "CONTEXTO FINANCEIRO", inclua uma bronca amigável ou aviso no \`replyMessage\`.
 3. CONTAS A PAGAR (LEMBRETES): Se o usuário disser algo como "Me lembra de pagar o aluguel dia 10 (valor X)", retorne \`isReminder: true\`, extraindo o \`amount\`, \`description\`, e calculando a \`dueDate\` no formato "YYYY-MM-DD". A \`replyMessage\` deve confirmar o agendamento amigavelmente.
-4. RELATÓRIOS E GRÁFICOS: Se o usuário pedir um gráfico, resumo visual ou relatório ("Quero um gráfico dos meus gastos"), retorne \`isReport: true\`.
-5. PERGUNTAS FINANCEIRAS: Se a mensagem for uma pergunta sobre os dados financeiros do usuário (não relatório visual), use exclusivamente o "CONTEXTO FINANCEIRO". Não invente valores ou transações.
-6. ATENDIMENTO E ONBOARDING: Responda dúvidas sobre o Pila usando exclusivamente as "INFORMAÇÕES OFICIAIS DO PILA". Explique de forma curta e natural, faça no máximo uma pergunta por vez e conduza interessados ao cadastro. Sempre entregue o link oficial completo quando perguntarem pelo site ou cadastro.
-7. SEGURANÇA: Nunca peça senha, cartão, código de autenticação ou dado bancário pelo WhatsApp. Nunca afirme que uma conta foi criada se o sistema não confirmou isso.
-8. OUTROS: Se for uma saudação, apresente-se brevemente e pergunte se a pessoa quer conhecer o Pila ou registrar uma movimentação.
-9. A resposta DEVE ser um JSON puro (sem markdown ou \`\`\`json).
+4. AÇÕES EM LEMBRETES: Se disser que pagou uma conta, retorne \`reminderAction: "MARK_PAID"\` e \`reminderDescription\`. Se pedir para lembrar depois, retorne \`reminderAction: "SNOOZE"\`, a descrição se houver e \`snoozeUntil\` em YYYY-MM-DD.
+5. RELATÓRIOS E GRÁFICOS: Se o usuário pedir um gráfico, resumo visual ou relatório ("Quero um gráfico dos meus gastos"), retorne \`isReport: true\`.
+6. PERGUNTAS FINANCEIRAS: Se a mensagem for uma pergunta sobre os dados financeiros do usuário (não relatório visual), use exclusivamente o "CONTEXTO FINANCEIRO". Não invente valores ou transações.
+7. ATENDIMENTO E ONBOARDING: Responda dúvidas sobre o Pila usando exclusivamente as "INFORMAÇÕES OFICIAIS DO PILA". Explique de forma curta e natural, faça no máximo uma pergunta por vez e conduza interessados ao cadastro. Sempre entregue o link oficial completo quando perguntarem pelo site ou cadastro.
+8. SEGURANÇA: Nunca peça senha, cartão, código de autenticação ou dado bancário pelo WhatsApp. Nunca afirme que uma conta foi criada se o sistema não confirmou isso.
+9. OUTROS: Se for uma saudação, apresente-se brevemente e pergunte se a pessoa quer conhecer o Pila ou registrar uma movimentação.
+10. A resposta DEVE ser um JSON puro (sem markdown ou \`\`\`json).
 
 CONTEXTO FINANCEIRO DO USUÁRIO:
 ${userContext || "Nenhum dado disponível."}

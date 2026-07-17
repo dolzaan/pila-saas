@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { appUrl, issueAuthToken } from "@/lib/auth-tokens";
+import { sendEmail } from "@/lib/email";
 
 const RegisterSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
@@ -59,6 +61,16 @@ export async function POST(request: Request) {
         createdAt: true,
       },
     });
+
+    const verificationToken = await issueAuthToken(user.id, "email-verify", 24 * 60);
+    if (verificationToken) {
+      const verificationUrl = `${appUrl()}/api/auth/verify-email?token=${verificationToken}`;
+      await sendEmail({
+        to: user.email,
+        subject: "Confirme seu e-mail no Pila",
+        html: `<p>Olá${user.name ? `, ${user.name}` : ""}!</p><p>Confirme seu e-mail para proteger sua conta.</p><p><a href="${verificationUrl}">Confirmar meu e-mail</a></p><p>O link expira em 24 horas.</p>`,
+      });
+    }
 
     return NextResponse.json(
       { message: "Conta criada com sucesso.", user },

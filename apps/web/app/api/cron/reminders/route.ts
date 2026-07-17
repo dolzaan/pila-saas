@@ -16,11 +16,15 @@ export async function GET(req: Request) {
     // Busca todos os lembretes que não foram pagos e que vencem hoje (ou venceram)
     const today = new Date();
     today.setHours(23, 59, 59, 999);
+    const startOfToday = new Date();
+    startOfToday.setHours(0, 0, 0, 0);
 
     const pendingReminders = await prisma.billReminder.findMany({
       where: {
         isPaid: false,
-        dueDate: { lte: today }
+        dueDate: { lte: today },
+        OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: today } }],
+        AND: [{ OR: [{ lastNotifiedAt: null }, { lastNotifiedAt: { lt: startOfToday } }] }],
       },
       include: { user: true }
     });
@@ -38,9 +42,14 @@ export async function GET(req: Request) {
         
         if (success) {
           sentCount++;
-          // Marca como pago provisoriamente ou cria alguma lógica de 'notified'. 
-          // Para não spammar todo dia, o ideal seria ter 'lastNotifiedAt'. 
-          // Por simplicidade aqui, deixamos como não pago, mas a pessoa vai receber amanhã de novo se não pagar.
+          await prisma.billReminder.update({
+            where: { id: reminder.id },
+            data: {
+              lastNotifiedAt: new Date(),
+              notificationCount: { increment: 1 },
+              snoozedUntil: null,
+            },
+          });
         }
       }
     }
