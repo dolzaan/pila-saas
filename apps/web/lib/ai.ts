@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
 import { PILA_PUBLIC_KNOWLEDGE } from "@/lib/pila-knowledge";
+import { z } from "zod";
 
 // Inicialização preguiçosa para não quebrar a compilação caso a chave esteja ausente no .env
 let ai: GoogleGenAI | null = null;
@@ -18,6 +19,25 @@ export type ParsedTransaction = {
   dueDate?: string; // Formato ISO "YYYY-MM-DD"
   isReport?: boolean;
 };
+
+const ParsedTransactionSchema = z.object({
+  isTransaction: z.boolean(),
+  amount: z.number().positive().max(1_000_000_000).optional(),
+  kind: z.enum(["EXPENSE", "INCOME"]).optional(),
+  description: z.string().trim().max(255).optional(),
+  categoryName: z.string().trim().max(50).optional(),
+  replyMessage: z.string().trim().max(1500).optional(),
+  isReminder: z.boolean().optional(),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  isReport: z.boolean().optional(),
+}).superRefine((value, context) => {
+  if (value.isTransaction && (!value.amount || !value.kind)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Transação sem valor ou tipo" });
+  }
+  if (value.isReminder && (!value.amount || !value.description || !value.dueDate)) {
+    context.addIssue({ code: z.ZodIssueCode.custom, message: "Lembrete incompleto" });
+  }
+});
 
 export async function parseFinancialMessage(text: string, userContext?: string, mediaBase64?: string, mediaMimeType?: string): Promise<ParsedTransaction> {
   const prompt = `
@@ -87,8 +107,16 @@ Mensagem do usuário: "${text}"
     // Remover eventuais blocos de código se o modelo insistir em usar
     const cleanJson = output.replace(/```json/g, "").replace(/```/g, "").trim();
     
-    const parsed = JSON.parse(cleanJson);
-    return parsed as ParsedTransaction;
+    const parsedJson: unknown = JSON.parse(cleanJson);
+    const parsed = ParsedTransactionSchema.safeParse(parsedJson);
+    if (!parsed.success) {
+      console.error("[Gemini API] Resposta inválida:", parsed.error.issues);
+      return {
+        isTransaction: false,
+        replyMessage: "Não consegui interpretar essa mensagem com segurança. Pode escrever de outra forma?",
+      };
+    }
+    return parsed.data;
   } catch (error: any) {
     console.error("[Gemini API] Erro ao processar mensagem:", error);
     return {
