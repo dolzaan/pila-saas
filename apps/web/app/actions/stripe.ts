@@ -9,6 +9,16 @@ const getAppUrl = () => {
   return process.env.NEXTAUTH_URL || "http://localhost:3000";
 };
 
+function getProPriceId() {
+  const priceId = process.env.STRIPE_PRO_PRICE_ID;
+
+  if (!priceId) {
+    throw new Error("STRIPE_PRO_PRICE_ID não está configurado");
+  }
+
+  return priceId;
+}
+
 export async function createCheckoutSession() {
   const session = await auth();
   if (!session?.user?.email || !session?.user?.id) {
@@ -19,9 +29,25 @@ export async function createCheckoutSession() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
+    include: { subscription: true },
   });
 
   if (!user) throw new Error("Usuário não encontrado");
+
+  // Uma assinatura existente deve ser regularizada no portal, evitando
+  // cobranças e assinaturas duplicadas para o mesmo usuário.
+  if (
+    user.stripeCustomerId &&
+    user.subscription &&
+    ["ACTIVE", "TRIALING", "PAST_DUE"].includes(user.subscription.status)
+  ) {
+    const portalSession = await stripe.billingPortal.sessions.create({
+      customer: user.stripeCustomerId,
+      return_url: `${getAppUrl()}/dashboard/settings`,
+    });
+
+    redirect(portalSession.url);
+  }
 
   let customerId = user.stripeCustomerId;
 
@@ -45,13 +71,16 @@ export async function createCheckoutSession() {
     payment_method_types: ["card"],
     line_items: [
       {
-        price: process.env.STRIPE_PRO_PRICE_ID,
+        price: getProPriceId(),
         quantity: 1,
       },
     ],
     success_url: `${getAppUrl()}/dashboard/settings?success=true`,
     cancel_url: `${getAppUrl()}/dashboard/settings?canceled=true`,
     client_reference_id: user.id,
+    subscription_data: {
+      metadata: { userId: user.id },
+    },
   });
 
   if (!stripeSession.url) throw new Error("Erro ao gerar link de checkout");
