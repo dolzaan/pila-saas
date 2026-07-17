@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { appUrl, issueAuthToken } from "@/lib/auth-tokens";
+import { issueEmailVerificationCode } from "@/lib/auth-tokens";
 import { sendEmail } from "@/lib/email";
 
 const RegisterSchema = z.object({
@@ -62,19 +62,20 @@ export async function POST(request: Request) {
       },
     });
 
-    const verificationToken = await issueAuthToken(user.id, "email-verify", 24 * 60);
-    if (verificationToken) {
-      const verificationUrl = `${appUrl()}/api/auth/verify-email?token=${verificationToken}`;
-      await sendEmail({
+    const identifier = `email-verify:${user.id}`;
+    const verificationCode = await issueEmailVerificationCode(identifier);
+    if (verificationCode) {
+      const sent = await sendEmail({
         to: user.email,
         template: "email-verification",
         name: user.name,
-        actionUrl: verificationUrl,
+        verificationCode,
       });
+      if (!sent) await prisma.verificationToken.deleteMany({ where: { identifier } });
     }
 
     return NextResponse.json(
-      { message: "Conta criada com sucesso.", user },
+      { message: "Conta criada. Confirme seu e-mail para continuar.", user, requiresVerification: true },
       { status: 201 }
     );
   } catch (err) {

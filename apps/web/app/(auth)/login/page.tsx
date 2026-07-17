@@ -113,6 +113,9 @@ export default function LoginPage() {
             <div style={{ textAlign: "right", marginTop: 8 }}>
               <Link href="/forgot-password" className="auth-link">Esqueci minha senha</Link>
             </div>
+            <div style={{ textAlign: "right", marginTop: 8 }}>
+              <Link href="/verify-email" className="auth-link">Confirmar meu e-mail</Link>
+            </div>
           </div>
 
           <div className="form-group">

@@ -121,6 +121,7 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
+  attempts   Int      @default(0)
 
   @@unique([identifier, token])
   @@map("verification_tokens")
@@ -276,7 +277,7 @@ model WhatsappLinkCode {
 // Estado temporário do cadastro iniciado pelo WhatsApp.
 model WhatsappOnboardingSession {
   phone     String   @id
-  step      String   @default("NAME") // NAME | EMAIL | CONFIRM
+  step      String   @default("NAME") // NAME | EMAIL | EMAIL_CODE | CONFIRM
   name      String?
   email     String?
   expiresAt DateTime

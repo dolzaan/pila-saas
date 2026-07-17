@@ -1,25 +1,28 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { appUrl, issueAuthToken } from "@/lib/auth-tokens";
+import { issueEmailVerificationCode } from "@/lib/auth-tokens";
 import { sendEmail } from "@/lib/email";
 
-export async function POST() {
-  const session = await auth();
-  if (!session?.user?.id) return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
+const Schema = z.object({ email: z.string().trim().toLowerCase().email().max(254) });
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+export async function POST(request: Request) {
+  const parsed = Schema.safeParse(await request.json());
+  if (!parsed.success) return NextResponse.json({ success: true });
+
+  const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
   if (!user || user.emailVerified) return NextResponse.json({ success: true });
 
-  const token = await issueAuthToken(user.id, "email-verify", 24 * 60);
-  if (token) {
-    const url = `${appUrl()}/api/auth/verify-email?token=${token}`;
-    await sendEmail({
+  const identifier = `email-verify:${user.id}`;
+  const verificationCode = await issueEmailVerificationCode(identifier);
+  if (verificationCode) {
+    const sent = await sendEmail({
       to: user.email,
       template: "email-verification",
       name: user.name,
-      actionUrl: url,
+      verificationCode,
     });
+    if (!sent) await prisma.verificationToken.deleteMany({ where: { identifier } });
   }
   return NextResponse.json({ success: true });
 }
