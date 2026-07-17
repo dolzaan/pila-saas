@@ -5,6 +5,10 @@ export type SubStatusResult = {
   plan: string;
 };
 
+export function hasProAccess(subscription: SubStatusResult): boolean {
+  return subscription.status === "ACTIVE" || subscription.status === "TRIALING";
+}
+
 export function getUserSubscriptionStatus(
   createdAt: Date,
   subscription?: {
@@ -15,8 +19,15 @@ export function getUserSubscriptionStatus(
 ): SubStatusResult {
   const now = new Date();
 
+  const subscriptionStatus = subscription?.status;
+  const hasKnownSubscriptionStatus =
+    subscriptionStatus === "ACTIVE" ||
+    subscriptionStatus === "TRIALING" ||
+    subscriptionStatus === "PAST_DUE" ||
+    subscriptionStatus === "CANCELED";
+
   // Se o usuário tem uma assinatura não-inativa, calculamos com base nela
-  if (subscription && subscription.status !== "INACTIVE") {
+  if (subscription && hasKnownSubscriptionStatus) {
     const expiresAt = subscription.currentPeriodEnd || now;
     const diffMs = expiresAt.getTime() - now.getTime();
     const daysLeft = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
@@ -24,14 +35,14 @@ export function getUserSubscriptionStatus(
     // Se estiver cancelado ou past_due mas ainda tiver dias, podemos considerar active/expiring
     // Mas para simplificar, confiamos no status retornado pelo Stripe
     return {
-      status: subscription.status as any,
+      status: subscriptionStatus,
       daysLeft: daysLeft > 0 ? daysLeft : 0,
       expiresAt: expiresAt,
       plan: subscription.plan,
     };
   }
 
-  // Sem assinatura ativa -> Lógica de 7 dias de Free Trial
+  // Sem assinatura ativa -> 7 dias de acesso completo ao Pila Pro
   const trialDays = 7;
   const trialEnd = new Date(createdAt);
   trialEnd.setDate(trialEnd.getDate() + trialDays);
@@ -44,7 +55,7 @@ export function getUserSubscriptionStatus(
       status: "TRIALING",
       daysLeft,
       expiresAt: trialEnd,
-      plan: "free",
+      plan: "pro",
     };
   }
 
