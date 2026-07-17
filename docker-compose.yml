@@ -66,6 +66,8 @@ services:
     environment:
       - DATABASE_URL=postgresql://finzap:finzap@postgres:5432/finzap?schema=public
       - REDIS_URL=redis://redis:6379
+      - EVOLUTION_API_URL=http://evolution-api:8080
+      - EVOLUTION_API_KEY=finzap-chave-secreta-123
     depends_on:
       - evolution-api
       - postgres
