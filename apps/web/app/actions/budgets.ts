@@ -7,6 +7,9 @@ import { revalidatePath } from "next/cache";
 export async function setBudget(categoryId: string, monthlyLimit: number) {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Não autorizado");
+  if (!Number.isFinite(monthlyLimit) || monthlyLimit <= 0 || monthlyLimit > 1_000_000_000) {
+    throw new Error("Limite mensal inválido");
+  }
 
   // Verify category belongs to user
   const category = await prisma.category.findFirst({
