@@ -242,6 +242,10 @@ model BillReminder {
   amount      Decimal  @db.Decimal(12, 2)
   dueDate     DateTime
   isPaid      Boolean  @default(false)
+  paidAt      DateTime?
+  snoozedUntil DateTime?
+  lastNotifiedAt DateTime?
+  notificationCount Int @default(0)
   createdAt   DateTime @default(now())
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
