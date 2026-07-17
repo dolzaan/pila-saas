@@ -8,6 +8,29 @@ export default function WhatsappClient() {
   const [status, setStatus] = useState<string>("loading");
   const [qrCode, setQrCode] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
+
+  // Timer para o QR Code
+  useEffect(() => {
+    if (timeLeft === null) return;
+    
+    if (timeLeft <= 0) {
+      // Tempo esgotado
+      setTimeLeft(null);
+      setQrCode(null);
+      setStatus("loading");
+      logoutWhatsApp().then(() => {
+        setStatus("close");
+      });
+      return;
+    }
+
+    const timerId = setInterval(() => {
+      setTimeLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [timeLeft]);
 
   const fetchStatus = async () => {
     setLoading(true);
@@ -27,6 +50,7 @@ export default function WhatsappClient() {
         setStatus(res.state);
         if (res.state === "open") {
           setQrCode(null);
+          setTimeLeft(null);
         }
       });
     }, 5000);
@@ -36,10 +60,12 @@ export default function WhatsappClient() {
   const handleConnect = async () => {
     setLoading(true);
     setQrCode(null);
+    setTimeLeft(null);
     const res = await connectWhatsApp();
     if (res.success && res.qrcode) {
       setQrCode(res.qrcode);
       setStatus("qr_ready");
+      setTimeLeft(40); // 40 segundos de limite
     } else if (!res.success) {
       alert(res.message);
     }
@@ -52,6 +78,8 @@ export default function WhatsappClient() {
     const res = await logoutWhatsApp();
     if (res.success) {
       setStatus("close");
+      setTimeLeft(null);
+      setQrCode(null);
     } else {
       alert(res.message);
     }
@@ -138,7 +166,11 @@ export default function WhatsappClient() {
             <div className="bg-white p-2 rounded-lg shadow-sm border border-gray-200 mb-4">
               <img src={qrCode} alt="WhatsApp QR Code" className="w-48 h-48" />
             </div>
-            <p className="text-xs text-gray-400 animate-pulse">Aguardando conexão...</p>
+            {timeLeft !== null ? (
+              <p className="text-sm font-medium text-red-500 animate-pulse">Expira em: {timeLeft}s</p>
+            ) : (
+              <p className="text-xs text-gray-400 animate-pulse">Aguardando conexão...</p>
+            )}
           </div>
         )}
 
