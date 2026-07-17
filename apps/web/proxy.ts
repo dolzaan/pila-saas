@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
  * Middleware de proteção de rotas usando Auth.js v5.
  * - /dashboard/* → exige autenticação
  * - /login, /register → redireciona para /dashboard se já autenticado
- * - / → redireciona baseado no estado de auth
+ * - / → landing pública (usuários autenticados seguem com acesso ao dashboard)
  */
 export default auth((req) => {
   const { pathname } = req.nextUrl;
@@ -26,14 +26,6 @@ export default auth((req) => {
     (pathname === "/login" || pathname === "/register")
   ) {
     return NextResponse.redirect(new URL("/dashboard", req.url));
-  }
-
-  // Rota raiz: redireciona baseado no estado de auth
-  if (pathname === "/") {
-    if (isAuthenticated) {
-      return NextResponse.redirect(new URL("/dashboard", req.url));
-    }
-    return NextResponse.redirect(new URL("/login", req.url));
   }
 
   return NextResponse.next();
