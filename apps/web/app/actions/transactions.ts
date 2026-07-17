@@ -32,6 +32,18 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
   }
 
   try {
+    if (parsed.data.categoryId) {
+      const category = await prisma.category.findFirst({
+        where: {
+          id: parsed.data.categoryId,
+          kind: parsed.data.kind,
+          OR: [{ userId: session.user.id }, { userId: null }],
+        },
+        select: { id: true },
+      });
+      if (!category) return { error: "Categoria inválida ou acesso negado." };
+    }
+
     await prisma.transaction.create({
       data: {
         userId: session.user.id,
@@ -83,6 +95,18 @@ export async function updateTransaction(id: string, _prevState: unknown, formDat
     const transaction = await prisma.transaction.findUnique({ where: { id } });
     if (!transaction || transaction.userId !== session.user.id) {
       return { error: "Transação não encontrada ou acesso negado." };
+    }
+
+    if (parsed.data.categoryId) {
+      const category = await prisma.category.findFirst({
+        where: {
+          id: parsed.data.categoryId,
+          kind: parsed.data.kind,
+          OR: [{ userId: session.user.id }, { userId: null }],
+        },
+        select: { id: true },
+      });
+      if (!category) return { error: "Categoria inválida ou acesso negado." };
     }
 
     await prisma.transaction.update({
