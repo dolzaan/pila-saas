@@ -3,10 +3,11 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
+import { randomInt } from "node:crypto";
 
 // Gera um PIN de 6 dígitos aleatórios
 function generatePin(): string {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  return randomInt(100000, 1000000).toString();
 }
 
 export async function generateWhatsappLinkCode() {
