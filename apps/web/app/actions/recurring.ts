@@ -16,12 +16,30 @@ export async function createRecurringTransaction(data: {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Unauthorized");
 
+  if (!Number.isFinite(data.amount) || data.amount <= 0 || data.amount > 1_000_000_000) {
+    throw new Error("Valor inválido");
+  }
+  if (!data.description || data.description.trim().length > 255) {
+    throw new Error("Descrição inválida");
+  }
+  if (data.categoryId) {
+    const category = await prisma.category.findFirst({
+      where: {
+        id: data.categoryId,
+        kind: data.kind,
+        OR: [{ userId: session.user.id }, { userId: null }],
+      },
+      select: { id: true },
+    });
+    if (!category) throw new Error("Categoria inválida ou acesso negado");
+  }
+
   await prisma.recurringTransaction.create({
     data: {
       userId: session.user.id,
       amount: data.amount,
       kind: data.kind,
-      description: data.description,
+      description: data.description.trim(),
       categoryId: data.categoryId,
       interval: data.interval,
       startDate: data.startDate,
