@@ -120,14 +120,19 @@ export async function POST(req: Request) {
     let monthExpenses = 0;
     let monthIncomes = 0;
     
-    // Calcular gastos por categoria para bater com o orçamento
+    // Calcular gastos por categoria para bater com o orçamento e para o gráfico
     const expensesByCategory: Record<string, number> = {};
+    const expensesByCategoryName: Record<string, number> = {};
+    
     const contextLines = recentTransactions.map(t => {
       const val = Number(t.amount);
       if (t.kind === "EXPENSE") {
         monthExpenses += val;
         if (t.categoryId) {
           expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + val;
+        }
+        if (t.category?.name) {
+          expensesByCategoryName[t.category.name] = (expensesByCategoryName[t.category.name] || 0) + val;
         }
       }
       if (t.kind === "INCOME") monthIncomes += val;
@@ -155,6 +160,55 @@ ${contextLines.slice(0, 20).join('\n')}
     // 6. Processar via IA com Contexto e possível Mídia (Áudio, Imagem, PDF)
     const aiResult = await parseFinancialMessage(text, userContext, mediaBase64, mediaMimeType);
 
+    // 6.1 Tratamento de Lembretes de Contas a Pagar
+    if (aiResult.isReminder) {
+      if (aiResult.dueDate && aiResult.amount && aiResult.description) {
+        await prisma.billReminder.create({
+          data: {
+            userId: user.id,
+            description: aiResult.description,
+            amount: aiResult.amount,
+            dueDate: new Date(aiResult.dueDate),
+          }
+        });
+      }
+      const replyMessage = aiResult.replyMessage || "Lembrete anotado!";
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, replyMessage });
+    }
+
+    // 6.2 Tratamento de Gráficos/Relatórios Visuais
+    if (aiResult.isReport) {
+      const labels = Object.keys(expensesByCategoryName);
+      const data = Object.values(expensesByCategoryName);
+      
+      let replyMessage = aiResult.replyMessage || "Aqui está o seu relatório visual!";
+
+      if (labels.length > 0) {
+        // Gera um gráfico de pizza estiloso no QuickChart
+        const chartConfig = {
+          type: 'doughnut',
+          data: { labels, datasets: [{ data }] },
+          options: {
+            plugins: {
+              datalabels: { color: '#fff', font: { weight: 'bold' } },
+              legend: { position: 'right' }
+            }
+          }
+        };
+        const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=600&h=400`;
+        
+        const { sendWhatsAppMedia } = await import("@/lib/evolution");
+        await sendWhatsAppMedia(remoteJid, chartUrl, "image", replyMessage);
+      } else {
+        replyMessage = "Você ainda não tem gastos registrados neste mês para gerar um gráfico.";
+        await sendWhatsAppMessage(remoteJid, replyMessage);
+      }
+      
+      return NextResponse.json({ success: true, replyMessage });
+    }
+
+    // 6.3 Tratamento de Não-Transações em geral
     if (!aiResult.isTransaction) {
       const replyMessage = aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!";
       await sendWhatsAppMessage(remoteJid, replyMessage);

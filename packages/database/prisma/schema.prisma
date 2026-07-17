@@ -76,6 +76,7 @@ model User {
   transactions        Transaction[]
   categories          Category[]    // categorias customizadas do usuário
   budgets             Budget[]
+  billReminders       BillReminder[]
   subscription        Subscription?
   whatsappLinkCodes   WhatsappLinkCode[]
   recurringTransactions RecurringTransaction[]
@@ -219,6 +220,21 @@ model RecurringTransaction {
   @@index([userId])
   @@index([nextDate])
   @@map("recurring_transactions")
+}
+
+model BillReminder {
+  id          String   @id @default(cuid())
+  userId      String
+  description String
+  amount      Decimal  @db.Decimal(12, 2)
+  dueDate     DateTime
+  isPaid      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, dueDate])
+  @@map("bill_reminders")
 }
 
 // =============================================================================
