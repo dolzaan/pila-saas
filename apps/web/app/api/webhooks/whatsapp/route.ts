@@ -15,6 +15,7 @@ import {
   parseOnboardingEmail,
   parseOnboardingName,
 } from "@/lib/whatsapp-onboarding";
+import { generateExpenseChart } from "@/lib/report-chart";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -349,6 +350,44 @@ ${contextLines.slice(0, 20).join('\n')}
     // 6. Processar via IA com Contexto e possível Mídia (Áudio, Imagem, PDF)
     const aiResult = await parseFinancialMessage(text, userContext, mediaBase64, mediaMimeType);
 
+    // 6.0 Marcar lembrete como pago ou adiar pelo WhatsApp.
+    if (aiResult.reminderAction) {
+      const reminder = await prisma.billReminder.findFirst({
+        where: {
+          userId: user.id,
+          isPaid: false,
+          ...(aiResult.reminderDescription
+            ? { description: { contains: aiResult.reminderDescription, mode: "insensitive" } }
+            : {}),
+        },
+        orderBy: { dueDate: "desc" },
+      });
+      if (!reminder) {
+        const replyMessage = "Não encontrei uma conta pendente com essa descrição.";
+        await sendWhatsAppMessage(remoteJid, replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
+      }
+
+      if (aiResult.reminderAction === "MARK_PAID") {
+        await prisma.billReminder.update({
+          where: { id: reminder.id },
+          data: { isPaid: true, paidAt: new Date() },
+        });
+        const replyMessage = `✅ Marquei “${reminder.description}” como paga.`;
+        await sendWhatsAppMessage(remoteJid, replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
+      }
+
+      const snoozedUntil = new Date(`${aiResult.snoozeUntil}T12:00:00`);
+      await prisma.billReminder.update({
+        where: { id: reminder.id },
+        data: { snoozedUntil, lastNotifiedAt: null },
+      });
+      const replyMessage = `Combinado! Vou lembrar você novamente em ${snoozedUntil.toLocaleDateString("pt-BR")}.`;
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, replyMessage });
+    }
+
     // 6.1 Tratamento de Lembretes de Contas a Pagar
     if (aiResult.isReminder) {
       if (aiResult.dueDate && aiResult.amount && aiResult.description) {
@@ -374,19 +413,7 @@ ${contextLines.slice(0, 20).join('\n')}
       let replyMessage = aiResult.replyMessage || "Aqui está o seu relatório visual!";
 
       if (labels.length > 0) {
-        // Gera um gráfico de pizza estiloso no QuickChart
-        const chartConfig = {
-          type: 'doughnut',
-          data: { labels, datasets: [{ data }] },
-          options: {
-            plugins: {
-              datalabels: { color: '#fff', font: { weight: 'bold' } },
-              legend: { position: 'right' }
-            }
-          }
-        };
-        const chartUrl = `https://quickchart.io/chart?c=${encodeURIComponent(JSON.stringify(chartConfig))}&w=600&h=400`;
-        
+        const chartUrl = await generateExpenseChart(labels.map((label, index) => ({ label, value: data[index] })));
         const { sendWhatsAppMedia } = await import("@/lib/evolution");
         await sendWhatsAppMedia(remoteJid, chartUrl, "image", replyMessage);
         return NextResponse.json({ success: true, replyMessage, mediaUrl: chartUrl });
