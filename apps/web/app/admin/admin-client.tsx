@@ -20,6 +20,7 @@ type User = {
   subscription: {
     status: string;
     plan: string;
+    currentPeriodEnd: Date | null;
   } | null;
 };
 
