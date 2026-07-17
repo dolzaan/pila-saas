@@ -17,12 +17,12 @@ function getNextDate(date: Date, interval: RecurrenceInterval): Date {
 
 export async function GET(request: Request) {
   try {
-    // Validação de segurança básica para crons
+    if (!process.env.CRON_SECRET) {
+      console.error("[Cron Recurring] CRON_SECRET não configurado");
+      return NextResponse.json({ error: "Cron is not configured" }, { status: 503 });
+    }
     const authHeader = request.headers.get("authorization");
-    if (
-      process.env.CRON_SECRET &&
-      authHeader !== `Bearer ${process.env.CRON_SECRET}`
-    ) {
+    if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -68,10 +68,11 @@ export async function GET(request: Request) {
 
       if (transactionsToCreate.length > 0) {
         // Criar as transações
-        await prisma.transaction.createMany({
+        const created = await prisma.transaction.createMany({
           data: transactionsToCreate,
+          skipDuplicates: true,
         });
-        createdCount += transactionsToCreate.length;
+        createdCount += created.count;
 
         // Atualizar a próxima data na recurring transaction
         await prisma.recurringTransaction.update({

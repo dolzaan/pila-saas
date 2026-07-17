@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import type { Prisma } from "@prisma/client";
+import { cancelBillingBeforeAccountDeletion } from "@/lib/account-deletion";
 
 type UserExportData = Prisma.UserGetPayload<{
   include: {
@@ -60,8 +61,9 @@ export async function deleteUserAccount() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Não autorizado");
 
-  // As tabelas dependentes (transactions, categories, budgets, etc)
-  // serão deletadas automaticamente pelo Prisma devido ao `onDelete: Cascade`.
+  // Nunca apagar a conta local antes de interromper uma cobrança real.
+  await cancelBillingBeforeAccountDeletion(session.user.id);
+
   await prisma.user.delete({
     where: { id: session.user.id },
   });

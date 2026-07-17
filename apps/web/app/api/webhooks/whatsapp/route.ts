@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
+import { timingSafeEqual } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import { parseFinancialMessage } from "@/lib/ai";
 import { sendWhatsAppMessage } from "@/app/actions/admin-whatsapp";
@@ -13,8 +16,42 @@ import {
   parseOnboardingName,
 } from "@/lib/whatsapp-onboarding";
 
+const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
+const MAX_TEXT_LENGTH = 4_000;
+
+function secretsMatch(provided: string | null, expected: string) {
+  if (!provided) return false;
+  const providedBuffer = Buffer.from(provided);
+  const expectedBuffer = Buffer.from(expected);
+  return providedBuffer.length === expectedBuffer.length
+    && timingSafeEqual(providedBuffer, expectedBuffer);
+}
+
+async function authorizeWebhook(req: Request) {
+  const expectedSecret = process.env.WHATSAPP_WEBHOOK_SECRET;
+  const providedSecret = req.headers.get("x-pila-webhook-secret");
+  if (expectedSecret && secretsMatch(providedSecret, expectedSecret)) return true;
+
+  // Permite o simulador apenas para uma sessão administrativa autenticada.
+  const session = await auth();
+  return session?.user?.role === "ADMIN";
+}
+
 export async function POST(req: Request) {
   try {
+    if (!(await authorizeWebhook(req))) {
+      const status = process.env.WHATSAPP_WEBHOOK_SECRET ? 401 : 503;
+      return NextResponse.json(
+        { success: false, error: status === 503 ? "Webhook não configurado" : "Não autorizado" },
+        { status },
+      );
+    }
+
+    const contentLength = Number(req.headers.get("content-length") || 0);
+    if (contentLength > MAX_MEDIA_BASE64_LENGTH) {
+      return NextResponse.json({ success: false, error: "Payload muito grande" }, { status: 413 });
+    }
+
     const body = await req.json();
 
     // 1. Verificar se é um evento de nova mensagem
@@ -43,6 +80,13 @@ export async function POST(req: Request) {
       || messageData.imageMessage?.caption 
       || messageData.documentMessage?.caption
       || "";
+
+    if (!/^\d{10,15}$/.test(phoneNumber)) {
+      return NextResponse.json({ success: false, error: "Número inválido" }, { status: 400 });
+    }
+    if (text.length > MAX_TEXT_LENGTH) {
+      return NextResponse.json({ success: false, error: "Mensagem muito grande" }, { status: 413 });
+    }
     
     // Extrair Base64 se houver mídia (Requer webhookBase64: true na Evolution API)
     const mediaBase64 = messageData.base64 || body.data?.message?.base64 || body.data?.base64 || "";
@@ -53,6 +97,25 @@ export async function POST(req: Request) {
 
     if (!text && !mediaBase64) {
       return NextResponse.json({ success: true, ignored: true });
+    }
+    if (mediaBase64.length > MAX_MEDIA_BASE64_LENGTH) {
+      return NextResponse.json({ success: false, error: "Mídia muito grande" }, { status: 413 });
+    }
+
+    const messageId = typeof key.id === "string" ? key.id.trim() : "";
+    if (!messageId || messageId.length > 200) {
+      return NextResponse.json({ success: false, error: "ID da mensagem inválido" }, { status: 400 });
+    }
+
+    try {
+      await prisma.whatsappInboundMessage.create({
+        data: { id: messageId, phone: phoneNumber },
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+        return NextResponse.json({ success: true, ignored: true, duplicate: true });
+      }
+      throw error;
     }
 
     // 3. Buscar o usuário pelo telefone
@@ -373,7 +436,8 @@ ${contextLines.slice(0, 20).join('\n')}
         description: aiResult.description || "Registro via WhatsApp",
         categoryId: categoryId,
         source: "whatsapp",
-        rawMessage: text
+        rawMessage: text,
+        externalMessageId: messageId,
       }
     });
 
