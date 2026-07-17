@@ -68,7 +68,7 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
     setLoading(true);
     try {
       await updateSubscriptionStatus(userId, subStatus, subPlan);
-      setUsers(users.map(u => u.id === userId ? { ...u, subscription: { status: subStatus, plan: subPlan } } : u));
+      setUsers(users.map(u => u.id === userId ? { ...u, subscription: { status: subStatus, plan: subPlan, currentPeriodEnd: u.subscription?.currentPeriodEnd || null } } : u));
       setEditingSubId(null);
       alert("Assinatura atualizada.");
     } catch (e: any) {
