@@ -23,6 +23,24 @@ const headers = {
   "apikey": EVOLUTION_API_KEY,
 };
 
+async function setSecureWebhook(webhook: ReturnType<typeof getWebhookConfig>) {
+  const response = await fetch(`${EVOLUTION_API_URL}/webhook/set/${EVOLUTION_INSTANCE_NAME}`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      enabled: true,
+      url: webhook.url,
+      headers: webhook.headers,
+      webhookByEvents: false,
+      webhookBase64: true,
+      events: ["MESSAGES_UPSERT"],
+    }),
+  });
+  if (!response.ok) {
+    throw new Error(`Falha ao configurar webhook seguro: ${await response.text()}`);
+  }
+}
+
 export async function getWhatsAppStatus() {
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`, {
@@ -74,22 +92,13 @@ export async function connectWhatsApp() {
 
       const createData = await createRes.json();
       
-      // Set webhook
-      await fetch(`${EVOLUTION_API_URL}/webhook/set/${EVOLUTION_INSTANCE_NAME}`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          enabled: true,
-          url: webhook.url,
-          headers: webhook.headers,
-          webhookByEvents: false,
-          webhookBase64: true,
-          events: ["MESSAGES_UPSERT"]
-        })
-      });
+      await setSecureWebhook(webhook);
 
       return { success: true, qrcode: createData.qrcode?.base64 || createData.qrcode?.base64 };
     }
+
+    // Atualiza o webhook mesmo quando a instância já está conectada.
+    await setSecureWebhook(webhook);
 
     // 2. Instance exists, try to connect
     const connectRes = await fetch(`${EVOLUTION_API_URL}/instance/connect/${EVOLUTION_INSTANCE_NAME}`, {
@@ -107,20 +116,6 @@ export async function connectWhatsApp() {
 
     const connectData = await connectRes.json();
     
-    // Set webhook just in case
-    await fetch(`${EVOLUTION_API_URL}/webhook/set/${EVOLUTION_INSTANCE_NAME}`, {
-      method: "POST",
-      headers,
-      body: JSON.stringify({
-        enabled: true,
-        url: webhook.url,
-        headers: webhook.headers,
-        webhookByEvents: false,
-        webhookBase64: true,
-        events: ["MESSAGES_UPSERT"]
-      })
-    });
-
     return { success: true, qrcode: connectData.base64 };
 
   } catch (error: any) {
