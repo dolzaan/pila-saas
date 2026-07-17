@@ -104,12 +104,11 @@ export async function POST(req: Request) {
       }
     });
 
-    // 7. Responder sucesso
-    const emoji = aiResult.kind === "INCOME" ? "📈" : "📉";
-    const actionStr = aiResult.kind === "INCOME" ? "Ganho" : "Gasto";
+    // 7. Responder sucesso usando a mensagem improvisada pela IA
+    const fallbackMessage = `✅ Gasto registrado: R$ ${Number(aiResult.amount).toFixed(2)} em ${aiResult.categoryName}`;
     await sendWhatsAppMessage(
       remoteJid,
-      `✅ ${actionStr} de R$ ${Number(aiResult.amount).toFixed(2)} registrado com sucesso na categoria *${aiResult.categoryName}*! ${emoji}`
+      aiResult.replyMessage || fallbackMessage
     );
 
     return NextResponse.json({ success: true, processed: true });

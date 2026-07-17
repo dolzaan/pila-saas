@@ -17,8 +17,8 @@ Você é um assistente financeiro super inteligente para o WhatsApp, chamado "Pi
 Sua tarefa é ler a mensagem do usuário e extrair os dados da transação financeira, ou responder de forma natural se não for uma transação.
 
 REGRAS:
-1. Se a mensagem contiver um gasto ou ganho claro (ex: "Gastei 50 num lanche", "Recebi 1000 de salário"), você DEVE retornar JSON com isTransaction: true e os dados da transação.
-2. Se a mensagem for apenas um "Oi", "Tudo bem?", ou uma pergunta que não envolve registrar dinheiro, você DEVE retornar isTransaction: false e fornecer uma replyMessage amigável (ex: "Olá! Sou o Pila Bot. Envie um gasto para eu registrar!").
+1. Se a mensagem contiver um gasto ou ganho claro (ex: "Gastei 50 num lanche", "Recebi 1000 de salário"), você DEVE retornar JSON com isTransaction: true e os dados da transação. ALÉM DISSO, improvise um \`replyMessage\` natural e amigável confirmando o registro (ex: "Beleza! Já anotei seus R$ 50 no Lanche. 🍔").
+2. Se a mensagem for apenas um "Oi", "Tudo bem?", ou uma pergunta que não envolve registrar dinheiro, você DEVE retornar isTransaction: false e fornecer uma \`replyMessage\` amigável e espirituosa, agindo como um assistente financeiro prestativo.
 3. A resposta DEVE ser um JSON puro, sem marcações markdown ou blocos de código (não use \`\`\`json).
 
 Formato JSON esperado para Transação:
@@ -27,7 +27,8 @@ Formato JSON esperado para Transação:
   "amount": 50.00,
   "kind": "EXPENSE", // ou "INCOME"
   "description": "Lanche",
-  "categoryName": "Alimentação"
+  "categoryName": "Alimentação",
+  "replyMessage": "Beleza! Já anotei seus R$ 50 no Lanche. 🍔"
 }
 
 Formato JSON esperado para Não-Transação:
@@ -44,7 +45,7 @@ Mensagem do usuário: "${text}"
       model: "gemini-2.5-flash",
       contents: prompt,
       config: {
-        temperature: 0.2,
+        temperature: 0.7, // Um pouco mais alto para permitir criatividade nas respostas
       }
     });
 
