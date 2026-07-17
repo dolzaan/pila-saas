@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import WhatsappClient from "./whatsapp-client";
 import { UpgradeCard } from "@/components/dashboard/upgrade-card";
+import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 
 export const metadata = {
   title: "WhatsApp | Pila",
@@ -19,11 +20,15 @@ export default async function WhatsappPage() {
     select: {
       whatsappNumber: true,
       whatsappVerifiedAt: true,
+      createdAt: true,
       subscription: true,
     },
   });
 
-  const isPro = user?.subscription?.status === "ACTIVE";
+  if (!user) redirect("/login");
+
+  const subscription = getUserSubscriptionStatus(user.createdAt, user.subscription);
+  const isPro = hasProAccess(subscription);
 
   const activeLinkCode = await prisma.whatsappLinkCode.findFirst({
     where: { 

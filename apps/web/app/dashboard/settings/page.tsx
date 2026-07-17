@@ -6,6 +6,7 @@ import { SubscriptionManager } from "./subscription-manager";
 import { GdprClient } from "./gdpr-client";
 import { Star } from "lucide-react";
 import type { Metadata } from "next";
+import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 
 export const metadata: Metadata = {
   title: "Configurações — Pila",
@@ -20,7 +21,11 @@ export default async function SettingsPage() {
     include: { subscription: true },
   });
 
-  const isPro = user?.subscription?.status === "ACTIVE";
+  if (!user) redirect("/login");
+
+  const subscription = getUserSubscriptionStatus(user.createdAt, user.subscription);
+  const isPro = hasProAccess(subscription);
+  const isTrial = subscription.status === "TRIALING";
 
   return (
     <div className="dashboard-page">
@@ -61,13 +66,19 @@ export default async function SettingsPage() {
                 <Star className="w-8 h-8 text-emerald-400" />
                 <div>
                   <h3 className="text-xl font-bold text-emerald-400">Pila Pro</h3>
-                  <p className="text-sm text-gray-400">Assinatura Ativa</p>
+                  <p className="text-sm text-gray-400">
+                    {isTrial
+                      ? `Teste gratuito — ${subscription.daysLeft} ${subscription.daysLeft === 1 ? "dia restante" : "dias restantes"}`
+                      : "Assinatura ativa"}
+                  </p>
                 </div>
               </div>
               <p className="text-gray-300 mb-6">
-                Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp.
+                {isTrial
+                  ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial via WhatsApp."
+                  : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp."}
               </p>
-              <SubscriptionManager />
+              {!isTrial && <SubscriptionManager />}
             </div>
           ) : (
             <UpgradeCard title="Seja Pila Pro" description="Assine para liberar a IA do WhatsApp e não ter limites na plataforma." />

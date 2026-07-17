@@ -16,7 +16,7 @@ import {
   Shield
 } from "lucide-react";
 import { prisma } from "@/lib/prisma";
-import { getUserSubscriptionStatus } from "@/lib/subscription";
+import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import ExpiredPaywall from "@/components/expired-paywall";
 
 export default async function DashboardLayout({
@@ -40,7 +40,7 @@ export default async function DashboardLayout({
   }
 
   const subStatus = getUserSubscriptionStatus(dbUser.createdAt, dbUser.subscription);
-  const isExpired = subStatus.status === "EXPIRED" && session.user.role !== "ADMIN";
+  const isExpired = !hasProAccess(subStatus) && session.user.role !== "ADMIN";
 
   return (
     <div className="dashboard-layout">

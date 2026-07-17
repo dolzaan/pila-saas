@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { getUserSubscriptionStatus } from "@/lib/subscription";
+import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import { parseFinancialMessage } from "@/lib/ai";
 import { sendWhatsAppMessage } from "@/app/actions/admin-whatsapp";
 
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
     // 4. Validar assinatura/paywall
     const subStatus = getUserSubscriptionStatus(user.createdAt, user.subscription);
     
-    if (subStatus.status === "EXPIRED" && user.role !== "ADMIN") {
+    if (!hasProAccess(subStatus) && user.role !== "ADMIN") {
       const replyMessage = "⚠️ Seu período de testes acabou! Acesse o painel para assinar o plano Pro e continuar usando o bot.";
       await sendWhatsAppMessage(remoteJid, replyMessage);
       return NextResponse.json({ success: true, replyMessage });
@@ -258,8 +258,9 @@ ${contextLines.slice(0, 20).join('\n')}
 
     return NextResponse.json({ success: true, processed: true, replyMessage });
 
-  } catch (error: any) {
-    console.error("[Webhook WhatsApp] Erro:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Erro desconhecido";
+    console.error("[Webhook WhatsApp] Erro:", message);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
   }
 }
