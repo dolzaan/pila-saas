@@ -3,9 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { sendWhatsAppMessage } from "@/lib/evolution";
 
 export async function GET(req: Request) {
-  // Simples proteção de cron job (ex: no Vercel ou GitHub Actions enviar o header)
+  if (!process.env.CRON_SECRET) {
+    console.error("[Cron Reminders] CRON_SECRET não configurado");
+    return new NextResponse("Cron is not configured", { status: 503 });
+  }
   const authHeader = req.headers.get("authorization");
-  if (authHeader !== `Bearer ${process.env.CRON_SECRET || "default_cron_secret"}`) {
+  if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
     return new NextResponse("Unauthorized", { status: 401 });
   }
 
