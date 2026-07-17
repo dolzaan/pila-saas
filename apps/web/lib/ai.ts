@@ -54,7 +54,7 @@ Mensagem do usuário: "${text}"
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-1.5-flash",
+      model: "gemini-flash-latest",
       contents: prompt,
       config: {
         temperature: 0.7, // Um pouco mais alto para permitir criatividade nas respostas
