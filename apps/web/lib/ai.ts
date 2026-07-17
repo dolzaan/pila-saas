@@ -1,91 +1,65 @@
-import { GoogleGenAI, Type } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
 
-const apiKey = process.env.GEMINI_API_KEY;
-// Usamos o SDK apenas se a chave estiver configurada
-const ai = apiKey && apiKey !== "COLOQUE_SUA_CHAVE_DO_GEMINI_AQUI" 
-  ? new GoogleGenAI({ apiKey }) 
-  : null;
+const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-export type AITransactionResult = {
-  amount: number;
-  kind: "EXPENSE" | "INCOME";
-  description: string;
-  categoryId: string | null;
-  date: string | null; // Formato YYYY-MM-DD
+export type ParsedTransaction = {
+  isTransaction: boolean;
+  amount?: number;
+  kind?: "EXPENSE" | "INCOME";
+  description?: string;
+  categoryName?: string;
+  replyMessage?: string;
 };
 
-type UserCategory = {
-  id: string;
-  name: string;
-  kind: "EXPENSE" | "INCOME";
-};
+export async function parseFinancialMessage(text: string): Promise<ParsedTransaction> {
+  const prompt = `
+Você é um assistente financeiro super inteligente para o WhatsApp, chamado "Pila Bot".
+Sua tarefa é ler a mensagem do usuário e extrair os dados da transação financeira, ou responder de forma natural se não for uma transação.
 
-export async function processTransactionText(
-  text: string, 
-  userCategories: UserCategory[]
-): Promise<AITransactionResult | null> {
-  if (!ai) {
-    console.warn("[AI] Gemini API Key missing or invalid. Returning fallback data.");
-    // Fallback rústico apenas para não quebrar a aplicação caso o usuário ainda não tenha configurado
-    const isIncome = text.toLowerCase().includes("recebi") || text.toLowerCase().includes("salário");
-    const matches = text.match(/\d+(\.\d{1,2})?/);
-    const amount = matches ? parseFloat(matches[0]) : 0;
-    
-    return {
-      amount: amount || 1.0,
-      kind: isIncome ? "INCOME" : "EXPENSE",
-      description: text.substring(0, 50),
-      categoryId: null,
-      date: new Date().toISOString().split("T")[0]
-    };
-  }
+REGRAS:
+1. Se a mensagem contiver um gasto ou ganho claro (ex: "Gastei 50 num lanche", "Recebi 1000 de salário"), você DEVE retornar JSON com isTransaction: true e os dados da transação.
+2. Se a mensagem for apenas um "Oi", "Tudo bem?", ou uma pergunta que não envolve registrar dinheiro, você DEVE retornar isTransaction: false e fornecer uma replyMessage amigável (ex: "Olá! Sou o Pila Bot. Envie um gasto para eu registrar!").
+3. A resposta DEVE ser um JSON puro, sem marcações markdown ou blocos de código (não use \`\`\`json).
 
-  // Prepara o dicionário de categorias para o prompt
-  const categoriesList = userCategories.map(c => `- ID: ${c.id} | Nome: "${c.name}" | Tipo: ${c.kind}`).join("\n");
+Formato JSON esperado para Transação:
+{
+  "isTransaction": true,
+  "amount": 50.00,
+  "kind": "EXPENSE", // ou "INCOME"
+  "description": "Lanche",
+  "categoryName": "Alimentação"
+}
 
-  const systemInstruction = `Você é um assistente financeiro inteligente do aplicativo Pila.
-O usuário vai enviar uma mensagem informal sobre um gasto ou uma receita (ex: "gastei 50 no ifood", "recebi meu salario de 5000", "paguei a luz 120,50").
+Formato JSON esperado para Não-Transação:
+{
+  "isTransaction": false,
+  "replyMessage": "Sua resposta amigável aqui."
+}
 
-Sua tarefa é extrair os dados dessa mensagem e retornar ESTRITAMENTE em formato JSON, conforme o schema fornecido.
-
-Regras:
-1. 'amount' DEVE ser um número (positivo). Se ele usou vírgula (120,50), converta para float (120.50).
-2. 'kind' DEVE ser "EXPENSE" (para gastos/compras/pagamentos) ou "INCOME" (para recebimentos/salários).
-3. 'description' DEVE ser uma descrição limpa e curta (ex: "iFood", "Luz", "Salário", "Mercado"). Capitalize a primeira letra.
-4. 'categoryId': Analise a descrição e tente encontrar a categoria MAIS ADEQUADA da lista de categorias do usuário abaixo. Se achar uma boa correspondência, retorne o 'ID' da categoria. Se nenhuma fizer sentido, retorne null.
-5. 'date': Se o usuário mencionar algo como "ontem", "anteontem", subtraia da data de hoje. Se não mencionar data, retorne a data de hoje. O formato DEVE ser YYYY-MM-DD. Hoje é ${new Date().toISOString().split("T")[0]}.
-
-Categorias cadastradas do usuário:
-${categoriesList || "Nenhuma categoria cadastrada."}`;
+Mensagem do usuário: "${text}"
+  `;
 
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
-      contents: text,
+      contents: prompt,
       config: {
-        systemInstruction,
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            amount: { type: Type.NUMBER, description: "O valor da transação, em float (ex: 120.50)" },
-            kind: { type: Type.STRING, enum: ["EXPENSE", "INCOME"], description: "Tipo da transação" },
-            description: { type: Type.STRING, description: "Descrição limpa da transação" },
-            categoryId: { type: Type.STRING, nullable: true, description: "ID da categoria correspondente (da lista) ou null" },
-            date: { type: Type.STRING, nullable: true, description: "Data no formato YYYY-MM-DD" }
-          },
-          required: ["amount", "kind", "description"]
-        }
+        temperature: 0.2,
       }
     });
 
-    const resultText = response.text;;
-    if (!resultText) return null;
-
-    const data = JSON.parse(resultText) as AITransactionResult;
-    return data;
+    const output = response.text?.trim() || "{}";
+    
+    // Remover eventuais blocos de código se o modelo insistir em usar
+    const cleanJson = output.replace(/```json/g, "").replace(/```/g, "").trim();
+    
+    const parsed = JSON.parse(cleanJson);
+    return parsed as ParsedTransaction;
   } catch (error) {
-    console.error("[AI] Error processing transaction with Gemini:", error);
-    return null;
+    console.error("[Gemini API] Erro ao processar mensagem:", error);
+    return {
+      isTransaction: false,
+      replyMessage: "Desculpe, tive um problema interno ao entender sua mensagem. Tente novamente mais tarde."
+    };
   }
 }

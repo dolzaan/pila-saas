@@ -60,6 +60,19 @@ export async function connectWhatsApp() {
       }
 
       const createData = await createRes.json();
+      
+      // Set webhook
+      await fetch(`${EVOLUTION_API_URL}/webhook/set/${EVOLUTION_INSTANCE_NAME}`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          enabled: true,
+          url: "http://web:3000/api/webhooks/whatsapp",
+          webhookByEvents: false,
+          events: ["MESSAGES_UPSERT"]
+        })
+      });
+
       return { success: true, qrcode: createData.qrcode?.base64 || createData.qrcode?.base64 };
     }
 
@@ -78,6 +91,19 @@ export async function connectWhatsApp() {
     }
 
     const connectData = await connectRes.json();
+    
+    // Set webhook just in case
+    await fetch(`${EVOLUTION_API_URL}/webhook/set/${EVOLUTION_INSTANCE_NAME}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        enabled: true,
+        url: "http://web:3000/api/webhooks/whatsapp",
+        webhookByEvents: false,
+        events: ["MESSAGES_UPSERT"]
+      })
+    });
+
     return { success: true, qrcode: connectData.base64 };
 
   } catch (error: any) {
@@ -101,5 +127,23 @@ export async function logoutWhatsApp() {
     return { success: true };
   } catch (error: any) {
     return { success: false, message: error.message || "Failed to logout" };
+  }
+}
+
+export async function sendWhatsAppMessage(number: string, text: string) {
+  try {
+    const res = await fetch(`${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        number,
+        text,
+        delay: 1200
+      })
+    });
+    return res.ok;
+  } catch (error) {
+    console.error("[Evolution API] Erro ao enviar mensagem:", error);
+    return false;
   }
 }
