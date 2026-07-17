@@ -8,6 +8,7 @@ import { Star } from "lucide-react";
 import type { Metadata } from "next";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import { SubscribeButton } from "./subscribe-button";
+import { isStripeSubscriptionId } from "@/lib/stripe-subscription";
 
 export const metadata: Metadata = {
   title: "Configurações — Pila",
@@ -27,6 +28,9 @@ export default async function SettingsPage() {
   const subscription = getUserSubscriptionStatus(user.createdAt, user.subscription);
   const isPro = hasProAccess(subscription);
   const isTrial = subscription.status === "TRIALING";
+  const hasStripeSubscription = isStripeSubscriptionId(
+    user.subscription?.stripeSubscriptionId
+  );
 
   return (
     <div className="dashboard-page">
@@ -79,7 +83,7 @@ export default async function SettingsPage() {
                   ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial via WhatsApp."
                   : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp."}
               </p>
-              {isTrial ? (
+              {isTrial || !hasStripeSubscription ? (
                 <SubscribeButton label="Assinar por R$ 19,90/mês" />
               ) : (
                 <SubscriptionManager />
