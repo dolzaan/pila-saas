@@ -1,6 +1,10 @@
 import { GoogleGenAI } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+// Inicialização preguiçosa para não quebrar a compilação caso a chave esteja ausente no .env
+let ai: GoogleGenAI | null = null;
+try {
+  ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
+} catch (e) {}
 
 export type ParsedTransaction = {
   isTransaction: boolean;
@@ -41,6 +45,14 @@ Mensagem do usuário: "${text}"
   `;
 
   try {
+    if (!ai || !process.env.GEMINI_API_KEY) {
+      console.error("[Gemini API] Chave GEMINI_API_KEY não configurada no .env");
+      return {
+        isTransaction: false,
+        replyMessage: "⚠️ Ops! Parece que o meu cérebro (Chave do Gemini) não foi configurado no arquivo .env do servidor. Adicione a variável GEMINI_API_KEY e reinicie o sistema!"
+      };
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",
       contents: prompt,
@@ -60,7 +72,7 @@ Mensagem do usuário: "${text}"
     console.error("[Gemini API] Erro ao processar mensagem:", error);
     return {
       isTransaction: false,
-      replyMessage: "Desculpe, tive um problema interno ao entender sua mensagem. Tente novamente mais tarde."
+      replyMessage: "Desculpe, tive um problema interno ao entender sua mensagem. Pode ter sido uma falha no formato da resposta ou erro de conexão com a IA."
     };
   }
 }
