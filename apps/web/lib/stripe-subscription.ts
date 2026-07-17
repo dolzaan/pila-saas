@@ -7,6 +7,10 @@ export type LocalSubscriptionStatus =
   | "PAST_DUE"
   | "CANCELED";
 
+export function isStripeSubscriptionId(value: string | null | undefined): boolean {
+  return value?.startsWith("sub_") ?? false;
+}
+
 export function mapStripeSubscriptionStatus(
   status: Stripe.Subscription.Status
 ): LocalSubscriptionStatus {
