@@ -136,7 +136,7 @@ export async function POST(req: Request) {
 
     const budgetLines = budgets.map(b => {
       const spent = expensesByCategory[b.categoryId] || 0;
-      const limit = Number(b.amount);
+      const limit = Number(b.monthlyLimit);
       return `- Orçamento de ${b.category.name}: Limite R$ ${limit.toFixed(2)} (Gasto atual: R$ ${spent.toFixed(2)} - Resta R$ ${(limit - spent).toFixed(2)})`;
     });
 
