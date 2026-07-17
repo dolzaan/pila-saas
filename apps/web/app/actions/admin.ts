@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
+import { cancelBillingBeforeAccountDeletion } from "@/lib/account-deletion";
 
 // Middleware simples para garantir que a action seja apenas para ADMIN
 async function checkAdmin() {
@@ -81,9 +82,13 @@ export async function updateSubscriptionStatus(
 
 export async function deleteUser(userId: string) {
   await checkAdmin();
-  
-  // O onDelete: Cascade do Prisma cuidará da maior parte,
-  // mas é sempre bom ter certeza.
+
+  const session = await auth();
+  if (session?.user?.id === userId) {
+    throw new Error("Não é permitido excluir sua própria conta administrativa por esta tela.");
+  }
+
+  await cancelBillingBeforeAccountDeletion(userId);
   await prisma.user.delete({
     where: { id: userId }
   });
