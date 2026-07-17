@@ -68,11 +68,11 @@ Mensagem do usuário: "${text}"
     
     const parsed = JSON.parse(cleanJson);
     return parsed as ParsedTransaction;
-  } catch (error) {
+  } catch (error: any) {
     console.error("[Gemini API] Erro ao processar mensagem:", error);
     return {
       isTransaction: false,
-      replyMessage: "Desculpe, tive um problema interno ao entender sua mensagem. Pode ter sido uma falha no formato da resposta ou erro de conexão com a IA."
+      replyMessage: `Desculpe, erro interno ao conectar com a IA: ${error?.message || error}`
     };
   }
 }
