@@ -70,7 +70,7 @@ Mensagem do usuário: "${text}"
     }
 
     const response = await ai.models.generateContent({
-      model: "gemini-flash-latest",
+      model: "gemini-1.5-flash",
       contents: aiContents,
       config: {
         temperature: 0.7, // Um pouco mais alto para permitir criatividade nas respostas
