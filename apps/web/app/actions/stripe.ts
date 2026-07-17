@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
+import { isStripeSubscriptionId } from "@/lib/stripe-subscription";
 
 const getAppUrl = () => {
   return process.env.NEXTAUTH_URL || "http://localhost:3000";
@@ -39,6 +40,7 @@ export async function createCheckoutSession() {
   if (
     user.stripeCustomerId &&
     user.subscription &&
+    isStripeSubscriptionId(user.subscription.stripeSubscriptionId) &&
     ["ACTIVE", "TRIALING", "PAST_DUE"].includes(user.subscription.status)
   ) {
     const portalSession = await stripe.billingPortal.sessions.create({

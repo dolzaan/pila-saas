@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { mapStripeSubscriptionStatus } from "../lib/stripe-subscription";
+import {
+  isStripeSubscriptionId,
+  mapStripeSubscriptionStatus,
+} from "../lib/stripe-subscription";
 
 describe("mapStripeSubscriptionStatus", () => {
   it.each([
@@ -13,5 +16,13 @@ describe("mapStripeSubscriptionStatus", () => {
     ["paused", "INACTIVE"],
   ] as const)("converte %s para %s", (stripeStatus, localStatus) => {
     expect(mapStripeSubscriptionStatus(stripeStatus)).toBe(localStatus);
+  });
+});
+
+describe("isStripeSubscriptionId", () => {
+  it("aceita apenas IDs reais de assinatura da Stripe", () => {
+    expect(isStripeSubscriptionId("sub_123")).toBe(true);
+    expect(isStripeSubscriptionId("manual_123_user")).toBe(false);
+    expect(isStripeSubscriptionId(null)).toBe(false);
   });
 });
