@@ -17,8 +17,9 @@ export async function POST(request: Request) {
       const url = `${appUrl()}/reset-password?token=${token}`;
       await sendEmail({
         to: user.email,
-        subject: "Redefina sua senha do Pila",
-        html: `<p>Olá${user.name ? `, ${user.name}` : ""}!</p><p>Use o link abaixo para criar uma nova senha. Ele expira em 30 minutos.</p><p><a href="${url}">Redefinir minha senha</a></p><p>Se você não pediu isso, ignore este e-mail.</p>`,
+        template: "password-reset",
+        name: user.name,
+        actionUrl: url,
       });
     }
   }
