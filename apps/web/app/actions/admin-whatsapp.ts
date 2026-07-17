@@ -6,6 +6,18 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:808
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
 
+function getWebhookConfig() {
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "").replace(/\/$/, "");
+  const secret = process.env.WHATSAPP_WEBHOOK_SECRET;
+  if (!appUrl || !secret) {
+    throw new Error("NEXT_PUBLIC_APP_URL/APP_URL e WHATSAPP_WEBHOOK_SECRET precisam estar configurados");
+  }
+  return {
+    url: `${appUrl}/api/webhooks/whatsapp`,
+    headers: { "x-pila-webhook-secret": secret },
+  };
+}
+
 const headers = {
   "Content-Type": "application/json",
   "apikey": EVOLUTION_API_KEY,
@@ -37,6 +49,7 @@ export async function getWhatsAppStatus() {
 
 export async function connectWhatsApp() {
   try {
+    const webhook = getWebhookConfig();
     // 1. Try to fetch state first
     const stateRes = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`, {
       method: "GET",
@@ -67,7 +80,8 @@ export async function connectWhatsApp() {
         headers,
         body: JSON.stringify({
           enabled: true,
-          url: "http://web:3000/api/webhooks/whatsapp",
+          url: webhook.url,
+          headers: webhook.headers,
           webhookByEvents: false,
           webhookBase64: true,
           events: ["MESSAGES_UPSERT"]
@@ -99,7 +113,8 @@ export async function connectWhatsApp() {
       headers,
       body: JSON.stringify({
         enabled: true,
-        url: "http://web:3000/api/webhooks/whatsapp",
+        url: webhook.url,
+        headers: webhook.headers,
         webhookByEvents: false,
         webhookBase64: true,
         events: ["MESSAGES_UPSERT"]
