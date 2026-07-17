@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Trash2 } from "lucide-react";
+import { Send, Bot, User, Trash2, Paperclip, X } from "lucide-react";
 
 type ChatMessage = {
   id: string;
@@ -14,22 +14,64 @@ export default function SimulatorPage() {
   const [input, setInput] = useState("");
   const [phone, setPhone] = useState("5511999999999");
   const [isLoading, setIsLoading] = useState(false);
+  const [attachment, setAttachment] = useState<{ file: File; base64: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setAttachment({ file, base64: reader.result as string });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || !phone.trim()) return;
+    if ((!input.trim() && !attachment) || !phone.trim()) return;
 
-    const userMsg: ChatMessage = { id: Date.now().toString(), sender: "user", text: input };
+    let textMsg = input;
+    if (attachment) {
+      textMsg = `[Anexo: ${attachment.file.name}] ${input}`;
+    }
+
+    const userMsg: ChatMessage = { id: Date.now().toString(), sender: "user", text: textMsg.trim() };
     setMessages((prev) => [...prev, userMsg]);
+    
+    const currentInput = input;
+    const currentAttachment = attachment;
+    
     setInput("");
+    setAttachment(null);
     setIsLoading(true);
 
     try {
+      // Montando a mensagem para simular o Evolution API
+      const messageObj: any = { conversation: currentInput };
+      
+      if (currentAttachment) {
+        const mime = currentAttachment.file.type;
+        delete messageObj.conversation;
+        
+        if (mime.startsWith("image/")) {
+          messageObj.imageMessage = { caption: currentInput, mimetype: mime };
+        } else if (mime.startsWith("audio/")) {
+          messageObj.audioMessage = { mimetype: mime };
+        } else {
+          messageObj.documentMessage = { caption: currentInput, mimetype: mime };
+        }
+        
+        messageObj.base64 = currentAttachment.base64;
+      }
+
       // Simulando o payload que a Evolution API manda
       const payload = {
         event: "messages.upsert",
@@ -40,9 +82,7 @@ export default function SimulatorPage() {
             fromMe: false,
             id: "SIM_" + Date.now()
           },
-          message: {
-            conversation: userMsg.text
-          }
+          message: messageObj
         }
       };
 
@@ -143,22 +183,49 @@ export default function SimulatorPage() {
         </div>
 
         {/* Chat Input */}
-        <form onSubmit={handleSend} className="bg-gray-100 dark:bg-gray-800 p-3 flex gap-2 items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Digite uma mensagem (ex: Gastei 15 no iFood)..."
-            className="flex-1 px-4 py-3 bg-white dark:bg-gray-700 border-none rounded-xl focus:ring-2 focus:ring-[#00a884] text-gray-900 dark:text-white outline-none"
-            disabled={isLoading}
-          />
-          <button 
-            type="submit" 
-            disabled={isLoading || !input.trim()}
-            className="p-3 bg-[#00a884] hover:bg-[#008f6f] text-white rounded-xl disabled:opacity-50 transition-colors flex items-center justify-center"
-          >
-            <Send className="w-5 h-5" />
-          </button>
+        <form onSubmit={handleSend} className="bg-gray-100 dark:bg-gray-800 p-3 flex flex-col gap-2">
+          {attachment && (
+            <div className="flex items-center gap-2 bg-[#d9fdd3] dark:bg-[#005c4b] w-fit px-3 py-1.5 rounded-lg text-sm text-gray-900 dark:text-white">
+              <span className="truncate max-w-[200px]">{attachment.file.name}</span>
+              <button type="button" onClick={() => setAttachment(null)} className="hover:opacity-70">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          
+          <div className="flex gap-2 items-center">
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              onChange={handleFileSelect}
+              accept="image/*,audio/*,application/pdf"
+            />
+            <button 
+              type="button" 
+              onClick={() => fileInputRef.current?.click()}
+              className="p-3 bg-gray-200 dark:bg-gray-700 hover:bg-gray-300 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 rounded-xl transition-colors flex items-center justify-center"
+              title="Anexar Arquivo (Foto, Áudio ou PDF)"
+            >
+              <Paperclip className="w-5 h-5" />
+            </button>
+            
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Digite uma mensagem ou anexe um recibo..."
+              className="flex-1 px-4 py-3 bg-white dark:bg-gray-700 border-none rounded-xl focus:ring-2 focus:ring-[#00a884] text-gray-900 dark:text-white outline-none"
+              disabled={isLoading}
+            />
+            <button 
+              type="submit" 
+              disabled={isLoading || (!input.trim() && !attachment)}
+              className="p-3 bg-[#00a884] hover:bg-[#008f6f] text-white rounded-xl disabled:opacity-50 transition-colors flex items-center justify-center"
+            >
+              <Send className="w-5 h-5" />
+            </button>
+          </div>
         </form>
       </div>
     </div>
