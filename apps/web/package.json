@@ -15,6 +15,7 @@
     "@finzap/database": "*",
     "@google/genai": "^2.11.0",
     "@prisma/client": "^5.19.0",
+    "@vercel/analytics": "^2.0.1",
     "bcryptjs": "^2.4.3",
     "date-fns": "^4.4.0",
     "lucide-react": "^1.24.0",
