@@ -44,7 +44,7 @@ services:
       - AUTHENTICATION_API_KEY=finzap-chave-secreta-123
       - AUTHENTICATION_EXPOSE_IN_ENV=true
       - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://finzap:finzap@postgres:5432/finzap?schema=public
+      - DATABASE_CONNECTION_URI=postgresql://finzap:finzap@postgres:5432/finzap?schema=evolution
       - DATABASE_CONNECTION_CLIENT_NAME=evolution_api
     depends_on:
       - postgres
