@@ -67,8 +67,9 @@ export async function POST(request: Request) {
       const verificationUrl = `${appUrl()}/api/auth/verify-email?token=${verificationToken}`;
       await sendEmail({
         to: user.email,
-        subject: "Confirme seu e-mail no Pila",
-        html: `<p>Olá${user.name ? `, ${user.name}` : ""}!</p><p>Confirme seu e-mail para proteger sua conta.</p><p><a href="${verificationUrl}">Confirmar meu e-mail</a></p><p>O link expira em 24 horas.</p>`,
+        template: "email-verification",
+        name: user.name,
+        actionUrl: verificationUrl,
       });
     }
 
