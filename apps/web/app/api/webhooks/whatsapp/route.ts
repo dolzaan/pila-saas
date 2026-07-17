@@ -29,9 +29,12 @@ export async function POST(req: Request) {
     }
 
     const phoneNumber = remoteJid.split("@")[0];
-    const text = messageData.conversation || messageData.extendedTextMessage?.text || "";
+    const text = messageData.conversation || messageData.extendedTextMessage?.text || messageData.imageMessage?.caption || "";
+    
+    // Extrair Base64 se houver imagem (Requer webhookBase64: true na Evolution API)
+    const imageBase64 = messageData.base64 || body.data?.message?.base64 || body.data?.base64 || "";
 
-    if (!text) {
+    if (!text && !imageBase64) {
       return NextResponse.json({ success: true, ignored: true });
     }
 
@@ -118,8 +121,8 @@ Total de Ganhos: R$ ${monthIncomes.toFixed(2)}
 ${contextLines.slice(0, 20).join('\n')}
     `.trim();
 
-    // 6. Processar via IA com Contexto
-    const aiResult = await parseFinancialMessage(text, userContext);
+    // 6. Processar via IA com Contexto e possível Imagem
+    const aiResult = await parseFinancialMessage(text, userContext, imageBase64);
 
     if (!aiResult.isTransaction) {
       const replyMessage = aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!";

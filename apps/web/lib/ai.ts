@@ -15,15 +15,15 @@ export type ParsedTransaction = {
   replyMessage?: string;
 };
 
-export async function parseFinancialMessage(text: string, userContext?: string): Promise<ParsedTransaction> {
+export async function parseFinancialMessage(text: string, userContext?: string, imageBase64?: string): Promise<ParsedTransaction> {
   const prompt = `
 Você é um assistente financeiro super inteligente para o WhatsApp, chamado "Pila Bot".
 Sua tarefa é ler a mensagem do usuário e extrair os dados da transação financeira, ou responder perguntas financeiras baseando-se no Contexto fornecido.
 
 REGRAS:
-1. Se a mensagem contiver um gasto ou ganho claro (ex: "Gastei 50 num lanche", "Recebi 1000 de salário"), você DEVE retornar JSON com isTransaction: true e os dados da transação. ALÉM DISSO, improvise um \`replyMessage\` natural e amigável confirmando o registro (ex: "Beleza! Já anotei seus R$ 50 no Lanche. 🍔").
-2. Se a mensagem for uma PERGUNTA sobre finanças (ex: "Quanto gastei hoje?", "Como estão meus gastos no mês?"), USE EXCLUSIVAMENTE as informações da seção "CONTEXTO FINANCEIRO DO USUÁRIO" abaixo para responder com precisão. Retorne isTransaction: false e coloque a resposta na \`replyMessage\`.
-3. Se a mensagem for apenas um "Oi", "Tudo bem?", ou uma pergunta que não envolve finanças, você DEVE retornar isTransaction: false e fornecer uma \`replyMessage\` amigável e espirituosa.
+1. Se a mensagem contiver um gasto ou ganho claro (ex: "Gastei 50 num lanche"), ou uma FOTO de nota fiscal/recibo, você DEVE retornar JSON com isTransaction: true e os dados da transação. Se for uma foto, leia o valor total e o nome do estabelecimento para adivinhar a categoria. ALÉM DISSO, improvise um \`replyMessage\` natural e amigável confirmando o registro.
+2. Se a mensagem for uma PERGUNTA sobre finanças (ex: "Quanto gastei hoje?"), USE EXCLUSIVAMENTE as informações da seção "CONTEXTO FINANCEIRO DO USUÁRIO" abaixo para responder com precisão. Retorne isTransaction: false e coloque a resposta na \`replyMessage\`.
+3. Se a mensagem for apenas um "Oi", retorne isTransaction: false e forneça uma \`replyMessage\` amigável e espirituosa.
 4. A resposta DEVE ser um JSON puro, sem marcações markdown ou blocos de código (não use \`\`\`json).
 
 CONTEXTO FINANCEIRO DO USUÁRIO:
@@ -57,9 +57,19 @@ Mensagem do usuário: "${text}"
       };
     }
 
+    // Prepara o payload para texto ou multimodal (texto + imagem)
+    let aiContents: any = prompt;
+    if (imageBase64) {
+      const cleanBase64 = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      aiContents = [
+        prompt,
+        { inlineData: { data: cleanBase64, mimeType: "image/jpeg" } }
+      ];
+    }
+
     const response = await ai.models.generateContent({
       model: "gemini-flash-latest",
-      contents: prompt,
+      contents: aiContents,
       config: {
         temperature: 0.7, // Um pouco mais alto para permitir criatividade nas respostas
       }

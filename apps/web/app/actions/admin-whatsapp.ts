@@ -69,6 +69,7 @@ export async function connectWhatsApp() {
           enabled: true,
           url: "http://web:3000/api/webhooks/whatsapp",
           webhookByEvents: false,
+          webhookBase64: true,
           events: ["MESSAGES_UPSERT"]
         })
       });
@@ -100,6 +101,7 @@ export async function connectWhatsApp() {
         enabled: true,
         url: "http://web:3000/api/webhooks/whatsapp",
         webhookByEvents: false,
+        webhookBase64: true,
         events: ["MESSAGES_UPSERT"]
       })
     });
