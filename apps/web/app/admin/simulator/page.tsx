@@ -7,6 +7,7 @@ type ChatMessage = {
   id: string;
   sender: "user" | "bot";
   text: string;
+  mediaUrl?: string;
 };
 
 export default function SimulatorPage() {
@@ -96,7 +97,12 @@ export default function SimulatorPage() {
       
       const botReply = data.replyMessage || "Sem resposta do webhook (verifique os logs).";
       
-      const botMsg: ChatMessage = { id: Date.now().toString() + "_bot", sender: "bot", text: botReply };
+      const botMsg: ChatMessage = { 
+        id: Date.now().toString() + "_bot", 
+        sender: "bot", 
+        text: botReply,
+        mediaUrl: data.mediaUrl
+      };
       setMessages((prev) => [...prev, botMsg]);
 
     } catch (error) {
@@ -165,6 +171,9 @@ export default function SimulatorPage() {
                     ? "bg-[#d9fdd3] dark:bg-[#005c4b] text-gray-900 dark:text-white rounded-tr-none" 
                     : "bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-tl-none"
                 }`}>
+                  {msg.mediaUrl && (
+                    <img src={msg.mediaUrl} alt="Mídia enviada pelo bot" className="max-w-full h-auto rounded-md mb-2 object-contain" />
+                  )}
                   <p className="whitespace-pre-wrap">{msg.text}</p>
                 </div>
               </div>

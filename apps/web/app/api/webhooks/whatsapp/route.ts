@@ -200,12 +200,12 @@ ${contextLines.slice(0, 20).join('\n')}
         
         const { sendWhatsAppMedia } = await import("@/lib/evolution");
         await sendWhatsAppMedia(remoteJid, chartUrl, "image", replyMessage);
+        return NextResponse.json({ success: true, replyMessage, mediaUrl: chartUrl });
       } else {
         replyMessage = "Você ainda não tem gastos registrados neste mês para gerar um gráfico.";
         await sendWhatsAppMessage(remoteJid, replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
       }
-      
-      return NextResponse.json({ success: true, replyMessage });
     }
 
     // 6.3 Tratamento de Não-Transações em geral
