@@ -1,5 +1,6 @@
 import { getUsers } from "@/app/actions/admin";
 import AdminClient from "./admin-client";
+import WhatsappClient from "./whatsapp-client";
 
 export default async function AdminPage() {
   const users = await getUsers();
@@ -10,6 +11,9 @@ export default async function AdminPage() {
         <h2 className="text-xl font-semibold mb-4 text-gray-900 dark:text-white">Gestão de Usuários</h2>
         <AdminClient initialUsers={users} />
       </div>
+
+      {/* Seção de Conexão do WhatsApp */}
+      <WhatsappClient />
     </div>
   );
 }
