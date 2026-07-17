@@ -79,6 +79,7 @@ model User {
   billReminders       BillReminder[]
   subscription        Subscription?
   whatsappLinkCodes   WhatsappLinkCode[]
+  accountActivationToken AccountActivationToken?
   recurringTransactions RecurringTransaction[]
 
   @@map("users")
@@ -254,6 +255,35 @@ model WhatsappLinkCode {
 
   @@index([code])
   @@map("whatsapp_link_codes")
+}
+
+// Estado temporário do cadastro iniciado pelo WhatsApp.
+model WhatsappOnboardingSession {
+  phone     String   @id
+  step      String   @default("NAME") // NAME | EMAIL | CONFIRM
+  name      String?
+  email     String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@map("whatsapp_onboarding_sessions")
+}
+
+// Token de uso único para o novo usuário definir a senha fora do WhatsApp.
+model AccountActivationToken {
+  id        String    @id @default(cuid())
+  userId    String    @unique
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tokenHash, expiresAt])
+  @@map("account_activation_tokens")
 }
 
 // Status do bot central (única linha — upsert por id fixo "bot")

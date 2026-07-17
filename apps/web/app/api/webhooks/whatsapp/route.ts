@@ -3,6 +3,15 @@ import { prisma } from "@/lib/prisma";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import { parseFinancialMessage } from "@/lib/ai";
 import { sendWhatsAppMessage } from "@/app/actions/admin-whatsapp";
+import { PILA_APP_URL, PILA_PUBLIC_KNOWLEDGE, PILA_REGISTER_URL } from "@/lib/pila-knowledge";
+import { createActivationToken } from "@/lib/account-activation";
+import {
+  isCancellation,
+  isConfirmation,
+  ONBOARDING_TTL_MS,
+  parseOnboardingEmail,
+  parseOnboardingName,
+} from "@/lib/whatsapp-onboarding";
 
 export async function POST(req: Request) {
   try {
@@ -85,10 +94,127 @@ export async function POST(req: Request) {
         }
       }
 
-      // Se não enviou PIN ou PIN inválido
-      const replyMessage = "Olá! Não encontrei sua conta no Pila SaaS. Por favor, acesse o painel, gere um código de vinculação e envie ele para mim (apenas os 6 números).";
+      const wantsToRegister = /\b(quero (?:criar|fazer|abrir)|criar (?:uma )?conta|começar|cadastrar|cadastro|assinar|testar)\b/i.test(text);
+      const asksForOfficialLink = /\b(link|site|página|pagina|endereço|endereco|url)\b/i.test(text);
+      const pinWasInvalid = /^\d{6}$/.test(text.trim());
+
+      let replyMessage: string;
+      if (pinWasInvalid) {
+        replyMessage = `Esse código não é válido ou já expirou. Gere um novo código no painel: ${PILA_REGISTER_URL}`;
+      } else {
+        let onboarding = await prisma.whatsappOnboardingSession.findUnique({ where: { phone: phoneNumber } });
+        if (onboarding && onboarding.expiresAt <= new Date()) {
+          await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
+          onboarding = null;
+        }
+
+        if (onboarding && isCancellation(text)) {
+          await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
+          replyMessage = "Tudo bem, cancelei o cadastro. Quando quiser retomar, é só dizer “quero criar minha conta”.";
+        } else if (onboarding?.step === "NAME") {
+          const parsedName = parseOnboardingName(text);
+          if (!parsedName.success) {
+            replyMessage = "Não consegui identificar seu nome. Pode me enviar somente seu nome e sobrenome?";
+          } else {
+            await prisma.whatsappOnboardingSession.update({
+              where: { phone: phoneNumber },
+              data: { name: parsedName.data, step: "EMAIL" },
+            });
+            replyMessage = `Prazer, ${parsedName.data}! Agora me envie o e-mail que você usará para entrar no Pila.`;
+          }
+        } else if (onboarding?.step === "EMAIL") {
+          const parsedEmail = parseOnboardingEmail(text);
+          if (!parsedEmail.success) {
+            replyMessage = "Esse e-mail não parece válido. Pode conferir e enviar novamente?";
+          } else {
+            const existingEmail = await prisma.user.findUnique({ where: { email: parsedEmail.data } });
+            if (existingEmail) {
+              await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
+              replyMessage = `Esse e-mail já possui uma conta. Entre em ${PILA_APP_URL}/login e vincule este WhatsApp nas configurações.`;
+            } else {
+              await prisma.whatsappOnboardingSession.update({
+                where: { phone: phoneNumber },
+                data: { email: parsedEmail.data, step: "CONFIRM" },
+              });
+              replyMessage = `Confira seus dados:\nNome: ${onboarding.name}\nE-mail: ${parsedEmail.data}\nWhatsApp: +${phoneNumber}\n\nAo confirmar, você aceita os Termos (${PILA_APP_URL}/terms) e a Política de Privacidade (${PILA_APP_URL}/privacy). Posso criar sua conta? Responda “sim” para confirmar ou “cancelar”.`;
+            }
+          }
+        } else if (onboarding?.step === "CONFIRM") {
+          if (!isConfirmation(text)) {
+            replyMessage = "Para criar a conta, responda “sim”. Se quiser desistir, responda “cancelar”.";
+          } else if (!onboarding.name || !onboarding.email) {
+            await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
+            replyMessage = "O cadastro perdeu algumas informações. Vamos recomeçar: diga “quero criar minha conta”.";
+          } else {
+            const onboardingName = onboarding.name;
+            const onboardingEmail = onboarding.email;
+            const activation = createActivationToken();
+            await prisma.$transaction(async (tx) => {
+              const createdUser = await tx.user.create({
+                data: {
+                  name: onboardingName,
+                  email: onboardingEmail,
+                  whatsappNumber: phoneNumber,
+                  whatsappVerifiedAt: new Date(),
+                },
+              });
+              await tx.accountActivationToken.create({
+                data: {
+                  userId: createdUser.id,
+                  tokenHash: activation.tokenHash,
+                  expiresAt: activation.expiresAt,
+                },
+              });
+              await tx.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
+            });
+
+            const activationUrl = `${PILA_APP_URL}/activate?token=${activation.token}`;
+            replyMessage = `✅ Sua conta foi criada e este WhatsApp já está vinculado!\n\nDefina sua senha neste link seguro, válido por 30 minutos:\n${activationUrl}\n\nSeu teste grátis de 7 dias já começou.`;
+          }
+        } else if (wantsToRegister) {
+          await prisma.whatsappOnboardingSession.upsert({
+            where: { phone: phoneNumber },
+            create: { phone: phoneNumber, step: "NAME", expiresAt: new Date(Date.now() + ONBOARDING_TTL_MS) },
+            update: { step: "NAME", name: null, email: null, expiresAt: new Date(Date.now() + ONBOARDING_TTL_MS) },
+          });
+          replyMessage = "Vamos criar sua conta por aqui! Primeiro, qual é o seu nome e sobrenome?\n\nVocê pode cancelar a qualquer momento escrevendo “cancelar”.";
+        } else {
+          // Visitantes também podem conversar com a IA para conhecer o produto.
+          const visitorContext = `${PILA_PUBLIC_KNOWLEDGE}\n\nO número ainda não está vinculado a uma conta. Não use nem invente dados financeiros pessoais.`;
+          const aiResult = await parseFinancialMessage(text, visitorContext, mediaBase64, mediaMimeType);
+          replyMessage = aiResult.replyMessage
+            || `Olá! Eu sou o Pila Bot. Posso explicar como o Pila funciona ou ajudar você a começar: ${PILA_REGISTER_URL}`;
+
+          if (asksForOfficialLink && !replyMessage.includes(PILA_APP_URL)) {
+            replyMessage += `\n\nSite oficial: ${PILA_APP_URL}`;
+          }
+        }
+      }
+
       await sendWhatsAppMessage(remoteJid, replyMessage);
       return NextResponse.json({ success: true, replyMessage });
+    }
+
+    // Contas criadas pelo WhatsApp podem solicitar um novo link de ativação.
+    if (!user.passwordHash && /\b(ativar|ativação|ativacao|senha|novo link|link de acesso)\b/i.test(text)) {
+      const activation = createActivationToken();
+      await prisma.accountActivationToken.upsert({
+        where: { userId: user.id },
+        create: {
+          userId: user.id,
+          tokenHash: activation.tokenHash,
+          expiresAt: activation.expiresAt,
+        },
+        update: {
+          tokenHash: activation.tokenHash,
+          expiresAt: activation.expiresAt,
+          usedAt: null,
+        },
+      });
+      const activationUrl = `${PILA_APP_URL}/activate?token=${activation.token}`;
+      const replyMessage = `Defina sua senha neste link seguro, válido por 30 minutos:\n${activationUrl}`;
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, processed: true, replyMessage });
     }
 
     // 4. Validar assinatura/paywall
