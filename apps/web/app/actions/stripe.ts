@@ -5,10 +5,32 @@ import { getStripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { isStripeSubscriptionId } from "@/lib/stripe-subscription";
+import { headers } from "next/headers";
 
-const getAppUrl = () => {
-  return process.env.NEXTAUTH_URL || "http://localhost:3000";
-};
+async function getAppUrl() {
+  const requestHeaders = await headers();
+  const origin = requestHeaders.get("origin");
+
+  if (origin?.startsWith("http://") || origin?.startsWith("https://")) {
+    return origin.replace(/\/$/, "");
+  }
+
+  const forwardedHost =
+    requestHeaders.get("x-forwarded-host") || requestHeaders.get("host");
+  if (forwardedHost) {
+    const protocol = requestHeaders.get("x-forwarded-proto") || "https";
+    return `${protocol}://${forwardedHost}`;
+  }
+
+  const configuredUrl = process.env.APP_URL || process.env.AUTH_URL;
+  if (configuredUrl) return configuredUrl.replace(/\/$/, "");
+
+  const vercelUrl =
+    process.env.VERCEL_PROJECT_PRODUCTION_URL || process.env.VERCEL_URL;
+  if (vercelUrl) return `https://${vercelUrl}`;
+
+  return (process.env.NEXTAUTH_URL || "http://localhost:3000").replace(/\/$/, "");
+}
 
 function getProPriceId() {
   const priceId = process.env.STRIPE_PRO_PRICE_ID;
@@ -27,6 +49,7 @@ export async function createCheckoutSession() {
   }
 
   const stripe = getStripe();
+  const appUrl = await getAppUrl();
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -45,7 +68,7 @@ export async function createCheckoutSession() {
   ) {
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: user.stripeCustomerId,
-      return_url: `${getAppUrl()}/dashboard/settings`,
+      return_url: `${appUrl}/dashboard/settings`,
     });
 
     redirect(portalSession.url);
@@ -77,8 +100,8 @@ export async function createCheckoutSession() {
         quantity: 1,
       },
     ],
-    success_url: `${getAppUrl()}/dashboard/settings?success=true`,
-    cancel_url: `${getAppUrl()}/dashboard/settings?canceled=true`,
+    success_url: `${appUrl}/dashboard/settings?success=true`,
+    cancel_url: `${appUrl}/dashboard/settings?canceled=true`,
     client_reference_id: user.id,
     subscription_data: {
       metadata: { userId: user.id },
@@ -95,6 +118,7 @@ export async function createPortalSession() {
   if (!session?.user?.id) throw new Error("Não autorizado");
 
   const stripe = getStripe();
+  const appUrl = await getAppUrl();
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
@@ -106,7 +130,7 @@ export async function createPortalSession() {
 
   const portalSession = await stripe.billingPortal.sessions.create({
     customer: user.stripeCustomerId,
-    return_url: `${getAppUrl()}/dashboard/settings`,
+    return_url: `${appUrl}/dashboard/settings`,
   });
 
   redirect(portalSession.url);
