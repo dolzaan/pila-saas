@@ -1,105 +1,67 @@
 "use server";
 
+import { auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
-const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
-const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
-const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
+// Gera um PIN de 6 dígitos aleatórios
+function generatePin(): string {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
 
-const headers = {
-  "Content-Type": "application/json",
-  "apikey": EVOLUTION_API_KEY,
-};
+export async function generateWhatsappLinkCode() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Não autorizado." };
+  }
 
-export async function getWhatsAppStatus() {
+  const userId = session.user.id;
+
   try {
-    const res = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`, {
-      method: "GET",
-      headers,
-      cache: "no-store",
+    // Apaga códigos anteriores do usuário para não acumular lixo
+    await prisma.whatsappLinkCode.deleteMany({
+      where: { userId },
     });
 
-    if (!res.ok) {
-      if (res.status === 404) {
-        return { state: "not_created" };
-      }
-      return { state: "error", message: "Failed to fetch status" };
-    }
+    const code = generatePin();
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + 10); // Expira em 10 minutos
 
-    const data = await res.json();
-    // state can be "open", "connecting", "close"
-    return { state: data?.instance?.state || "unknown" };
+    await prisma.whatsappLinkCode.create({
+      data: {
+        userId,
+        code,
+        expiresAt,
+      },
+    });
+
+    revalidatePath("/dashboard/whatsapp");
+    return { success: true, code };
   } catch (error) {
-    console.error("[Evolution API] Error getting status:", error);
-    return { state: "error", message: "Connection refused" };
+    console.error("Erro ao gerar PIN do WhatsApp:", error);
+    return { error: "Erro interno ao gerar o código. Tente novamente." };
   }
 }
 
-export async function connectWhatsApp() {
-  try {
-    // 1. Try to fetch state first
-    const stateRes = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`, {
-      method: "GET",
-      headers,
-    });
-
-    if (stateRes.status === 404) {
-      // Instance doesn't exist, create it
-      const createRes = await fetch(`${EVOLUTION_API_URL}/instance/create`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          instanceName: EVOLUTION_INSTANCE_NAME,
-          qrcode: true,
-          integration: "WHATSAPP-BAILEYS"
-        })
-      });
-
-      if (!createRes.ok) {
-        throw new Error(`Failed to create instance: ${await createRes.text()}`);
-      }
-
-      const createData = await createRes.json();
-      return { success: true, qrcode: createData.qrcode?.base64 || createData.qrcode?.base64 };
-    }
-
-    // 2. Instance exists, try to connect
-    const connectRes = await fetch(`${EVOLUTION_API_URL}/instance/connect/${EVOLUTION_INSTANCE_NAME}`, {
-      method: "GET",
-      headers,
-    });
-
-    if (!connectRes.ok) {
-      // Might be already connected
-      if (connectRes.status === 401 || connectRes.status === 400) {
-        return { success: false, message: "Instância já está conectada ou conectando." };
-      }
-      throw new Error(`Failed to connect instance: ${await connectRes.text()}`);
-    }
-
-    const connectData = await connectRes.json();
-    return { success: true, qrcode: connectData.base64 };
-
-  } catch (error: any) {
-    console.error("[Evolution API] Connect error:", error);
-    return { success: false, message: error.message || "Erro interno" };
+export async function unlinkWhatsapp() {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return { error: "Não autorizado." };
   }
-}
 
-export async function logoutWhatsApp() {
   try {
-    const res = await fetch(`${EVOLUTION_API_URL}/instance/logout/${EVOLUTION_INSTANCE_NAME}`, {
-      method: "DELETE",
-      headers,
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { 
+        whatsappNumber: null,
+        whatsappVerifiedAt: null
+      },
     });
-    
-    if (!res.ok) {
-      throw new Error(await res.text());
-    }
-    
-    revalidatePath("/admin");
+
+    revalidatePath("/dashboard/whatsapp");
     return { success: true };
-  } catch (error: any) {
-    return { success: false, message: error.message || "Failed to logout" };
+  } catch (error) {
+    console.error("Erro ao desvincular WhatsApp:", error);
+    return { error: "Erro interno ao desvincular conta." };
   }
 }

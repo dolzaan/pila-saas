@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { getWhatsAppStatus, connectWhatsApp, logoutWhatsApp } from "@/app/actions/whatsapp";
+import { getWhatsAppStatus, connectWhatsApp, logoutWhatsApp } from "@/app/actions/admin-whatsapp";
 import { RefreshCw, QrCode, PowerOff, Smartphone, Loader2 } from "lucide-react";
 
 export default function WhatsappClient() {
