@@ -123,7 +123,7 @@ export default async function DashboardLayout({
 
       {/* Main content */}
       <main className="dashboard-main">
-        {isExpired ? <ExpiredPaywall /> : children}
+        {isExpired ? <ExpiredPaywall status={subStatus.status} /> : children}
       </main>
     </div>
   );

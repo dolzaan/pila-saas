@@ -1,6 +1,10 @@
 import { Rocket, CheckCircle2, Lock } from "lucide-react";
+import { SubscribeButton } from "@/app/dashboard/settings/subscribe-button";
+import type { SubStatusResult } from "@/lib/subscription";
 
-export default function ExpiredPaywall() {
+export default function ExpiredPaywall({ status }: { status: SubStatusResult["status"] }) {
+  const paymentFailed = status === "PAST_DUE";
+
   return (
     <div className="min-h-full flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
       <div className="max-w-2xl w-full bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
@@ -11,10 +15,12 @@ export default function ExpiredPaywall() {
             <Lock className="w-10 h-10 text-primary" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            Seu Período de Teste Acabou
+            {paymentFailed ? "Pagamento da mensalidade pendente" : "Seu Período de Teste Acabou"}
           </h1>
           <p className="text-lg text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
-            Esperamos que você tenha aproveitado os 7 dias gratuitos do Pila! Para continuar acessando o dashboard e usar o bot do WhatsApp, assine o plano Pro.
+            {paymentFailed
+              ? "Não conseguimos confirmar o pagamento da sua mensalidade. Regularize a cobrança para recuperar o acesso ao Pila Pro."
+              : "Esperamos que você tenha aproveitado os 7 dias gratuitos do Pila! Para continuar acessando o dashboard e usar o bot do WhatsApp, assine o plano Pro."}
           </p>
         </div>
 
@@ -41,10 +47,10 @@ export default function ExpiredPaywall() {
           </div>
 
           <div className="text-center">
-            <button className="inline-flex items-center justify-center gap-3 px-8 py-4 text-lg font-bold text-white bg-primary rounded-xl hover:bg-primary/90 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 w-full sm:w-auto">
-              <Rocket className="w-6 h-6" />
-              Assinar Agora
-            </button>
+            <div className="inline-flex items-center gap-3">
+              <Rocket className="w-6 h-6 text-primary" />
+              <SubscribeButton label={paymentFailed ? "Regularizar pagamento" : "Assinar por R$ 19,90/mês"} />
+            </div>
             <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
               Pagamento seguro processado via Stripe
             </p>

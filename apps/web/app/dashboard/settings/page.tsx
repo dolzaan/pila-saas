@@ -7,6 +7,7 @@ import { GdprClient } from "./gdpr-client";
 import { Star } from "lucide-react";
 import type { Metadata } from "next";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
+import { SubscribeButton } from "./subscribe-button";
 
 export const metadata: Metadata = {
   title: "Configurações — Pila",
@@ -78,7 +79,11 @@ export default async function SettingsPage() {
                   ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial via WhatsApp."
                   : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp."}
               </p>
-              {!isTrial && <SubscriptionManager />}
+              {isTrial ? (
+                <SubscribeButton label="Assinar por R$ 19,90/mês" />
+              ) : (
+                <SubscriptionManager />
+              )}
             </div>
           ) : (
             <UpgradeCard title="Seja Pila Pro" description="Assine para liberar a IA do WhatsApp e não ter limites na plataforma." />
