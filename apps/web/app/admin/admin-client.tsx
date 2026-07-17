@@ -9,6 +9,7 @@ import {
 } from "@/app/actions/admin";
 import { Shield, Key, CreditCard, Trash2, Edit } from "lucide-react";
 import { format } from "date-fns";
+import { getUserSubscriptionStatus } from "@/lib/subscription";
 
 type User = {
   id: string;
@@ -94,8 +95,9 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
           <tr>
             <th className="px-4 py-3">Usuário</th>
             <th className="px-4 py-3">Permissão</th>
-            <th className="px-4 py-3">Assinatura</th>
-            <th className="px-4 py-3">Data de Cadastro</th>
+            <th className="px-4 py-3">Status da Conta</th>
+            <th className="px-4 py-3">Dias Restantes</th>
+            <th className="px-4 py-3">Vencimento</th>
             <th className="px-4 py-3 text-right">Ações</th>
           </tr>
         </thead>
@@ -120,17 +122,34 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
                 </button>
               </td>
               <td className="px-4 py-3">
-                <p className="font-medium text-gray-900 dark:text-white">
-                  {user.subscription ? user.subscription.plan.toUpperCase() : "FREE"}
-                </p>
-                <p className={`text-xs ${
-                  user.subscription?.status === 'ACTIVE' ? 'text-green-500' : 'text-gray-400'
-                }`}>
-                  {user.subscription?.status || "N/A"}
-                </p>
+                {(() => {
+                  const subData = getUserSubscriptionStatus(user.createdAt, user.subscription);
+                  const isExpired = subData.status === "EXPIRED";
+                  const isTrial = subData.status === "TRIALING";
+                  
+                  return (
+                    <span className={`px-2 py-1 text-xs font-semibold rounded-full ${
+                      isExpired ? "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300" :
+                      isTrial ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300" :
+                      "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+                    }`}>
+                      {subData.status}
+                    </span>
+                  );
+                })()}
               </td>
-              <td className="px-4 py-3">
-                {format(new Date(user.createdAt), "dd/MM/yyyy")}
+              <td className="px-4 py-3 font-medium">
+                {(() => {
+                  const subData = getUserSubscriptionStatus(user.createdAt, user.subscription);
+                  if (subData.status === "EXPIRED") return <span className="text-red-500">Expirado</span>;
+                  return <span>{subData.daysLeft} dias</span>;
+                })()}
+              </td>
+              <td className="px-4 py-3 text-sm text-gray-500">
+                {(() => {
+                  const subData = getUserSubscriptionStatus(user.createdAt, user.subscription);
+                  return format(new Date(subData.expiresAt), "dd/MM/yyyy");
+                })()}
               </td>
               <td className="px-4 py-3 flex gap-2 justify-end">
                 <button 

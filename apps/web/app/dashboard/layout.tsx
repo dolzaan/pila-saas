@@ -15,6 +15,9 @@ import {
   CalendarDays,
   Shield
 } from "lucide-react";
+import { prisma } from "@/lib/prisma";
+import { getUserSubscriptionStatus } from "@/lib/subscription";
+import ExpiredPaywall from "@/components/expired-paywall";
 
 export default async function DashboardLayout({
   children,
@@ -23,9 +26,21 @@ export default async function DashboardLayout({
 }) {
   const session = await auth();
 
-  if (!session?.user) {
+  if (!session?.user?.id) {
     redirect("/login");
   }
+
+  const dbUser = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { createdAt: true, subscription: true }
+  });
+
+  if (!dbUser) {
+    redirect("/login");
+  }
+
+  const subStatus = getUserSubscriptionStatus(dbUser.createdAt, dbUser.subscription);
+  const isExpired = subStatus.status === "EXPIRED" && session.user.role !== "ADMIN";
 
   return (
     <div className="dashboard-layout">
@@ -107,7 +122,9 @@ export default async function DashboardLayout({
       </aside>
 
       {/* Main content */}
-      <main className="dashboard-main">{children}</main>
+      <main className="dashboard-main">
+        {isExpired ? <ExpiredPaywall /> : children}
+      </main>
     </div>
   );
 }
