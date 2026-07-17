@@ -89,8 +89,37 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    // 5. Processar via IA
-    const aiResult = await parseFinancialMessage(text);
+    // 5. Preparar Contexto Financeiro do Mês
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const recentTransactions = await prisma.transaction.findMany({
+      where: { userId: user.id, occurredAt: { gte: startOfMonth } },
+      include: { category: true },
+      orderBy: { occurredAt: "desc" }
+    });
+
+    let monthExpenses = 0;
+    let monthIncomes = 0;
+    const contextLines = recentTransactions.map(t => {
+      const val = Number(t.amount);
+      if (t.kind === "EXPENSE") monthExpenses += val;
+      if (t.kind === "INCOME") monthIncomes += val;
+      return `- ${t.occurredAt.toLocaleDateString("pt-BR")}: R$ ${val.toFixed(2)} - ${t.description} (${t.category?.name || 'Sem categoria'}) - ${t.kind === "EXPENSE" ? "Gasto" : "Ganho"}`;
+    });
+
+    const userContext = `
+Resumo de ${startOfMonth.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}:
+Total de Gastos: R$ ${monthExpenses.toFixed(2)}
+Total de Ganhos: R$ ${monthIncomes.toFixed(2)}
+
+Últimas transações (máx 20):
+${contextLines.slice(0, 20).join('\n')}
+    `.trim();
+
+    // 6. Processar via IA com Contexto
+    const aiResult = await parseFinancialMessage(text, userContext);
 
     if (!aiResult.isTransaction) {
       const replyMessage = aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!";
@@ -98,7 +127,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    // 6. Salvar no Banco de Dados
+    // 7. Salvar no Banco de Dados (apenas se for transação)
     // Buscar ou criar a categoria
     let categoryId = null;
     if (aiResult.categoryName) {
@@ -134,7 +163,7 @@ export async function POST(req: Request) {
       }
     });
 
-    // 7. Responder sucesso usando a mensagem improvisada pela IA
+    // 8. Responder sucesso usando a mensagem improvisada pela IA
     const fallbackMessage = `✅ Gasto registrado: R$ ${Number(aiResult.amount).toFixed(2)} em ${aiResult.categoryName}`;
     const replyMessage = aiResult.replyMessage || fallbackMessage;
     await sendWhatsAppMessage(remoteJid, replyMessage);

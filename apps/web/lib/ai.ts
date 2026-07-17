@@ -15,15 +15,19 @@ export type ParsedTransaction = {
   replyMessage?: string;
 };
 
-export async function parseFinancialMessage(text: string): Promise<ParsedTransaction> {
+export async function parseFinancialMessage(text: string, userContext?: string): Promise<ParsedTransaction> {
   const prompt = `
 Você é um assistente financeiro super inteligente para o WhatsApp, chamado "Pila Bot".
-Sua tarefa é ler a mensagem do usuário e extrair os dados da transação financeira, ou responder de forma natural se não for uma transação.
+Sua tarefa é ler a mensagem do usuário e extrair os dados da transação financeira, ou responder perguntas financeiras baseando-se no Contexto fornecido.
 
 REGRAS:
 1. Se a mensagem contiver um gasto ou ganho claro (ex: "Gastei 50 num lanche", "Recebi 1000 de salário"), você DEVE retornar JSON com isTransaction: true e os dados da transação. ALÉM DISSO, improvise um \`replyMessage\` natural e amigável confirmando o registro (ex: "Beleza! Já anotei seus R$ 50 no Lanche. 🍔").
-2. Se a mensagem for apenas um "Oi", "Tudo bem?", ou uma pergunta que não envolve registrar dinheiro, você DEVE retornar isTransaction: false e fornecer uma \`replyMessage\` amigável e espirituosa, agindo como um assistente financeiro prestativo.
-3. A resposta DEVE ser um JSON puro, sem marcações markdown ou blocos de código (não use \`\`\`json).
+2. Se a mensagem for uma PERGUNTA sobre finanças (ex: "Quanto gastei hoje?", "Como estão meus gastos no mês?"), USE EXCLUSIVAMENTE as informações da seção "CONTEXTO FINANCEIRO DO USUÁRIO" abaixo para responder com precisão. Retorne isTransaction: false e coloque a resposta na \`replyMessage\`.
+3. Se a mensagem for apenas um "Oi", "Tudo bem?", ou uma pergunta que não envolve finanças, você DEVE retornar isTransaction: false e fornecer uma \`replyMessage\` amigável e espirituosa.
+4. A resposta DEVE ser um JSON puro, sem marcações markdown ou blocos de código (não use \`\`\`json).
+
+CONTEXTO FINANCEIRO DO USUÁRIO:
+${userContext || "Nenhum dado disponível."}
 
 Formato JSON esperado para Transação:
 {
