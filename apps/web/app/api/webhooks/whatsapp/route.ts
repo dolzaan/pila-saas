@@ -36,13 +36,46 @@ export async function POST(req: Request) {
     }
 
     // 3. Buscar o usuário pelo telefone
-    const user = await prisma.user.findFirst({
+    let user = await prisma.user.findFirst({
       where: { whatsappNumber: phoneNumber },
       include: { subscription: true }
     });
 
+    // 3.1. Se não encontrou, verificar se a mensagem é um PIN de vinculação
     if (!user) {
-      const replyMessage = "Olá! Não encontrei sua conta no Pila SaaS. Por favor, acesse o painel e vincule seu número de WhatsApp nas configurações.";
+      const pinMatch = text.match(/^\d{6}$/);
+      if (pinMatch) {
+        const linkCode = await prisma.whatsappLinkCode.findFirst({
+          where: {
+            code: pinMatch[0],
+            expiresAt: { gt: new Date() },
+            usedAt: null
+          },
+          include: { user: { include: { subscription: true } } }
+        });
+
+        if (linkCode) {
+          // Vincular número ao usuário
+          user = linkCode.user;
+          await prisma.$transaction([
+            prisma.user.update({
+              where: { id: user.id },
+              data: { whatsappNumber: phoneNumber, whatsappVerifiedAt: new Date() }
+            }),
+            prisma.whatsappLinkCode.update({
+              where: { id: linkCode.id },
+              data: { usedAt: new Date() }
+            })
+          ]);
+
+          const successMsg = "✅ Conta vinculada com sucesso! Você já pode me enviar seus gastos e ganhos.";
+          await sendWhatsAppMessage(remoteJid, successMsg);
+          return NextResponse.json({ success: true, processed: true, replyMessage: successMsg });
+        }
+      }
+
+      // Se não enviou PIN ou PIN inválido
+      const replyMessage = "Olá! Não encontrei sua conta no Pila SaaS. Por favor, acesse o painel, gere um código de vinculação e envie ele para mim (apenas os 6 números).";
       await sendWhatsAppMessage(remoteJid, replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
