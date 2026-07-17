@@ -166,6 +166,7 @@ model Transaction {
   // rawMessage: NUNCA logado externamente; armazenado para auditoria interna
   // criptografado em repouso (Fase 7) — por ora, salvo como texto
   rawMessage  String?         @db.Text
+  externalMessageId String?   @unique // idempotência para mensagens do WhatsApp
 
   createdAt   DateTime        @default(now())
   updatedAt   DateTime        @updatedAt
@@ -177,7 +178,18 @@ model Transaction {
 
   @@index([userId, occurredAt])
   @@index([userId, categoryId])
+  @@unique([recurringTransactionId, occurredAt])
   @@map("transactions")
+}
+
+// Registro mínimo para impedir reprocessamento de webhooks reenviados.
+model WhatsappInboundMessage {
+  id         String   @id
+  phone      String
+  receivedAt DateTime @default(now())
+
+  @@index([phone, receivedAt])
+  @@map("whatsapp_inbound_messages")
 }
 
 model Budget {
