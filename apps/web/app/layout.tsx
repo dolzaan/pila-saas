@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { LandingAiChat } from "@/components/landing-ai-chat";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -9,12 +10,12 @@ export const metadata: Metadata = {
     template: "%s — Pila",
   },
   description:
-    "Controle suas finanças pessoais registrando gastos e receitas diretamente pelo WhatsApp. Dashboard completo com relatórios, orçamentos e muito mais.",
-  keywords: ["finanças pessoais", "controle financeiro", "WhatsApp", "orçamento", "gastos"],
+    "Converse com uma IA financeira pelo WhatsApp. Envie texto, áudio ou foto para registrar gastos, consultar relatórios e organizar seu dinheiro.",
+  keywords: ["IA financeira", "finanças pessoais", "controle financeiro", "WhatsApp", "orçamento", "gastos"],
   authors: [{ name: "Pila" }],
   openGraph: {
-    title: "Pila — Finanças Pessoais pelo WhatsApp",
-    description: "Controle suas finanças pessoais registrando gastos pelo WhatsApp.",
+    title: "Pila — Sua IA financeira no WhatsApp",
+    description: "Organize suas finanças conversando com uma IA pelo WhatsApp usando texto, áudio ou foto.",
     type: "website",
     locale: "pt_BR",
   },
@@ -33,6 +34,7 @@ export default function RootLayout({
       </head>
       <body>
         {children}
+        <LandingAiChat />
         <Analytics />
         <SpeedInsights />
       </body>
