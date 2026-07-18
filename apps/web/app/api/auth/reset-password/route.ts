@@ -24,6 +24,8 @@ export async function POST(request: Request) {
       where: { id: userId },
       data: {
         passwordHash,
+        // O link de redefinição enviado ao endereço comprova a posse do e-mail.
+        emailVerified: new Date(),
         sessionVersion: { increment: 1 },
       },
     }),
