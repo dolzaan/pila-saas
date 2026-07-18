@@ -1,6 +1,8 @@
 "use client";
 
-import { FormEvent, useEffect, useRef, useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import { Bot, LoaderCircle, MessageCircle, Send, Sparkles, X } from "lucide-react";
 import styles from "./landing-ai-chat.module.css";
 
@@ -21,6 +23,7 @@ const SUGGESTIONS = [
 ];
 
 export function LandingAiChat() {
+  const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
   const [input, setInput] = useState("");
@@ -71,6 +74,10 @@ export function LandingAiChat() {
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     void sendMessage(input);
+  }
+
+  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) {
+    return null;
   }
 
   return (
