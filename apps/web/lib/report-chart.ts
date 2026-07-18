@@ -58,8 +58,15 @@ function money(value: number) {
   return `R$ ${value.toFixed(2).replace(".", ",")}`;
 }
 
+type ReportChartOptions = {
+  title?: string;
+  totalLabel?: string;
+  totalValue?: number;
+};
+
 export async function generateExpenseChart(
   items: Array<{ label: string; value: number }>,
+  options: ReportChartOptions = {},
 ) {
   const chartItems = items
     .filter((item) => Number.isFinite(item.value) && item.value > 0)
@@ -67,6 +74,9 @@ export async function generateExpenseChart(
     .slice(0, 8);
 
   const total = chartItems.reduce((sum, item) => sum + item.value, 0);
+  const displayTotal = options.totalValue ?? total;
+  const title = safeText(options.title || "GASTOS POR CATEGORIA").slice(0, 42);
+  const totalLabel = safeText(options.totalLabel || "TOTAL DO MES").slice(0, 42);
   const max = Math.max(...chartItems.map((item) => item.value), 1);
   const height = Math.max(360, 190 + chartItems.length * 88);
   const fontPath = await getReportFont();
@@ -91,7 +101,7 @@ export async function generateExpenseChart(
   const layers: Array<{ input: Buffer; left: number; top: number }> = [
     { input: shapes, left: 0, top: 0 },
     {
-      input: await textImage("GASTOS POR CATEGORIA", fontPath, {
+      input: await textImage(title, fontPath, {
         size: 24,
         color: "#ffffff",
         bold: true,
@@ -100,7 +110,7 @@ export async function generateExpenseChart(
       top: 24,
     },
     {
-      input: await textImage("TOTAL DO MES", fontPath, {
+      input: await textImage(totalLabel, fontPath, {
         size: 13,
         color: "#9baabd",
         bold: true,
@@ -109,7 +119,7 @@ export async function generateExpenseChart(
       top: 95,
     },
     {
-      input: await textImage(money(total), fontPath, {
+      input: await textImage(money(displayTotal), fontPath, {
         size: 24,
         color: "#35e6a1",
         bold: true,
