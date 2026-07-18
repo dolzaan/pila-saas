@@ -9,7 +9,7 @@ import { prisma } from "@/lib/prisma";
 const SESSION_VERSION_CHECK_INTERVAL_MS = 60_000;
 
 const LoginSchema = z.object({
-  email: z.string().email(),
+  email: z.string().trim().toLowerCase().email(),
   password: z.string().min(8),
 });
 
