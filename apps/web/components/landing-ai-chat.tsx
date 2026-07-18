@@ -76,7 +76,7 @@ export function LandingAiChat() {
     void sendMessage(input);
   }
 
-  if (pathname.startsWith("/dashboard") || pathname.startsWith("/admin")) {
+  if (pathname.startsWith("/admin")) {
     return null;
   }
 
