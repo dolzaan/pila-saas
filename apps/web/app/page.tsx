@@ -5,8 +5,11 @@ import {
   ArrowRight,
   BarChart3,
   Bell,
+  BrainCircuit,
+  Camera,
   Check,
   MessageCircle,
+  Mic,
   PieChart,
   ShieldCheck,
   Sparkles,
@@ -14,18 +17,19 @@ import {
   Wallet,
 } from "lucide-react";
 import styles from "./landing.module.css";
+import { LandingAiChat } from "@/components/landing-ai-chat";
 
 export const metadata: Metadata = {
-  title: "Pila — Suas finanças organizadas pelo WhatsApp",
+  title: "Pila — Sua IA financeira no WhatsApp",
   description:
-    "Registre gastos pelo WhatsApp, acompanhe seu dinheiro e alcance suas metas com o Pila. Teste o plano Pro grátis por 7 dias.",
+    "Converse com uma IA financeira pelo WhatsApp. Envie texto, áudio ou foto para registrar gastos, consultar relatórios e organizar seu dinheiro.",
 };
 
 const benefits = [
   {
     icon: MessageCircle,
-    title: "Anote pelo WhatsApp",
-    text: "Mande uma mensagem como você fala. O Pila entende o gasto e organiza tudo para você.",
+    title: "Converse, não preencha",
+    text: "Fale com a IA pelo WhatsApp como você já fala com qualquer pessoa. Ela entende e organiza para você.",
   },
   {
     icon: BarChart3,
@@ -34,8 +38,8 @@ const benefits = [
   },
   {
     icon: Sparkles,
-    title: "Organização inteligente",
-    text: "Transações são categorizadas automaticamente para você gastar menos tempo preenchendo planilhas.",
+    title: "IA que entende o contexto",
+    text: "Texto, áudio, foto de comprovante e perguntas naturais viram registros, categorias e respostas úteis.",
   },
   {
     icon: Target,
@@ -70,6 +74,7 @@ export default function LandingPage() {
             <span>Pila</span>
           </Link>
           <nav className={styles.nav} aria-label="Navegação principal">
+            <a href="#ia">IA do Pila</a>
             <a href="#como-funciona">Como funciona</a>
             <a href="#recursos">Recursos</a>
             <a href="#preco">Preço</a>
@@ -89,11 +94,11 @@ export default function LandingPage() {
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
             <div className={styles.eyebrow}>
-              <Sparkles size={15} /> 7 dias de Pila Pro grátis
+              <Sparkles size={15} /> IA FINANCEIRA DIRETO NO WHATSAPP
             </div>
-            <h1>Seu dinheiro organizado em uma conversa.</h1>
+            <h1>Sua IA financeira. No WhatsApp, do jeito que você já conversa.</h1>
             <p>
-              Registre gastos pelo WhatsApp, acompanhe tudo em um só lugar e tome decisões com mais clareza — sem depender de planilhas.
+              Envie texto, áudio ou foto. A IA do Pila registra movimentações, responde perguntas e transforma sua rotina em relatórios claros — sem planilhas e sem complicação.
             </p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryCta} href="/register">
@@ -103,6 +108,7 @@ export default function LandingPage() {
             </div>
             <div className={styles.heroNotes}>
               <span><Check size={15} /> Sem cartão</span>
+              <span><Check size={15} /> IA disponível 24 horas</span>
               <span><Check size={15} /> Cancele quando quiser</span>
             </div>
           </div>
@@ -142,9 +148,47 @@ export default function LandingPage() {
       </section>
 
       <section className={styles.proofStrip} aria-label="Benefícios resumidos">
-        <span><MessageCircle size={18} /> Funciona pelo WhatsApp</span>
+        <span><MessageCircle size={18} /> Converse pelo WhatsApp</span>
+        <span><BrainCircuit size={18} /> IA que entende texto, áudio e imagem</span>
         <span><ShieldCheck size={18} /> Seus dados sob seu controle</span>
-        <span><Sparkles size={18} /> Simples desde o primeiro gasto</span>
+      </section>
+
+      <section className={styles.aiSection} id="ia">
+        <div className={styles.aiSectionHeading}>
+          <span>O PILA ENTENDE VOCÊ</span>
+          <h2>Uma conversa vira organização financeira.</h2>
+          <p>Não adapte sua rotina a mais um aplicativo. A IA interpreta o que você envia e mantém tudo organizado enquanto você segue o seu dia.</p>
+        </div>
+        <div className={styles.aiCapabilities}>
+          <article>
+            <div><MessageCircle size={21} /></div>
+            <span>01</span>
+            <h3>Escreva naturalmente</h3>
+            <p>“Gastei 42 no mercado” já é suficiente para a IA registrar e categorizar.</p>
+          </article>
+          <article>
+            <div><Mic size={21} /></div>
+            <span>02</span>
+            <h3>Mande um áudio</h3>
+            <p>Conte seus gastos por voz. A IA entende a mensagem e transforma em informação organizada.</p>
+          </article>
+          <article>
+            <div><Camera size={21} /></div>
+            <span>03</span>
+            <h3>Fotografe o comprovante</h3>
+            <p>Envie a imagem pelo WhatsApp para a IA identificar os dados importantes da compra.</p>
+          </article>
+          <article>
+            <div><BrainCircuit size={21} /></div>
+            <span>04</span>
+            <h3>Pergunte e receba clareza</h3>
+            <p>Peça resumos, gráficos e comparações em uma conversa, usando seus dados reais.</p>
+          </article>
+        </div>
+        <div className={styles.aiPrompt}>
+          <Sparkles size={18} />
+          <div><strong>Experimente agora</strong><span>Abra o chat no canto da tela e converse com a IA do Pila sem sair da página.</span></div>
+        </div>
       </section>
 
       <section className={styles.section} id="como-funciona">
@@ -256,6 +300,8 @@ export default function LandingPage() {
         <div><span>Seu próximo mês pode ser mais claro.</span><h2>Comece a organizar seu dinheiro hoje.</h2></div>
         <Link className={styles.lightCta} href="/register">Testar o Pila grátis <ArrowRight size={19} /></Link>
       </section>
+
+      <LandingAiChat />
 
       <footer className={styles.footer}>
         <Link className={styles.brand} href="/"><Image src="/logo-icon.png" alt="" width={34} height={34} /><span>Pila</span></Link>
