@@ -17,7 +17,6 @@ import {
   Wallet,
 } from "lucide-react";
 import styles from "./landing.module.css";
-import { LandingAiChat } from "@/components/landing-ai-chat";
 
 export const metadata: Metadata = {
   title: "Pila — Sua IA financeira no WhatsApp",
@@ -300,8 +299,6 @@ export default function LandingPage() {
         <div><span>Seu próximo mês pode ser mais claro.</span><h2>Comece a organizar seu dinheiro hoje.</h2></div>
         <Link className={styles.lightCta} href="/register">Testar o Pila grátis <ArrowRight size={19} /></Link>
       </section>
-
-      <LandingAiChat />
 
       <footer className={styles.footer}>
         <Link className={styles.brand} href="/"><Image src="/logo-icon.png" alt="" width={34} height={34} /><span>Pila</span></Link>
