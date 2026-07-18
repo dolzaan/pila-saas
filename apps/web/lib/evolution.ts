@@ -52,35 +52,27 @@ export async function sendWhatsAppMedia(
   const endpoint = `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE_NAME}`;
 
   try {
-    let blob: Blob;
-    let mimeType = mediatype === "image" ? "image/png" : "application/octet-stream";
-
     const dataUrlMatch = mediaUrlOrBase64.match(/^data:([^;]+);base64,([\s\S]+)$/);
-    if (dataUrlMatch) {
-      mimeType = dataUrlMatch[1];
-      const bytes = new Uint8Array(Buffer.from(dataUrlMatch[2], "base64"));
-      blob = new Blob([bytes], { type: mimeType });
-    } else {
-      const mediaResponse = await fetch(mediaUrlOrBase64);
-      if (!mediaResponse.ok) {
-        throw new Error(`Falha ao baixar mídia: HTTP ${mediaResponse.status}`);
-      }
-      mimeType = mediaResponse.headers.get("content-type") || mimeType;
-      blob = new Blob([await mediaResponse.arrayBuffer()], { type: mimeType });
-    }
-
+    const mimeType = dataUrlMatch?.[1]
+      || (mediatype === "image" ? "image/png" : "application/octet-stream");
+    const media = dataUrlMatch?.[2] || mediaUrlOrBase64;
     const extension = mimeType.split("/")[1]?.split(";")[0] || "bin";
-    const form = new FormData();
-    form.append("number", phone);
-    form.append("mediatype", mediatype);
-    form.append("media", blob, `relatorio-pila.${extension}`);
-    form.append("caption", caption || "");
-    form.append("fileName", `relatorio-pila.${extension}`);
 
     const response = await fetch(endpoint, {
       method: "POST",
-      headers: { "apikey": EVOLUTION_API_KEY },
-      body: form,
+      headers: {
+        "Content-Type": "application/json",
+        "apikey": EVOLUTION_API_KEY,
+      },
+      body: JSON.stringify({
+        number: phone,
+        mediatype,
+        mimetype: mimeType,
+        media,
+        caption: caption || "",
+        fileName: `relatorio-pila.${extension}`,
+        delay: 1200,
+      }),
     });
 
     if (!response.ok) {
