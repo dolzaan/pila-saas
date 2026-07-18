@@ -20,7 +20,13 @@ export async function POST(request: Request) {
   const userId = stored.identifier.slice("password-reset:".length);
   const passwordHash = await bcrypt.hash(parsed.data.password, 12);
   await prisma.$transaction([
-    prisma.user.update({ where: { id: userId }, data: { passwordHash } }),
+    prisma.user.update({
+      where: { id: userId },
+      data: {
+        passwordHash,
+        sessionVersion: { increment: 1 },
+      },
+    }),
     prisma.verificationToken.delete({ where: { identifier_token: { identifier: stored.identifier, token: stored.token } } }),
   ]);
   return NextResponse.json({ success: true });

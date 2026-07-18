@@ -6,6 +6,8 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
+const SESSION_VERSION_CHECK_INTERVAL_MS = 60_000;
+
 const LoginSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8),
@@ -71,7 +73,35 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+
+        const currentUser = await prisma.user.findUnique({
+          where: { id: user.id },
+          select: { sessionVersion: true },
+        });
+        if (!currentUser) return null;
+
+        token.sessionVersion = currentUser.sessionVersion;
+        token.sessionVersionCheckedAt = Date.now();
+        return token;
       }
+
+      // JWTs emitidos antes desta proteção não têm uma versão confiável.
+      if (!token.id || typeof token.sessionVersion !== "number") return null;
+
+      const lastCheckedAt = token.sessionVersionCheckedAt ?? 0;
+      if (Date.now() - lastCheckedAt < SESSION_VERSION_CHECK_INTERVAL_MS) {
+        return token;
+      }
+
+      const currentUser = await prisma.user.findUnique({
+        where: { id: token.id },
+        select: { sessionVersion: true },
+      });
+      if (!currentUser || currentUser.sessionVersion !== token.sessionVersion) {
+        return null;
+      }
+
+      token.sessionVersionCheckedAt = Date.now();
       return token;
     },
     async session({ session, token }) {
