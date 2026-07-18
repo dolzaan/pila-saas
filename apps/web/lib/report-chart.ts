@@ -62,16 +62,19 @@ type ReportChartOptions = {
   title?: string;
   totalLabel?: string;
   totalValue?: number;
+  preserveOrder?: boolean;
 };
 
 export async function generateExpenseChart(
   items: Array<{ label: string; value: number }>,
   options: ReportChartOptions = {},
 ) {
-  const chartItems = items
-    .filter((item) => Number.isFinite(item.value) && item.value > 0)
-    .sort((a, b) => b.value - a.value)
-    .slice(0, 8);
+  const validItems = items
+    .filter((item) => Number.isFinite(item.value) && item.value > 0);
+  const chartItems = (options.preserveOrder
+    ? validItems
+    : validItems.sort((a, b) => b.value - a.value))
+    .slice(0, 12);
 
   const total = chartItems.reduce((sum, item) => sum + item.value, 0);
   const displayTotal = options.totalValue ?? total;
