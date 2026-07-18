@@ -11,24 +11,47 @@ type Message = {
   content: string;
 };
 
-const INITIAL_MESSAGE: Message = {
-  role: "assistant",
-  content: "Oi! Eu sou a IA do Pila. Posso explicar como organizo suas finanças pelo WhatsApp. O que você quer saber?",
+const INITIAL_MESSAGES: Record<"demo" | "account", Message> = {
+  demo: {
+    role: "assistant",
+    content: "Oi! Eu sou a IA do Pila. Posso explicar como organizo suas finanças pelo WhatsApp. O que você quer saber?",
+  },
+  account: {
+    role: "assistant",
+    content: "Oi! Posso consultar seus dados do Pila e responder sobre saldo, gastos, ganhos, categorias, orçamentos e transações. O que você quer analisar?",
+  },
 };
 
-const SUGGESTIONS = [
-  "Como funciona pelo WhatsApp?",
-  "A IA entende áudio e foto?",
-  "O que posso testar grátis?",
-];
+const SUGGESTIONS: Record<"demo" | "account", string[]> = {
+  demo: [
+    "Como funciona pelo WhatsApp?",
+    "A IA entende áudio e foto?",
+    "O que posso testar grátis?",
+  ],
+  account: [
+    "Como estão meus gastos este mês?",
+    "Qual categoria teve mais gastos?",
+    "Compare meus ganhos e gastos",
+  ],
+};
 
 export function LandingAiChat() {
   const pathname = usePathname();
+  const chatMode = pathname.startsWith("/dashboard") ? "account" : "demo";
+  const previousMode = useRef(chatMode);
   const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGE]);
+  const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGES[chatMode]]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (previousMode.current !== chatMode) {
+      previousMode.current = chatMode;
+      setMessages([INITIAL_MESSAGES[chatMode]]);
+      setInput("");
+    }
+  }, [chatMode]);
 
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -87,7 +110,7 @@ export function LandingAiChat() {
           <header className={styles.header}>
             <div className={styles.avatar}><Bot size={21} /></div>
             <div>
-              <strong>IA do Pila</strong>
+              <strong>{chatMode === "account" ? "Assistente financeiro" : "IA do Pila"}</strong>
               <span><i /> online agora</span>
             </div>
             <button type="button" onClick={() => setOpen(false)} aria-label="Fechar chat">
@@ -97,7 +120,9 @@ export function LandingAiChat() {
 
           <div className={styles.intro}>
             <Sparkles size={14} />
-            Demonstração da experiência inteligente do Pila
+            {chatMode === "account"
+              ? "Consulta segura aos dados da sua conta"
+              : "Demonstração da experiência inteligente do Pila"}
           </div>
 
           <div className={styles.messages} aria-live="polite">
@@ -111,7 +136,7 @@ export function LandingAiChat() {
             ))}
             {messages.length === 1 && (
               <div className={styles.suggestions}>
-                {SUGGESTIONS.map((suggestion) => (
+                {SUGGESTIONS[chatMode].map((suggestion) => (
                   <button type="button" key={suggestion} onClick={() => void sendMessage(suggestion)}>
                     {suggestion}
                   </button>
@@ -141,7 +166,11 @@ export function LandingAiChat() {
               <Send size={18} />
             </button>
           </form>
-          <small className={styles.disclaimer}>Este chat demonstra a IA e não registra dados financeiros.</small>
+          <small className={styles.disclaimer}>
+            {chatMode === "account"
+              ? "Consulta em modo somente leitura. Nenhum dado é alterado."
+              : "Este chat demonstra a IA e não registra dados financeiros."}
+          </small>
         </section>
       ) : (
         <button
@@ -151,8 +180,8 @@ export function LandingAiChat() {
           aria-label="Conversar com a IA do Pila"
         >
           <span className={styles.launcherText}>
-            <small>IA DO PILA</small>
-            Tire suas dúvidas
+            <small>{chatMode === "account" ? "SEUS DADOS + IA" : "IA DO PILA"}</small>
+            {chatMode === "account" ? "Consulte suas finanças" : "Tire suas dúvidas"}
           </span>
           <span className={styles.launcherIcon}><MessageCircle size={25} /></span>
         </button>
