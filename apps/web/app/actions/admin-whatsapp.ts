@@ -1,10 +1,18 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { auth } from "@/lib/auth";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
+
+async function requireAdmin() {
+  const session = await auth();
+  if (session?.user?.role !== "ADMIN") {
+    throw new Error("Não autorizado. Apenas administradores podem gerenciar o WhatsApp.");
+  }
+}
 
 function getWebhookConfig() {
   const appUrl = (process.env.NEXT_PUBLIC_APP_URL || process.env.APP_URL || "").replace(/\/$/, "");
@@ -44,6 +52,7 @@ async function setSecureWebhook(webhook: ReturnType<typeof getWebhookConfig>) {
 }
 
 export async function getWhatsAppStatus() {
+  await requireAdmin();
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/instance/connectionState/${EVOLUTION_INSTANCE_NAME}`, {
       method: "GET",
@@ -68,6 +77,7 @@ export async function getWhatsAppStatus() {
 }
 
 export async function connectWhatsApp() {
+  await requireAdmin();
   try {
     const webhook = getWebhookConfig();
     // 1. Try to fetch state first
@@ -127,6 +137,7 @@ export async function connectWhatsApp() {
 }
 
 export async function logoutWhatsApp() {
+  await requireAdmin();
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/instance/logout/${EVOLUTION_INSTANCE_NAME}`, {
       method: "DELETE",
@@ -145,6 +156,7 @@ export async function logoutWhatsApp() {
 }
 
 export async function sendWhatsAppMessage(number: string, text: string) {
+  await requireAdmin();
   try {
     const res = await fetch(`${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`, {
       method: "POST",

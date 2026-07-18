@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import { parseFinancialMessage } from "@/lib/ai";
-import { sendWhatsAppMessage } from "@/app/actions/admin-whatsapp";
+import { sendWhatsAppMessage } from "@/lib/evolution";
 import { PILA_APP_URL, PILA_PUBLIC_KNOWLEDGE, PILA_REGISTER_URL } from "@/lib/pila-knowledge";
 import { createActivationToken } from "@/lib/account-activation";
 import { consumeEmailVerificationCode, issueEmailVerificationCode } from "@/lib/auth-tokens";
