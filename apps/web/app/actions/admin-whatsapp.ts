@@ -28,12 +28,14 @@ async function setSecureWebhook(webhook: ReturnType<typeof getWebhookConfig>) {
     method: "POST",
     headers,
     body: JSON.stringify({
-      enabled: true,
-      url: webhook.url,
-      headers: webhook.headers,
-      webhookByEvents: false,
-      webhookBase64: true,
-      events: ["MESSAGES_UPSERT"],
+      webhook: {
+        enabled: true,
+        url: webhook.url,
+        headers: webhook.headers,
+        byEvents: false,
+        base64: true,
+        events: ["MESSAGES_UPSERT"],
+      },
     }),
   });
   if (!response.ok) {
