@@ -470,6 +470,7 @@ ${contextLines.slice(0, 20).join('\n')}
           title: report.title,
           totalLabel: report.totalLabel,
           totalValue: report.totalValue,
+          preserveOrder: reportRequest.grouping !== "CATEGORY",
         });
         const { sendWhatsAppMedia } = await import("@/lib/evolution");
         const mediaSent = await sendWhatsAppMedia(remoteJid, chartUrl, "image", summary);
