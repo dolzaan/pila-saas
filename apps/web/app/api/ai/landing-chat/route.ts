@@ -121,7 +121,7 @@ async function buildAccountContext(userId: string, message: string, transcript: 
     `- ${budget.category.name}: limite mensal de ${formatMoney(Number(budget.monthlyLimit))}`,
   );
 
-  return `
+  const context = `
 Você está no chat autenticado e somente leitura do dashboard do Pila.
 Use exclusivamente os dados abaixo para responder perguntas financeiras pessoais. Nunca invente valores.
 O período interpretado para a pergunta atual é: ${reportRequest.periodLabel}.
@@ -147,6 +147,21 @@ ${budgetLines.length ? budgetLines.join("\n") : "Nenhum orçamento cadastrado."}
 HISTÓRICO RECENTE DO CHAT:
 ${transcript || "Início da conversa."}
   `.trim();
+
+  const reportSummary = [
+    `📊 Resumo de ${reportRequest.periodLabel}`,
+    "",
+    `💰 Ganhos: ${formatMoney(income)}`,
+    `💸 Gastos: ${formatMoney(expense)}`,
+    `📈 Saldo: ${formatMoney(income - expense)}`,
+    `🧾 Transações: ${transactionCount}`,
+    "",
+    categoryLines.length
+      ? `Principais categorias:\n${categoryLines.slice(0, 5).join("\n")}`
+      : "Nenhuma movimentação encontrada nesse período.",
+  ].join("\n");
+
+  return { context, reportSummary };
 }
 
 function buildVisitorContext(transcript: string) {
@@ -185,9 +200,10 @@ export async function POST(request: Request) {
       .slice(-6)
       .map((item) => `${item.role === "user" ? "Usuário" : "Pila"}: ${item.content}`)
       .join("\n");
-    const context = userId
+    const accountData = userId
       ? await buildAccountContext(userId, parsed.data.message, transcript)
-      : buildVisitorContext(transcript);
+      : null;
+    const context = accountData?.context || buildVisitorContext(transcript);
 
     const result = await parseFinancialMessage(parsed.data.message, context);
     const fallback = userId
@@ -195,6 +211,9 @@ export async function POST(request: Request) {
       : "Posso explicar como a IA do Pila funciona no WhatsApp ou ajudar você a começar seu teste grátis.";
 
     let reply = result.replyMessage || fallback;
+    if (userId && result.isReport && accountData) {
+      reply = accountData.reportSummary;
+    }
     if (result.isTransaction) {
       reply = userId
         ? "Entendi a movimentação, mas o chat do dashboard é somente leitura. Registre pelo WhatsApp ou pela tela de transações para manter seus dados seguros."
