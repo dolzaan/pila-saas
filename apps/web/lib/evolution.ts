@@ -55,7 +55,7 @@ export async function sendWhatsAppMedia(
     let blob: Blob;
     let mimeType = mediatype === "image" ? "image/png" : "application/octet-stream";
 
-    const dataUrlMatch = mediaUrlOrBase64.match(/^data:([^;]+);base64,(.+)$/s);
+    const dataUrlMatch = mediaUrlOrBase64.match(/^data:([^;]+);base64,([\s\S]+)$/);
     if (dataUrlMatch) {
       mimeType = dataUrlMatch[1];
       const bytes = new Uint8Array(Buffer.from(dataUrlMatch[2], "base64"));
