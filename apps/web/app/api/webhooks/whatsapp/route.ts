@@ -355,9 +355,8 @@ export async function POST(req: Request) {
         if (t.categoryId) {
           expensesByCategory[t.categoryId] = (expensesByCategory[t.categoryId] || 0) + val;
         }
-        if (t.category?.name) {
-          expensesByCategoryName[t.category.name] = (expensesByCategoryName[t.category.name] || 0) + val;
-        }
+        const categoryName = t.category?.name || "Sem categoria";
+        expensesByCategoryName[categoryName] = (expensesByCategoryName[categoryName] || 0) + val;
       }
       if (t.kind === "INCOME") monthIncomes += val;
       return `- ${t.occurredAt.toLocaleDateString("pt-BR")}: R$ ${val.toFixed(2)} - ${t.description} (${t.category?.name || 'Sem categoria'}) - ${t.kind === "EXPENSE" ? "Gasto" : "Ganho"}`;
@@ -439,23 +438,31 @@ ${contextLines.slice(0, 20).join('\n')}
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    // 6.2 Tratamento de Gráficos/Relatórios Visuais
-    if (aiResult.isReport) {
+    // 6.2 Tratamento de Gráficos/Relatórios Visuais.
+    // A intenção explícita evita depender apenas da classificação probabilística da IA.
+    const explicitlyRequestedReport = /\b(gr[aá]fico|relat[oó]rio|resumo(?:\s+visual)?|gastos por categoria)\b/i.test(text);
+    if (aiResult.isReport || explicitlyRequestedReport) {
       const labels = Object.keys(expensesByCategoryName);
       const data = Object.values(expensesByCategoryName);
       
-      let replyMessage = aiResult.replyMessage || "Aqui está o seu relatório visual!";
+      const summary = `📊 Resumo do mês\n\n💰 Ganhos: R$ ${monthIncomes.toFixed(2).replace(".", ",")}\n💸 Gastos: R$ ${monthExpenses.toFixed(2).replace(".", ",")}\n📈 Saldo: R$ ${(monthIncomes - monthExpenses).toFixed(2).replace(".", ",")}`;
+      const replyMessage = aiResult.replyMessage
+        ? `${aiResult.replyMessage}\n\n${summary}`
+        : summary;
 
       if (labels.length > 0) {
         const chartUrl = await generateExpenseChart(labels.map((label, index) => ({ label, value: data[index] })));
         const { sendWhatsAppMedia } = await import("@/lib/evolution");
-        await sendWhatsAppMedia(remoteJid, chartUrl, "image", replyMessage);
-        return NextResponse.json({ success: true, replyMessage, mediaUrl: chartUrl });
-      } else {
-        replyMessage = "Você ainda não tem gastos registrados neste mês para gerar um gráfico.";
-        await sendWhatsAppMessage(remoteJid, replyMessage);
-        return NextResponse.json({ success: true, replyMessage });
+        const mediaSent = await sendWhatsAppMedia(remoteJid, chartUrl, "image", replyMessage);
+        if (!mediaSent) {
+          await sendWhatsAppMessage(remoteJid, `${replyMessage}\n\n⚠️ Não consegui anexar o gráfico agora, mas seu resumo está acima.`);
+        }
+        return NextResponse.json({ success: true, replyMessage, mediaSent });
       }
+
+      const emptyMessage = "Você ainda não tem gastos registrados neste mês para gerar um gráfico.\n\n" + summary;
+      await sendWhatsAppMessage(remoteJid, emptyMessage);
+      return NextResponse.json({ success: true, replyMessage: emptyMessage });
     }
 
     // 6.3 Tratamento de Não-Transações em geral
