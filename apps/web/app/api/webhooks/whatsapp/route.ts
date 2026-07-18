@@ -18,6 +18,7 @@ import {
   parseOnboardingName,
 } from "@/lib/whatsapp-onboarding";
 import { generateExpenseChart } from "@/lib/report-chart";
+import { buildReportData, parseReportRequest } from "@/lib/report-query";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -439,28 +440,50 @@ ${contextLines.slice(0, 20).join('\n')}
     }
 
     // 6.2 Tratamento de Gráficos/Relatórios Visuais.
-    // A intenção explícita evita depender apenas da classificação probabilística da IA.
+    // O período, a métrica e o agrupamento são extraídos da consulta do usuário.
     const explicitlyRequestedReport = /\b(gr[aá]fico|relat[oó]rio|resumo(?:\s+visual)?|gastos por categoria)\b/i.test(text);
     if (aiResult.isReport || explicitlyRequestedReport) {
-      const labels = Object.keys(expensesByCategoryName);
-      const data = Object.values(expensesByCategoryName);
-      
-      const summary = `📊 Resumo do mês\n\n💰 Ganhos: R$ ${monthIncomes.toFixed(2).replace(".", ",")}\n💸 Gastos: R$ ${monthExpenses.toFixed(2).replace(".", ",")}\n📈 Saldo: R$ ${(monthIncomes - monthExpenses).toFixed(2).replace(".", ",")}`;
-      const replyMessage = aiResult.replyMessage
-        ? `${aiResult.replyMessage}\n\n${summary}`
-        : summary;
+      const reportRequest = parseReportRequest(text);
+      const reportTransactions = await prisma.transaction.findMany({
+        where: {
+          userId: user.id,
+          occurredAt: {
+            gte: reportRequest.start,
+            lt: reportRequest.end,
+          },
+        },
+        include: { category: true },
+        orderBy: { occurredAt: "asc" },
+      });
+      const report = buildReportData(reportTransactions, reportRequest);
+      const balance = report.income - report.expense;
+      const summary = [
+        `📊 Relatório: ${reportRequest.periodLabel}`,
+        "",
+        `💰 Ganhos: R$ ${report.income.toFixed(2).replace(".", ",")}`,
+        `💸 Gastos: R$ ${report.expense.toFixed(2).replace(".", ",")}`,
+        `📈 Saldo: R$ ${balance.toFixed(2).replace(".", ",")}`,
+      ].join("\n");
 
-      if (labels.length > 0) {
-        const chartUrl = await generateExpenseChart(labels.map((label, index) => ({ label, value: data[index] })));
+      if (report.items.length > 0) {
+        const chartUrl = await generateExpenseChart(report.items, {
+          title: report.title,
+          totalLabel: report.totalLabel,
+          totalValue: report.totalValue,
+        });
         const { sendWhatsAppMedia } = await import("@/lib/evolution");
-        const mediaSent = await sendWhatsAppMedia(remoteJid, chartUrl, "image", replyMessage);
+        const mediaSent = await sendWhatsAppMedia(remoteJid, chartUrl, "image", summary);
         if (!mediaSent) {
-          await sendWhatsAppMessage(remoteJid, `${replyMessage}\n\n⚠️ Não consegui anexar o gráfico agora, mas seu resumo está acima.`);
+          await sendWhatsAppMessage(
+            remoteJid,
+            `${summary}\n\n⚠️ Não consegui anexar o gráfico agora, mas seu resumo está acima.`,
+          );
         }
-        return NextResponse.json({ success: true, replyMessage, mediaSent });
+        return NextResponse.json({ success: true, replyMessage: summary, mediaSent });
       }
 
-      const emptyMessage = "Você ainda não tem gastos registrados neste mês para gerar um gráfico.\n\n" + summary;
+      const emptyMessage =
+        `Não encontrei movimentações para esse relatório em ${reportRequest.periodLabel}.\n\n${summary}`;
       await sendWhatsAppMessage(remoteJid, emptyMessage);
       return NextResponse.json({ success: true, replyMessage: emptyMessage });
     }
