@@ -1,30 +1,39 @@
-version: '3.3'
+version: "3.8"
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   postgres:
     image: postgres:16-alpine
     container_name: finzap_postgres
     restart: unless-stopped
+    # Acesso apenas pela própria VM; nunca publicar o banco na internet.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_USER: finzap
-      POSTGRES_PASSWORD: finzap
-      POSTGRES_DB: finzap
+      POSTGRES_USER: ${DOCKER_POSTGRES_USER:-finzap}
+      POSTGRES_PASSWORD: ${DOCKER_POSTGRES_PASSWORD:?Configure DOCKER_POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${DOCKER_POSTGRES_DB:-finzap}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U finzap -d finzap"]
+      test: ["CMD-SHELL", "pg_isready -U ${DOCKER_POSTGRES_USER:-finzap} -d ${DOCKER_POSTGRES_DB:-finzap}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *default-logging
 
   redis:
     image: redis:7-alpine
     container_name: finzap_redis
     restart: unless-stopped
+    # Acesso apenas pela própria VM; os containers usam redis:6379.
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6379:6379"
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -33,45 +42,51 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *default-logging
 
   evolution-api:
-    image: evoapicloud/evolution-api:latest
+    image: ${EVOLUTION_API_IMAGE:-evoapicloud/evolution-api:latest}
     container_name: evolution_api
+    restart: unless-stopped
     ports:
       - "8080:8080"
     environment:
-      - SERVER_URL=http://localhost:8080
-      - AUTHENTICATION_API_KEY=finzap-chave-secreta-123
-      - AUTHENTICATION_EXPOSE_IN_ENV=true
-      - DATABASE_PROVIDER=postgresql
-      - DATABASE_CONNECTION_URI=postgresql://finzap:finzap@postgres:5432/finzap?schema=evolution
-      - DATABASE_CONNECTION_CLIENT_NAME=evolution_api
-      - REDIS_URI=redis://redis:6379/1
-      - CACHE_REDIS_URI=redis://redis:6379/1
+      SERVER_URL: ${EVOLUTION_PUBLIC_URL:?Configure EVOLUTION_PUBLIC_URL no .env}
+      AUTHENTICATION_API_KEY: ${EVOLUTION_API_KEY:?Configure EVOLUTION_API_KEY no .env}
+      AUTHENTICATION_EXPOSE_IN_ENV: "false"
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://${DOCKER_POSTGRES_USER:-finzap}:${DOCKER_POSTGRES_PASSWORD}@postgres:5432/${DOCKER_POSTGRES_DB:-finzap}?schema=evolution
+      DATABASE_CONNECTION_CLIENT_NAME: evolution_api
+      REDIS_URI: redis://redis:6379/1
+      CACHE_REDIS_URI: redis://redis:6379/1
     depends_on:
       - postgres
       - redis
     volumes:
       - ./evolution_instances:/evolution/instances
       - ./evolution_store:/evolution/store
+    logging: *default-logging
 
   web:
     build:
       context: .
     container_name: finzap_web
+    restart: unless-stopped
     ports:
       - "3000:3000"
     env_file:
       - .env
     environment:
-      - DATABASE_URL=postgresql://finzap:finzap@postgres:5432/finzap?schema=public
-      - REDIS_URL=redis://redis:6379
-      - EVOLUTION_API_URL=http://evolution-api:8080
-      - EVOLUTION_API_KEY=finzap-chave-secreta-123
+      DATABASE_URL: postgresql://${DOCKER_POSTGRES_USER:-finzap}:${DOCKER_POSTGRES_PASSWORD}@postgres:5432/${DOCKER_POSTGRES_DB:-finzap}?schema=public
+      REDIS_URL: redis://redis:6379
+      EVOLUTION_API_URL: http://evolution-api:8080
+      EVOLUTION_API_KEY: ${EVOLUTION_API_KEY}
+      EVOLUTION_INSTANCE_NAME: ${EVOLUTION_INSTANCE_NAME:-FinZapBot}
     depends_on:
       - evolution-api
       - postgres
       - redis
+    logging: *default-logging
 
 volumes:
   postgres_data:
