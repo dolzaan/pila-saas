@@ -51,7 +51,7 @@ export default function LoginPage() {
       <div className="auth-card">
         {/* Logo */}
         <div className="flex flex-col items-center justify-center gap-2 mb-6">
-          <Image src="/logo-icon.png" alt="Pila Icon" width={64} height={64} className="drop-shadow-xl" />
+          <Image src="/logo-icon.png" alt="" aria-hidden="true" width={64} height={64} className="drop-shadow-xl" />
           <Image src="/logo-text.png" alt="Pila" width={100} height={40} className="drop-shadow-xl" />
         </div>
 
@@ -94,7 +94,7 @@ export default function LoginPage() {
         </div>
 
         {/* Form e-mail + senha */}
-        <form id="form-login" onSubmit={handleSubmit} className="auth-form" noValidate>
+        <form id="form-login" onSubmit={handleSubmit} className="auth-form" aria-busy={loading} noValidate>
           <div className="form-group">
             <label htmlFor="email" className="form-label">
               E-mail
@@ -108,6 +108,8 @@ export default function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "login-error" : undefined}
               disabled={loading}
             />
             <div style={{ textAlign: "right", marginTop: 8 }}>
@@ -131,12 +133,14 @@ export default function LoginPage() {
               onChange={(e) => setPassword(e.target.value)}
               required
               autoComplete="current-password"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "login-error" : undefined}
               disabled={loading}
             />
           </div>
 
           {error && (
-            <div className="form-error" role="alert">
+            <div id="login-error" className="form-error" role="alert">
               {error}
             </div>
           )}
