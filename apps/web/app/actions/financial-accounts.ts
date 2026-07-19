@@ -10,6 +10,7 @@ import {
 import { prisma } from "@/lib/prisma";
 import { FinancialAccountSchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
+import { matchTransactionRule } from "@/lib/transaction-rules";
 import { z } from "zod";
 
 const importPayloadSchema = z.object({
@@ -40,6 +41,16 @@ function revalidateFinancialPages() {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/accounts");
   revalidatePath("/dashboard/transactions");
+  revalidatePath("/dashboard/reconciliation");
+}
+
+async function activeTransactionRules(userId: string) {
+  return prisma.transactionRule.findMany({
+    where: { userId, isActive: true },
+    include: {
+      category: { select: { name: true, icon: true } },
+    },
+  });
 }
 
 export async function createFinancialAccount(_state: unknown, formData: FormData) {
@@ -135,6 +146,8 @@ export async function previewFinancialImport(input: {
     );
     const seenInFile = new Set<string>();
 
+    const rules = await activeTransactionRules(session.user.id);
+
     return {
       success: true,
       format: parsed.format,
@@ -142,7 +155,19 @@ export async function previewFinancialImport(input: {
       rows: parsed.rows.map((row) => {
         const duplicate = duplicateFingerprints.has(row.fingerprint) || seenInFile.has(row.fingerprint);
         seenInFile.add(row.fingerprint);
-        return { ...row, duplicate };
+        const rule = matchTransactionRule(rules, row);
+        return {
+          ...row,
+          duplicate,
+          suggestedCategory: rule
+            ? {
+                id: rule.categoryId,
+                name: rule.category.name,
+                icon: rule.category.icon,
+                ruleKeyword: rule.keyword,
+              }
+            : null,
+        };
       }),
     };
   } catch (error) {
@@ -189,18 +214,24 @@ export async function confirmFinancialImport(input: {
     );
     const rowsToCreate = requestedRows.filter((row) => !duplicates.has(row.fingerprint));
 
+    const rules = await activeTransactionRules(session.user.id);
     const result = rowsToCreate.length
       ? await prisma.transaction.createMany({
-          data: rowsToCreate.map((row) => ({
-            userId: session.user.id,
-            financialAccountId: payload.data.accountId,
-            amount: row.amount,
-            kind: row.kind,
-            description: row.description,
-            occurredAt: new Date(row.occurredAt),
-            source: "import",
-            importFingerprint: row.fingerprint,
-          })),
+          data: rowsToCreate.map((row) => {
+            const rule = matchTransactionRule(rules, row);
+            return {
+              userId: session.user.id,
+              financialAccountId: payload.data.accountId,
+              amount: row.amount,
+              kind: row.kind,
+              description: row.description,
+              occurredAt: new Date(row.occurredAt),
+              source: "import",
+              importFingerprint: row.fingerprint,
+              categoryId: rule?.categoryId || null,
+              appliedRuleId: rule?.id || null,
+            };
+          }),
           skipDuplicates: true,
         })
       : { count: 0 };

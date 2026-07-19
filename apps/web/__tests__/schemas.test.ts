@@ -5,6 +5,8 @@ import {
   TransactionSchema,
   FinancialAccountSchema,
   BillReminderSchema,
+  AccountReconciliationSchema,
+  TransactionRuleSchema,
 } from "../lib/schemas";
 
 describe("RegisterSchema", () => {
@@ -179,6 +181,52 @@ describe("BillReminderSchema", () => {
         description: "Conta",
         amount: -20,
         dueDate: "25/07/2026",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("TransactionRuleSchema", () => {
+  it("valida palavra-chave, categoria e aplicação retroativa", () => {
+    expect(
+      TransactionRuleSchema.safeParse({
+        keyword: "iFood",
+        categoryId: "food",
+        financialAccountId: null,
+        applyToExisting: true,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejeita palavra-chave curta", () => {
+    expect(
+      TransactionRuleSchema.safeParse({
+        keyword: "i",
+        categoryId: "food",
+        financialAccountId: null,
+        applyToExisting: false,
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("AccountReconciliationSchema", () => {
+  it("valida uma conferência de saldo", () => {
+    expect(
+      AccountReconciliationSchema.safeParse({
+        accountId: "account-1",
+        statementDate: "2026-07-19",
+        statementBalance: 1234.56,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejeita data fora do formato", () => {
+    expect(
+      AccountReconciliationSchema.safeParse({
+        accountId: "account-1",
+        statementDate: "19/07/2026",
+        statementBalance: 0,
       }).success,
     ).toBe(false);
   });

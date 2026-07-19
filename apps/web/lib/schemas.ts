@@ -77,3 +77,20 @@ export const BillReminderSchema = z.object({
   amount: z.number().finite().positive("O valor deve ser positivo").max(1_000_000_000),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
 });
+
+export const TransactionRuleSchema = z.object({
+  keyword: z
+    .string()
+    .trim()
+    .min(2, "Use ao menos 2 caracteres")
+    .max(80, "Palavra-chave muito longa"),
+  categoryId: z.string().trim().min(1, "Escolha uma categoria").max(191),
+  financialAccountId: z.string().trim().min(1).max(191).optional().nullable(),
+  applyToExisting: z.boolean().default(false),
+});
+
+export const AccountReconciliationSchema = z.object({
+  accountId: z.string().trim().min(1).max(191),
+  statementDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  statementBalance: z.number().finite().min(-1_000_000_000).max(1_000_000_000),
+});
