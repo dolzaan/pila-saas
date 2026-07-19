@@ -332,6 +332,40 @@ img, svg { display: block; max-width: 100%; }
   color: var(--color-text-muted);
 }
 
+/* Keyboard navigation */
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: 100;
+  padding: 0.7rem 1rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-ink);
+  background: var(--color-mint);
+  font-weight: 750;
+  transform: translateY(-180%);
+  transition: transform var(--transition-fast);
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+:where(a, button, input, select, textarea):focus-visible {
+  outline: 2px solid var(--color-mint);
+  outline-offset: 3px;
+}
+
+#dashboard-content:focus {
+  outline: none;
+}
+
+.mobile-header,
+.mobile-nav-overlay,
+.sidebar-close {
+  display: none;
+}
+
 /* =============================================================================
    Dashboard Layout
 ============================================================================= */
@@ -414,7 +448,13 @@ img, svg { display: block; max-width: 100%; }
 
 .nav-item.active,
 .nav-item[aria-current="page"] {
-  background: rgba(16, 185, 129, 0.1);
+  background: rgba(53, 230, 161, 0.12);
+  color: var(--color-mint);
+  box-shadow: inset 3px 0 0 var(--color-mint);
+}
+
+.nav-item--admin {
+  margin-top: auto;
   color: var(--color-primary-light);
 }
 
@@ -475,8 +515,8 @@ img, svg { display: block; max-width: 100%; }
 }
 
 .btn-signout {
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
@@ -857,8 +897,96 @@ img, svg { display: block; max-width: 100%; }
    Responsividade
 ============================================================================= */
 @media (max-width: 768px) {
-  .sidebar { transform: translateX(-100%); }
-  .dashboard-main { margin-left: 0; padding: 1.25rem; }
+  .dashboard-layout {
+    display: block;
+  }
+
+  .mobile-header {
+    position: fixed;
+    inset: 0 0 auto 0;
+    z-index: 30;
+    height: 68px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 1rem;
+    background: rgba(11, 15, 25, 0.92);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+  }
+
+  .mobile-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.35rem;
+    border-radius: var(--radius-sm);
+  }
+
+  .mobile-menu-button,
+  .sidebar-close {
+    width: 44px;
+    height: 44px;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-text);
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: var(--radius-md);
+  }
+
+  .mobile-menu-button {
+    display: flex;
+  }
+
+  .mobile-nav-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    display: block;
+    background: rgba(3, 7, 18, 0.72);
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  .sidebar {
+    z-index: 40;
+    width: min(86vw, var(--sidebar-width));
+    visibility: hidden;
+    transform: translateX(-105%);
+    transition:
+      transform var(--transition-normal),
+      visibility var(--transition-normal);
+    box-shadow: 24px 0 60px rgba(0, 0, 0, 0.45);
+  }
+
+  .sidebar--open {
+    visibility: visible;
+    transform: translateX(0);
+  }
+
+  .sidebar-close {
+    position: absolute;
+    top: 1.25rem;
+    right: 1rem;
+    display: flex;
+  }
+
+  .sidebar-header {
+    padding-right: 3.25rem;
+  }
+
+  .nav-item {
+    min-height: 44px;
+  }
+
+  .dashboard-main {
+    margin-left: 0;
+    padding: 5.75rem 1rem 1.25rem;
+  }
+
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .dashboard-hero { align-items: flex-start; gap: 1rem; }
   .whatsapp-cta { flex-direction: column; text-align: center; }
@@ -868,4 +996,19 @@ img, svg { display: block; max-width: 100%; }
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
   .dashboard-greeting { font-size: 1.4rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
