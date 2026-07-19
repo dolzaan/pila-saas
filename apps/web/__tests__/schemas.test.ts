@@ -5,8 +5,8 @@ import {
   TransactionSchema,
   FinancialAccountSchema,
   BillReminderSchema,
-  FinancialGoalContributionSchema,
-  FinancialGoalSchema,
+  AccountReconciliationSchema,
+  TransactionRuleSchema,
 } from "../lib/schemas";
 
 describe("RegisterSchema", () => {
@@ -186,42 +186,47 @@ describe("BillReminderSchema", () => {
   });
 });
 
-describe("FinancialGoalSchema", () => {
-  it("valida uma meta com valor inicial e prazo", () => {
+describe("TransactionRuleSchema", () => {
+  it("valida palavra-chave, categoria e aplicação retroativa", () => {
     expect(
-      FinancialGoalSchema.safeParse({
-        name: "Reserva de emergência",
-        icon: "🛟",
-        targetAmount: 10_000,
-        savedAmount: 2_500,
-        targetDate: "2027-07-19",
+      TransactionRuleSchema.safeParse({
+        keyword: "iFood",
+        categoryId: "food",
+        financialAccountId: null,
+        applyToExisting: true,
       }).success,
     ).toBe(true);
   });
 
-  it("rejeita valor guardado maior que o objetivo", () => {
+  it("rejeita palavra-chave curta", () => {
     expect(
-      FinancialGoalSchema.safeParse({
-        name: "Viagem",
-        icon: "✈️",
-        targetAmount: 5_000,
-        savedAmount: 6_000,
-        targetDate: "",
+      TransactionRuleSchema.safeParse({
+        keyword: "i",
+        categoryId: "food",
+        financialAccountId: null,
+        applyToExisting: false,
       }).success,
     ).toBe(false);
   });
+});
 
-  it("valida apenas aportes e retiradas positivas", () => {
+describe("AccountReconciliationSchema", () => {
+  it("valida uma conferência de saldo", () => {
     expect(
-      FinancialGoalContributionSchema.safeParse({
-        amount: 250,
-        operation: "DEPOSIT",
+      AccountReconciliationSchema.safeParse({
+        accountId: "account-1",
+        statementDate: "2026-07-19",
+        statementBalance: 1234.56,
       }).success,
     ).toBe(true);
+  });
+
+  it("rejeita data fora do formato", () => {
     expect(
-      FinancialGoalContributionSchema.safeParse({
-        amount: -10,
-        operation: "WITHDRAW",
+      AccountReconciliationSchema.safeParse({
+        accountId: "account-1",
+        statementDate: "19/07/2026",
+        statementBalance: 0,
       }).success,
     ).toBe(false);
   });

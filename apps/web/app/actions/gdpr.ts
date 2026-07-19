@@ -14,6 +14,8 @@ type UserExportData = Prisma.UserGetPayload<{
     billReminders: true;
     recurringTransactions: true;
     financialAccounts: true;
+    transactionRules: true;
+    accountReconciliations: true;
     securityEvents: true;
   };
 }>;
@@ -32,6 +34,8 @@ export async function exportUserData() {
       billReminders: true,
       recurringTransactions: true,
       financialAccounts: true,
+      transactionRules: true,
+      accountReconciliations: true,
       securityEvents: true,
     },
   });
@@ -73,6 +77,8 @@ export async function exportUserData() {
       rawMessage: t.rawMessage,
       categoryId: t.categoryId,
       financialAccountId: t.financialAccountId,
+      reconciliationId: t.reconciliationId,
+      appliedRuleId: t.appliedRuleId,
     })),
     billReminders: user.billReminders.map(reminder => ({
       description: reminder.description,
@@ -91,6 +97,22 @@ export async function exportUserData() {
       startDate: item.startDate,
       endDate: item.endDate,
       nextDate: item.nextDate,
+    })),
+    transactionRules: user.transactionRules.map(rule => ({
+      keyword: rule.keyword,
+      kind: rule.kind,
+      categoryId: rule.categoryId,
+      financialAccountId: rule.financialAccountId,
+      isActive: rule.isActive,
+      createdAt: rule.createdAt,
+    })),
+    accountReconciliations: user.accountReconciliations.map(item => ({
+      financialAccountId: item.financialAccountId,
+      statementDate: item.statementDate,
+      statementBalance: item.statementBalance,
+      systemBalance: item.systemBalance,
+      transactionCount: item.transactionCount,
+      createdAt: item.createdAt,
     })),
     securityEvents: user.securityEvents.map(event => ({
       type: event.type,

@@ -3,6 +3,7 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { TransactionSchema } from "@/lib/schemas";
+import { matchTransactionRule } from "@/lib/transaction-rules";
 import { revalidatePath } from "next/cache";
 
 function parseOccurredAt(value: FormDataEntryValue | null) {
@@ -78,14 +79,32 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
     });
     if (relationError) return { error: relationError };
 
+    const rules =
+      !parsed.data.categoryId || !parsed.data.financialAccountId
+        ? await prisma.transactionRule.findMany({
+            where: { userId: session.user.id, isActive: true, kind: parsed.data.kind },
+          })
+        : [];
+    const rule = matchTransactionRule(rules, {
+      description: parsed.data.description,
+      kind: parsed.data.kind,
+    });
+    const ruleWasApplied = Boolean(
+      rule &&
+        ((!parsed.data.categoryId && rule.categoryId) ||
+          (!parsed.data.financialAccountId && rule.financialAccountId)),
+    );
+
     await prisma.transaction.create({
       data: {
         userId: session.user.id,
         amount: parsed.data.amount,
         kind: parsed.data.kind,
         description: parsed.data.description,
-        categoryId: parsed.data.categoryId,
-        financialAccountId: parsed.data.financialAccountId,
+        categoryId: parsed.data.categoryId || rule?.categoryId || null,
+        financialAccountId:
+          parsed.data.financialAccountId || rule?.financialAccountId || null,
+        appliedRuleId: ruleWasApplied ? rule?.id : null,
         occurredAt: parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : new Date(),
         source: "manual",
       },
@@ -132,6 +151,11 @@ export async function updateTransaction(id: string, _prevState: unknown, formDat
     if (!transaction || transaction.userId !== session.user.id) {
       return { error: "Transação não encontrada ou acesso negado." };
     }
+    if (transaction.reconciliationId) {
+      return {
+        error: "Esta transação já foi conciliada. Desfaça a conciliação antes de editar.",
+      };
+    }
 
     const relationError = await validateRelations({
       userId: session.user.id,
@@ -172,6 +196,11 @@ export async function deleteTransaction(id: string) {
     const transaction = await prisma.transaction.findUnique({ where: { id } });
     if (!transaction || transaction.userId !== session.user.id) {
       return { error: "Transação não encontrada ou acesso negado." };
+    }
+    if (transaction.reconciliationId) {
+      return {
+        error: "Esta transação já foi conciliada. Desfaça a conciliação antes de excluir.",
+      };
     }
 
     await prisma.transaction.delete({ where: { id } });

@@ -3,7 +3,7 @@
 // =============================================================================
 
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl", "linux-musl-openssl-3.0.x"]
 }
 
@@ -74,40 +74,41 @@ enum SecurityEventType {
 // =============================================================================
 
 model User {
-  id                  String    @id @default(cuid())
-  name                String?
-  email               String    @unique
-  emailVerified       DateTime?
-  passwordHash        String?   // null para usuários OAuth
-  image               String?
-  role                Role      @default(USER)
+  id             String    @id @default(cuid())
+  name           String?
+  email          String    @unique
+  emailVerified  DateTime?
+  passwordHash   String? // null para usuários OAuth
+  image          String?
+  role           Role      @default(USER)
   // Incrementado ao trocar a senha para invalidar JWTs emitidos anteriormente.
-  sessionVersion      Int       @default(0)
+  sessionVersion Int       @default(0)
 
   // WhatsApp
-  whatsappNumber      String?   @unique // formato: 5511999999999
-  whatsappVerifiedAt  DateTime?
+  whatsappNumber     String?   @unique // formato: 5511999999999
+  whatsappVerifiedAt DateTime?
 
   // Stripe
-  stripeCustomerId    String?   @unique
+  stripeCustomerId String? @unique
 
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relações
-  accounts            Account[]
-  sessions            Session[]
-  transactions        Transaction[]
-  categories          Category[]    // categorias customizadas do usuário
-  budgets             Budget[]
-  billReminders       BillReminder[]
-  subscription        Subscription?
-  whatsappLinkCodes   WhatsappLinkCode[]
+  accounts               Account[]
+  sessions               Session[]
+  transactions           Transaction[]
+  categories             Category[] // categorias customizadas do usuário
+  budgets                Budget[]
+  billReminders          BillReminder[]
+  subscription           Subscription?
+  whatsappLinkCodes      WhatsappLinkCode[]
   accountActivationToken AccountActivationToken?
-  recurringTransactions RecurringTransaction[]
-  financialAccounts    FinancialAccount[]
-  financialGoals       FinancialGoal[]
-  securityEvents       SecurityEvent[]
+  recurringTransactions  RecurringTransaction[]
+  financialAccounts      FinancialAccount[]
+  transactionRules       TransactionRule[]
+  accountReconciliations AccountReconciliation[]
+  securityEvents         SecurityEvent[]
 
   @@map("users")
 }
@@ -172,21 +173,22 @@ model VerificationToken {
 // =============================================================================
 
 model Category {
-  id        String          @id @default(cuid())
+  id     String          @id @default(cuid())
   // userId = null → categoria padrão do sistema (disponível a todos)
   // userId preenchido → categoria customizada do usuário
-  userId    String?
-  name      String
-  icon      String          @default("💰") // emoji ou nome de ícone
-  kind      TransactionKind // se é categoria de gasto ou receita
+  userId String?
+  name   String
+  icon   String          @default("💰") // emoji ou nome de ícone
+  kind   TransactionKind // se é categoria de gasto ou receita
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  user         User?         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  user                  User?                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions          Transaction[]
   recurringTransactions RecurringTransaction[]
-  budgets      Budget[]
+  budgets               Budget[]
+  transactionRules      TransactionRule[]
 
   @@unique([userId, name]) // evita duplicata por usuário
   @@map("categories")
@@ -205,8 +207,10 @@ model FinancialAccount {
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
+  user             User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+  transactionRules TransactionRule[]
+  reconciliations  AccountReconciliation[]
 
   @@unique([userId, name])
   @@index([userId, isArchived])
@@ -214,7 +218,7 @@ model FinancialAccount {
 }
 
 model Transaction {
-  id                 String          @id @default(cuid())
+  id                 String  @id @default(cuid())
   userId             String
   categoryId         String?
   financialAccountId String?
@@ -225,27 +229,33 @@ model Transaction {
   occurredAt  DateTime        @default(now())
 
   // Rastreabilidade
-  source      String          @default("manual") // "manual" | "whatsapp" | "recurring" | "import"
+  source            String  @default("manual") // "manual" | "whatsapp" | "recurring" | "import"
   // rawMessage: NUNCA logado externamente; armazenado para auditoria interna
   // criptografado em repouso (Fase 7) — por ora, salvo como texto
-  rawMessage  String?         @db.Text
-  externalMessageId String?   @unique // idempotência para mensagens do WhatsApp
+  rawMessage        String? @db.Text
+  externalMessageId String? @unique // idempotência para mensagens do WhatsApp
   importFingerprint String?
+  reconciliationId  String?
+  appliedRuleId     String?
 
-  createdAt   DateTime        @default(now())
-  updatedAt   DateTime        @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
-  financialAccount FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
-  recurringTransaction   RecurringTransaction? @relation("RecurringToTransaction", fields: [recurringTransactionId], references: [id], onDelete: SetNull)
+  user                   User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category               Category?              @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  financialAccount       FinancialAccount?      @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
+  reconciliation         AccountReconciliation? @relation(fields: [reconciliationId], references: [id], onDelete: SetNull)
+  appliedRule            TransactionRule?       @relation(fields: [appliedRuleId], references: [id], onDelete: SetNull)
+  recurringTransaction   RecurringTransaction?  @relation("RecurringToTransaction", fields: [recurringTransactionId], references: [id], onDelete: SetNull)
   recurringTransactionId String?
 
+  @@unique([userId, importFingerprint])
+  @@unique([recurringTransactionId, occurredAt])
   @@index([userId, occurredAt])
   @@index([userId, categoryId])
   @@index([userId, financialAccountId])
-  @@unique([userId, importFingerprint])
-  @@unique([recurringTransactionId, occurredAt])
+  @@index([userId, reconciliationId])
+  @@index([userId, appliedRuleId])
   @@map("transactions")
 }
 
@@ -268,13 +278,13 @@ model WhatsappInboundMessage {
 }
 
 model Budget {
-  id           String   @id @default(cuid())
+  id           String  @id @default(cuid())
   userId       String
   categoryId   String
-  monthlyLimit Decimal  @db.Decimal(12, 2)
+  monthlyLimit Decimal @db.Decimal(12, 2)
 
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
@@ -284,26 +294,26 @@ model Budget {
 }
 
 model RecurringTransaction {
-  id          String             @id @default(cuid())
-  userId      String
-  categoryId  String?
+  id         String  @id @default(cuid())
+  userId     String
+  categoryId String?
 
-  amount      Decimal            @db.Decimal(12, 2)
+  amount      Decimal         @db.Decimal(12, 2)
   kind        TransactionKind
   description String?
-  
-  interval    RecurrenceInterval
-  startDate   DateTime
-  endDate     DateTime?
-  nextDate    DateTime
-  
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
-  
-  user        User               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  category    Category?          @relation(fields: [categoryId], references: [id], onDelete: SetNull)
 
-  transactions Transaction[]     @relation("RecurringToTransaction")
+  interval  RecurrenceInterval
+  startDate DateTime
+  endDate   DateTime?
+  nextDate  DateTime
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  transactions Transaction[] @relation("RecurringToTransaction")
 
   @@index([userId])
   @@index([nextDate])
@@ -311,41 +321,62 @@ model RecurringTransaction {
 }
 
 model BillReminder {
-  id          String   @id @default(cuid())
-  userId      String
-  description String
-  amount      Decimal  @db.Decimal(12, 2)
-  dueDate     DateTime
-  isPaid      Boolean  @default(false)
-  paidAt      DateTime?
-  snoozedUntil DateTime?
-  lastNotifiedAt DateTime?
-  notificationCount Int @default(0)
-  createdAt   DateTime @default(now())
+  id                String    @id @default(cuid())
+  userId            String
+  description       String
+  amount            Decimal   @db.Decimal(12, 2)
+  dueDate           DateTime
+  isPaid            Boolean   @default(false)
+  paidAt            DateTime?
+  snoozedUntil      DateTime?
+  lastNotifiedAt    DateTime?
+  notificationCount Int       @default(0)
+  createdAt         DateTime  @default(now())
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, dueDate])
   @@map("bill_reminders")
 }
 
-model FinancialGoal {
-  id           String    @id @default(cuid())
-  userId       String
-  name         String
-  icon         String    @default("🎯")
-  targetAmount Decimal   @db.Decimal(12, 2)
-  savedAmount  Decimal   @default(0) @db.Decimal(12, 2)
-  targetDate   DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+model TransactionRule {
+  id                 String          @id @default(cuid())
+  userId             String
+  keyword            String
+  kind               TransactionKind
+  categoryId         String
+  financialAccountId String?
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  category         Category          @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  financialAccount FinancialAccount? @relation(fields: [financialAccountId], references: [id], onDelete: SetNull)
+  transactions     Transaction[]
 
-  @@index([userId, completedAt])
-  @@index([userId, targetDate])
-  @@map("financial_goals")
+  @@index([userId, isActive])
+  @@index([userId, kind])
+  @@map("transaction_rules")
+}
+
+model AccountReconciliation {
+  id                 String   @id @default(cuid())
+  userId             String
+  financialAccountId String
+  statementDate      DateTime
+  statementBalance   Decimal  @db.Decimal(12, 2)
+  systemBalance      Decimal  @db.Decimal(12, 2)
+  transactionCount   Int      @default(0)
+  createdAt          DateTime @default(now())
+
+  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  financialAccount FinancialAccount @relation(fields: [financialAccountId], references: [id], onDelete: Cascade)
+  transactions     Transaction[]
+
+  @@unique([financialAccountId, statementDate])
+  @@index([userId, createdAt])
+  @@map("account_reconciliations")
 }
 
 // =============================================================================
@@ -424,7 +455,7 @@ model Subscription {
   userId               String             @unique
   stripeSubscriptionId String             @unique
   status               SubscriptionStatus @default(INACTIVE)
-  plan                 String             // "free" | "pro"
+  plan                 String // "free" | "pro"
   currentPeriodEnd     DateTime?
 
   createdAt DateTime @default(now())

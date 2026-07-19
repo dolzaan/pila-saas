@@ -20,6 +20,12 @@ type PreviewRow = {
   kind: "EXPENSE" | "INCOME";
   sourceRow: number;
   duplicate: boolean;
+  suggestedCategory: {
+    id: string;
+    name: string;
+    icon: string;
+    ruleKeyword: string;
+  } | null;
 };
 
 type Preview = {
@@ -278,6 +284,7 @@ export function FinancialImporter({ accounts }: { accounts: AccountOption[] }) {
                       </th>
                       <th className="px-3 py-3 font-medium">Data</th>
                       <th className="px-3 py-3 font-medium">Descrição</th>
+                      <th className="px-3 py-3 font-medium">Categoria sugerida</th>
                       <th className="px-3 py-3 font-medium">Status</th>
                       <th className="px-4 py-3 text-right font-medium">Valor</th>
                     </tr>
@@ -305,6 +312,18 @@ export function FinancialImporter({ accounts }: { accounts: AccountOption[] }) {
                         </td>
                         <td className="max-w-xs truncate px-3 py-3 text-gray-200">
                           {row.description}
+                        </td>
+                        <td className="px-3 py-3 text-gray-400">
+                          {row.suggestedCategory ? (
+                            <span
+                              title={`Regra: contém “${row.suggestedCategory.ruleKeyword}”`}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-indigo-400/10 px-2 py-1 text-xs text-indigo-200"
+                            >
+                              {row.suggestedCategory.icon} {row.suggestedCategory.name}
+                            </span>
+                          ) : (
+                            "—"
+                          )}
                         </td>
                         <td className="px-3 py-3">
                           <span

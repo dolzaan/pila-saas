@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { TransactionForm, DeleteTransactionButton } from "@/components/transactions/transaction-form";
-import { Search } from "lucide-react";
+import { CheckCircle2, Search, Sparkles } from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Transações — Pila",
@@ -88,6 +88,7 @@ export default async function TransactionsPage({
                   <th className="pb-3 font-medium">Descrição</th>
                   <th className="pb-3 font-medium">Categoria</th>
                   <th className="pb-3 font-medium">Conta</th>
+                  <th className="pb-3 font-medium">Conciliação</th>
                   <th className="pb-3 font-medium text-right">Valor</th>
                   <th className="pb-3 font-medium text-center">Ações</th>
                 </tr>
@@ -99,7 +100,13 @@ export default async function TransactionsPage({
                       {tx.occurredAt.toLocaleDateString("pt-BR")}
                     </td>
                     <td className="py-4 text-gray-200">
-                      {tx.description || "—"}
+                      <span>{tx.description || "—"}</span>
+                      {tx.appliedRuleId && (
+                        <span className="mt-1 flex items-center gap-1 text-[11px] text-indigo-300">
+                          <Sparkles className="h-3 w-3" />
+                          Regra automática
+                        </span>
+                      )}
                     </td>
                     <td className="py-4 text-gray-400">
                       {tx.category ? (
@@ -113,6 +120,18 @@ export default async function TransactionsPage({
                     </td>
                     <td className="py-4 text-gray-400">
                       {tx.financialAccount?.name || "—"}
+                    </td>
+                    <td className="py-4 text-gray-400">
+                      {tx.reconciliationId ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2 py-1 text-xs text-emerald-300">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          Conferida
+                        </span>
+                      ) : tx.financialAccountId ? (
+                        <span className="text-xs text-amber-300">Pendente</span>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className={`py-4 text-right font-medium ${tx.kind === "INCOME" ? "text-emerald-400" : "text-gray-200"}`}>
                       {tx.kind === "INCOME" ? "+" : "-"} {formatCurrency(tx.amount.toNumber())}
