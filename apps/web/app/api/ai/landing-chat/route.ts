@@ -4,13 +4,20 @@ import { auth } from "@/lib/auth";
 import { parseFinancialMessage } from "@/lib/ai";
 import { prisma } from "@/lib/prisma";
 import { parseReportRequest } from "@/lib/report-query";
+import {
+  checkRateLimits,
+  getClientIp,
+  privateRateLimitKey,
+  rateLimitHeaders,
+  RateLimitUnavailableError,
+} from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
 const WINDOW_MS = 10 * 60 * 1000;
 const PUBLIC_MAX_REQUESTS = 10;
 const AUTHENTICATED_MAX_REQUESTS = 30;
-const requestBuckets = new Map<string, { count: number; resetAt: number }>();
+const AUTHENTICATED_IP_MAX_REQUESTS = 60;
 
 const ChatSchema = z.object({
   message: z.string().trim().min(1).max(500),
@@ -19,32 +26,6 @@ const ChatSchema = z.object({
     content: z.string().trim().min(1).max(600),
   })).max(8).default([]),
 });
-
-function getClientIp(request: Request) {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()
-    || request.headers.get("x-real-ip")
-    || "unknown";
-}
-
-function allowRequest(key: string, limit: number) {
-  const now = Date.now();
-
-  if (requestBuckets.size > 500) {
-    for (const [bucketKey, value] of requestBuckets) {
-      if (value.resetAt <= now) requestBuckets.delete(bucketKey);
-    }
-  }
-
-  const current = requestBuckets.get(key);
-  if (!current || current.resetAt <= now) {
-    requestBuckets.set(key, { count: 1, resetAt: now + WINDOW_MS });
-    return true;
-  }
-
-  if (current.count >= limit) return false;
-  current.count += 1;
-  return true;
-}
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -187,12 +168,31 @@ export async function POST(request: Request) {
 
     const session = await auth();
     const userId = session?.user?.id;
-    const rateLimitKey = userId ? `user:${userId}` : `ip:${getClientIp(request)}`;
-    const rateLimit = userId ? AUTHENTICATED_MAX_REQUESTS : PUBLIC_MAX_REQUESTS;
-    if (!allowRequest(rateLimitKey, rateLimit)) {
+    const ip = getClientIp(request);
+    const rateLimitRules = [
+      {
+        key: privateRateLimitKey("ai:landing:ip", ip),
+        limit: userId
+          ? AUTHENTICATED_IP_MAX_REQUESTS
+          : PUBLIC_MAX_REQUESTS,
+        windowMs: WINDOW_MS,
+      },
+      ...(userId
+        ? [{
+            key: privateRateLimitKey("ai:landing:user", userId),
+            limit: AUTHENTICATED_MAX_REQUESTS,
+            windowMs: WINDOW_MS,
+          }]
+        : []),
+    ];
+    const rateLimitDecision = await checkRateLimits(rateLimitRules);
+    if (!rateLimitDecision.allowed) {
       return NextResponse.json(
         { error: "Você enviou muitas mensagens. Aguarde alguns minutos e tente novamente." },
-        { status: 429 },
+        {
+          status: 429,
+          headers: rateLimitHeaders(rateLimitDecision),
+        },
       );
     }
 
@@ -231,6 +231,14 @@ export async function POST(request: Request) {
       { headers: { "Cache-Control": "no-store" } },
     );
   } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      console.error("[AI chat] Rate limiting indisponível:", error.message);
+      return NextResponse.json(
+        { error: "O chat está temporariamente indisponível. Tente novamente em instantes." },
+        { status: 503 },
+      );
+    }
+
     console.error("[AI chat] Erro:", error);
     return NextResponse.json(
       { error: "Não consegui responder agora. Tente novamente em instantes." },
