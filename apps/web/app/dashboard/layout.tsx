@@ -46,10 +46,15 @@ export default async function DashboardLayout({
     <div className="dashboard-layout">
       {/* Sidebar */}
       <aside className="sidebar">
-        <div className="sidebar-header flex items-center gap-2 mb-8">
-          <Image src="/logo-icon.png" alt="Pila Icon" width={32} height={32} />
+        <Link
+          href="/dashboard"
+          className="sidebar-header"
+          aria-label="Ir para o dashboard"
+          title="Voltar ao dashboard"
+        >
+          <Image src="/logo-icon.png" alt="" width={32} height={32} aria-hidden="true" />
           <Image src="/logo-text.png" alt="Pila" width={60} height={24} />
-        </div>
+        </Link>
 
         <nav className="sidebar-nav" aria-label="Menu principal">
           <Link href="/dashboard" className="nav-item">
@@ -85,7 +90,7 @@ export default async function DashboardLayout({
             <span>Configurações</span>
           </Link>
           {session.user.role === "ADMIN" && (
-            <Link href="/admin" className="nav-item" style={{ marginTop: 'auto', color: 'var(--primary)' }}>
+            <Link href="/admin" className="nav-item mt-auto text-emerald-400">
               <Shield className="w-5 h-5" />
               <span>Admin Panel</span>
             </Link>
