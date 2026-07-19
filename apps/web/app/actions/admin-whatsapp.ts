@@ -31,6 +31,10 @@ const headers = {
   "apikey": EVOLUTION_API_KEY,
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 async function setSecureWebhook(webhook: ReturnType<typeof getWebhookConfig>) {
   const response = await fetch(`${EVOLUTION_API_URL}/webhook/set/${EVOLUTION_INSTANCE_NAME}`, {
     method: "POST",
@@ -130,9 +134,9 @@ export async function connectWhatsApp() {
     
     return { success: true, qrcode: connectData.base64 };
 
-  } catch (error: any) {
+  } catch (error) {
     console.error("[Evolution API] Connect error:", error);
-    return { success: false, message: error.message || "Erro interno" };
+    return { success: false, message: getErrorMessage(error, "Erro interno") };
   }
 }
 
@@ -150,8 +154,11 @@ export async function logoutWhatsApp() {
     
     revalidatePath("/admin");
     return { success: true };
-  } catch (error: any) {
-    return { success: false, message: error.message || "Failed to logout" };
+  } catch (error) {
+    return {
+      success: false,
+      message: getErrorMessage(error, "Failed to logout"),
+    };
   }
 }
 

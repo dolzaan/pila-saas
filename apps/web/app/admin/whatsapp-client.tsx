@@ -12,24 +12,29 @@ export default function WhatsappClient() {
 
   // Timer para o QR Code
   useEffect(() => {
-    if (timeLeft === null) return;
-    
-    if (timeLeft <= 0) {
-      // Tempo esgotado
-      setTimeLeft(null);
-      setQrCode(null);
-      setStatus("loading");
-      logoutWhatsApp().then(() => {
-        setStatus("close");
-      });
-      return;
-    }
+    if (timeLeft === null || timeLeft <= 0) return;
 
     const timerId = setInterval(() => {
       setTimeLeft((prev) => (prev !== null && prev > 0 ? prev - 1 : 0));
     }, 1000);
 
     return () => clearInterval(timerId);
+  }, [timeLeft]);
+
+  useEffect(() => {
+    if (timeLeft !== 0) return;
+
+    let cancelled = false;
+    void logoutWhatsApp().then(() => {
+      if (cancelled) return;
+      setTimeLeft(null);
+      setQrCode(null);
+      setStatus("close");
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [timeLeft]);
 
   const fetchStatus = async () => {
@@ -43,10 +48,24 @@ export default function WhatsappClient() {
   };
 
   useEffect(() => {
-    fetchStatus();
+    let cancelled = false;
+
+    const loadInitialStatus = async () => {
+      const res = await getWhatsAppStatus();
+      if (cancelled) return;
+
+      setStatus(res.state);
+      if (res.state === "open") {
+        setQrCode(null);
+      }
+    };
+
+    void loadInitialStatus();
+
     // Poll status every 5 seconds if not open
     const interval = setInterval(() => {
       getWhatsAppStatus().then(res => {
+        if (cancelled) return;
         setStatus(res.state);
         if (res.state === "open") {
           setQrCode(null);
@@ -54,7 +73,11 @@ export default function WhatsappClient() {
         }
       });
     }, 5000);
-    return () => clearInterval(interval);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   const handleConnect = async () => {
