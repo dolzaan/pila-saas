@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
 import { timingSafeEqual } from "node:crypto";
-import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
@@ -19,6 +18,11 @@ import {
 } from "@/lib/whatsapp-onboarding";
 import { generateExpenseChart } from "@/lib/report-chart";
 import { buildReportData, parseReportRequest } from "@/lib/report-query";
+import {
+  claimWhatsappInboundMessage,
+  completeWhatsappInboundMessage,
+  failWhatsappInboundMessage,
+} from "@/lib/whatsapp-inbound";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -42,6 +46,9 @@ async function authorizeWebhook(req: Request) {
 }
 
 export async function POST(req: Request) {
+  let claimedMessageId: string | null = null;
+  let processingError: unknown = null;
+
   try {
     if (!(await authorizeWebhook(req))) {
       const status = process.env.WHATSAPP_WEBHOOK_SECRET ? 401 : 503;
@@ -111,16 +118,26 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: "ID da mensagem inválido" }, { status: 400 });
     }
 
-    try {
-      await prisma.whatsappInboundMessage.create({
-        data: { id: messageId, phone: phoneNumber },
+    const claim = await claimWhatsappInboundMessage(messageId, phoneNumber);
+    if (claim.state === "COMPLETED") {
+      return NextResponse.json({
+        success: true,
+        ignored: true,
+        duplicate: true,
       });
-    } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
-        return NextResponse.json({ success: true, ignored: true, duplicate: true });
-      }
-      throw error;
     }
+    if (claim.state === "PROCESSING") {
+      return NextResponse.json(
+        {
+          success: true,
+          accepted: true,
+          duplicate: true,
+          processing: true,
+        },
+        { status: 202 },
+      );
+    }
+    claimedMessageId = messageId;
 
     // 3. Buscar o usuário pelo telefone
     let user = await prisma.user.findFirst({
@@ -541,8 +558,30 @@ ${contextLines.slice(0, 20).join('\n')}
     return NextResponse.json({ success: true, processed: true, replyMessage });
 
   } catch (error: unknown) {
+    processingError = error;
     const message = error instanceof Error ? error.message : "Erro desconhecido";
     console.error("[Webhook WhatsApp] Erro:", message);
-    return NextResponse.json({ success: false, error: message }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Não foi possível processar a mensagem." },
+      { status: 500 },
+    );
+  } finally {
+    if (claimedMessageId) {
+      if (processingError) {
+        try {
+          await failWhatsappInboundMessage(
+            claimedMessageId,
+            processingError,
+          );
+        } catch (stateError) {
+          console.error(
+            "[Webhook WhatsApp] Falha ao registrar estado FAILED:",
+            stateError,
+          );
+        }
+      } else {
+        await completeWhatsappInboundMessage(claimedMessageId);
+      }
+    }
   }
 }
