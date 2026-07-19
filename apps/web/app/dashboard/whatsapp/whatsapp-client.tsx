@@ -78,7 +78,7 @@ export default function WhatsappClient({
 
         <button 
           onClick={handleUnlink}
-          className="mt-4 px-6 py-2.5 bg-red-500/10 text-red-500 hover:bg-red-500/20 rounded-xl font-medium transition-colors"
+          className="mt-4 app-button app-button--danger"
         >
           Desvincular Número
         </button>
@@ -126,7 +126,7 @@ export default function WhatsappClient({
             <button 
               onClick={handleGeneratePin}
               disabled={isGenerating}
-              className="px-8 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl font-semibold transition-colors disabled:opacity-50"
+              className="app-button app-button--primary"
             >
               {isGenerating ? "Gerando..." : "Gerar PIN de Vínculo"}
             </button>
