@@ -52,10 +52,6 @@ export default function DashboardNavigation({ user }: DashboardNavigationProps) 
   const sidebarRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    setIsOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
     if (!isOpen) return;
 
     const previousFocus = document.activeElement as HTMLElement | null;
@@ -146,6 +142,7 @@ export default function DashboardNavigation({ user }: DashboardNavigationProps) 
         <Link
           href="/dashboard"
           className="sidebar-header"
+          onClick={() => setIsOpen(false)}
           aria-label="Ir para o dashboard"
           title="Voltar ao dashboard"
         >
@@ -173,6 +170,7 @@ export default function DashboardNavigation({ user }: DashboardNavigationProps) 
                 href={href}
                 className="nav-item"
                 aria-current={isCurrent ? "page" : undefined}
+                onClick={() => setIsOpen(false)}
               >
                 <Icon className="w-5 h-5" aria-hidden="true" />
                 <span>{label}</span>
@@ -185,6 +183,7 @@ export default function DashboardNavigation({ user }: DashboardNavigationProps) 
               href="/admin"
               className="nav-item nav-item--admin"
               aria-current={pathname.startsWith("/admin") ? "page" : undefined}
+              onClick={() => setIsOpen(false)}
             >
               <Shield className="w-5 h-5" aria-hidden="true" />
               <span>Admin Panel</span>
