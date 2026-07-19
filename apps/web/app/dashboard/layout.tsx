@@ -1,23 +1,9 @@
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import Link from "next/link";
-import Image from "next/image";
-import { signOut } from "@/lib/auth";
-import {
-  LayoutDashboard,
-  CreditCard,
-  Tags,
-  Target,
-  LineChart,
-  MessageSquare,
-  Settings,
-  LogOut,
-  CalendarDays,
-  Shield
-} from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import ExpiredPaywall from "@/components/expired-paywall";
+import DashboardNavigation from "@/components/dashboard/dashboard-navigation";
 
 export default async function DashboardLayout({
   children,
@@ -32,7 +18,7 @@ export default async function DashboardLayout({
 
   const dbUser = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { createdAt: true, subscription: true }
+    select: { createdAt: true, subscription: true },
   });
 
   if (!dbUser) {
@@ -44,90 +30,15 @@ export default async function DashboardLayout({
 
   return (
     <div className="dashboard-layout">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <Link
-          href="/dashboard"
-          className="sidebar-header"
-          aria-label="Ir para o dashboard"
-          title="Voltar ao dashboard"
-        >
-          <Image src="/logo-icon.png" alt="" width={32} height={32} aria-hidden="true" />
-          <Image src="/logo-text.png" alt="Pila" width={60} height={24} />
-        </Link>
+      <DashboardNavigation
+        user={{
+          name: session.user.name,
+          email: session.user.email,
+          isAdmin: session.user.role === "ADMIN",
+        }}
+      />
 
-        <nav className="sidebar-nav" aria-label="Menu principal">
-          <Link href="/dashboard" className="nav-item">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/dashboard/transactions" className="nav-item">
-            <CreditCard className="w-5 h-5" />
-            <span>Transações</span>
-          </Link>
-          <Link href="/dashboard/recurring" className="nav-item">
-            <CalendarDays className="w-5 h-5" />
-            <span>Contas Fixas</span>
-          </Link>
-          <Link href="/dashboard/categories" className="nav-item">
-            <Tags className="w-5 h-5" />
-            <span>Categorias</span>
-          </Link>
-          <Link href="/dashboard/budgets" className="nav-item">
-            <Target className="w-5 h-5" />
-            <span>Orçamentos</span>
-          </Link>
-          <Link href="/dashboard/reports" className="nav-item">
-            <LineChart className="w-5 h-5" />
-            <span>Relatórios</span>
-          </Link>
-          <Link href="/dashboard/whatsapp" className="nav-item">
-            <MessageSquare className="w-5 h-5" />
-            <span>WhatsApp</span>
-          </Link>
-          <Link href="/dashboard/settings" className="nav-item">
-            <Settings className="w-5 h-5" />
-            <span>Configurações</span>
-          </Link>
-          {session.user.role === "ADMIN" && (
-            <Link href="/admin" className="nav-item mt-auto text-emerald-400">
-              <Shield className="w-5 h-5" />
-              <span>Admin Panel</span>
-            </Link>
-          )}
-        </nav>
-
-        <div className="sidebar-footer">
-          <div className="sidebar-user">
-            <div className="sidebar-avatar">
-              {session.user.name?.charAt(0).toUpperCase() ?? "U"}
-            </div>
-            <div className="sidebar-user-info">
-              <span className="sidebar-user-name">{session.user.name}</span>
-              <span className="sidebar-user-email">{session.user.email}</span>
-            </div>
-          </div>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <button
-              id="btn-signout"
-              type="submit"
-              className="btn-signout"
-              title="Sair"
-            >
-              <LogOut className="w-5 h-5" aria-hidden="true" />
-              <span className="sr-only">Sair</span>
-            </button>
-          </form>
-        </div>
-      </aside>
-
-      {/* Main content */}
-      <main className="dashboard-main">
+      <main id="dashboard-content" className="dashboard-main" tabIndex={-1}>
         {isExpired ? <ExpiredPaywall status={subStatus.status} /> : children}
       </main>
     </div>
