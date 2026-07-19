@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import { BudgetForm } from "./budget-form";
-import { Plus, X } from "lucide-react";
+import { BudgetModal } from "./budget-modal";
+import { Plus } from "lucide-react";
 
 interface CategoryData {
   id: string;
@@ -120,35 +121,30 @@ export function BudgetClient({ data }: { data: BudgetCardData[] }) {
       </div>
 
       {isChoosingCategory && (
-        <div className="modal-overlay">
-          <div className="modal-content">
-            <div className="modal-header">
-              <div>
-                <h2 className="modal-title">Adicionar orçamento</h2>
-                <p className="text-sm text-gray-400 mt-1">Escolha a categoria que receberá um limite mensal.</p>
-              </div>
-              <button type="button" onClick={() => setIsChoosingCategory(false)} className="modal-close" aria-label="Fechar">
-                <X className="h-5 w-5" />
+        <BudgetModal
+          title="Adicionar orçamento"
+          description="Escolha a categoria que receberá um limite mensal."
+          onClose={() => setIsChoosingCategory(false)}
+        >
+          <div className="min-h-0 space-y-2 overflow-y-auto px-5 py-5 sm:px-6">
+            {availableCategories.map((item) => (
+              <button
+                type="button"
+                key={item.category.id}
+                onClick={() => handleCreate(item.category)}
+                className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-4 text-left transition-colors hover:border-emerald-400/30 hover:bg-white/10"
+              >
+                <span className="text-2xl" aria-hidden="true">{item.category.icon}</span>
+                <span className="font-medium text-white">{item.category.name}</span>
               </button>
-            </div>
-            <div className="modal-body space-y-2 max-h-[60vh] overflow-y-auto">
-              {availableCategories.map((item) => (
-                <button
-                  type="button"
-                  key={item.category.id}
-                  onClick={() => handleCreate(item.category)}
-                  className="w-full flex items-center gap-3 p-4 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 text-left transition-colors"
-                >
-                  <span className="text-2xl">{item.category.icon}</span>
-                  <span className="text-white font-medium">{item.category.name}</span>
-                </button>
-              ))}
-              {availableCategories.length === 0 && (
-                <p className="text-center text-gray-400 py-8">Todas as categorias já possuem orçamento.</p>
-              )}
-            </div>
+            ))}
+            {availableCategories.length === 0 && (
+              <p className="py-8 text-center text-gray-400">
+                Todas as categorias já possuem orçamento.
+              </p>
+            )}
           </div>
-        </div>
+        </BudgetModal>
       )}
 
       {selectedCategory && (

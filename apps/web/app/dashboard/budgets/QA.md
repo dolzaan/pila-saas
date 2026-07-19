@@ -2,3 +2,5 @@
 - Seletor mostra apenas categorias sem orçamento.
 - Edição e exclusão continuam disponíveis nos cards.
 - Estado sem categorias possui mensagem adequada.
+- Os seletores **Adicionar orçamento** e **Definir orçamento** abrem centralizados sobre a tela, sem aumentar a altura da página.
+- Os modais fecham pelo botão, pelo backdrop e pela tecla Escape, além de bloquearem a rolagem do conteúdo ao fundo.
