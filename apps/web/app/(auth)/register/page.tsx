@@ -113,7 +113,7 @@ export default function RegisterPage() {
       <div className="auth-card">
         {/* Logo */}
         <div className="flex flex-col items-center justify-center gap-2 mb-6">
-          <Image src="/logo-icon.png" alt="Pila Icon" width={64} height={64} className="drop-shadow-xl" />
+          <Image src="/logo-icon.png" alt="" aria-hidden="true" width={64} height={64} className="drop-shadow-xl" />
           <Image src="/logo-text.png" alt="Pila" width={100} height={40} className="drop-shadow-xl" />
         </div>
 
@@ -123,7 +123,7 @@ export default function RegisterPage() {
         </p>
 
         {awaitingVerification ? (
-          <form onSubmit={handleVerification} className="auth-form" noValidate>
+          <form onSubmit={handleVerification} className="auth-form" aria-busy={loading} noValidate>
             <div className="form-group">
               <label htmlFor="verification-code" className="form-label">
                 Código recebido por e-mail
@@ -139,14 +139,16 @@ export default function RegisterPage() {
                 value={code}
                 onChange={(event) => setCode(event.target.value.replace(/\D/g, ""))}
                 autoComplete="one-time-code"
+                aria-invalid={Boolean(error)}
+                aria-describedby={error ? "verification-error" : notice ? "verification-notice" : undefined}
                 disabled={loading}
                 required
                 autoFocus
               />
             </div>
 
-            {notice && <div className="form-success" role="status">{notice}</div>}
-            {error && <div className="form-error" role="alert">{error}</div>}
+            {notice && <div id="verification-notice" className="form-success" role="status">{notice}</div>}
+            {error && <div id="verification-error" className="form-error" role="alert">{error}</div>}
 
             <button type="submit" className="btn-primary" disabled={loading || code.length !== 6}>
               {loading ? "Confirmando..." : "Confirmar e-mail"}
@@ -191,7 +193,7 @@ export default function RegisterPage() {
         </div>
 
         {/* Form */}
-        <form id="form-register" onSubmit={handleSubmit} className="auth-form" noValidate>
+        <form id="form-register" onSubmit={handleSubmit} className="auth-form" aria-busy={loading} noValidate>
           <div className="form-group">
             <label htmlFor="name" className="form-label">
               Nome
@@ -222,6 +224,8 @@ export default function RegisterPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
               autoComplete="email"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "register-error" : undefined}
               disabled={loading}
             />
           </div>
@@ -240,12 +244,17 @@ export default function RegisterPage() {
               required
               minLength={8}
               autoComplete="new-password"
+              aria-invalid={Boolean(error)}
+              aria-describedby={error ? "register-error password-requirements" : "password-requirements"}
               disabled={loading}
             />
+            <p id="password-requirements" className="form-hint">
+              Use pelo menos 8 caracteres.
+            </p>
           </div>
 
           {error && (
-            <div className="form-error" role="alert">
+            <div id="register-error" className="form-error" role="alert">
               {error}
             </div>
           )}

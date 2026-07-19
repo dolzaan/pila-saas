@@ -4,7 +4,18 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
 import Link from "next/link";
-import { Wallet, TrendingDown, TrendingUp, Activity, Search } from "lucide-react";
+import {
+  Activity,
+  CheckCircle2,
+  Circle,
+  MessageCircle,
+  ReceiptText,
+  Search,
+  Target,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 
 export const metadata: Metadata = {
   title: "Dashboard — Pila",
@@ -22,15 +33,61 @@ export default async function DashboardPage() {
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
   const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
-  // Fetch transactions for the current month
-  const currentMonthTransactions = await prisma.transaction.findMany({
-    where: {
-      userId: session.user.id,
-      occurredAt: { gte: firstDay, lte: lastDay },
+  // Fetch dashboard data and onboarding progress together.
+  const [currentMonthTransactions, userSetup] = await Promise.all([
+    prisma.transaction.findMany({
+      where: {
+        userId: session.user.id,
+        occurredAt: { gte: firstDay, lte: lastDay },
+      },
+      include: { category: true },
+      orderBy: { occurredAt: "desc" },
+    }),
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        whatsappNumber: true,
+        _count: {
+          select: {
+            transactions: true,
+            budgets: true,
+          },
+        },
+      },
+    }),
+  ]);
+
+  if (!userSetup) redirect("/login");
+
+  const onboardingSteps = [
+    {
+      label: "Conectar o WhatsApp",
+      description: "Registre movimentações conversando com o Pila.",
+      href: "/dashboard/whatsapp",
+      action: "Conectar",
+      done: Boolean(userSetup.whatsappNumber),
+      icon: MessageCircle,
     },
-    include: { category: true },
-    orderBy: { occurredAt: "desc" },
-  });
+    {
+      label: "Registrar a primeira transação",
+      description: "Adicione uma receita ou despesa para iniciar seus relatórios.",
+      href: "/dashboard/transactions",
+      action: "Registrar",
+      done: userSetup._count.transactions > 0,
+      icon: ReceiptText,
+    },
+    {
+      label: "Criar um orçamento",
+      description: "Defina um limite para acompanhar uma categoria.",
+      href: "/dashboard/budgets",
+      action: "Criar orçamento",
+      done: userSetup._count.budgets > 0,
+      icon: Target,
+    },
+  ];
+
+  const completedOnboardingSteps = onboardingSteps.filter((step) => step.done).length;
+  const onboardingComplete = completedOnboardingSteps === onboardingSteps.length;
 
   // Calculate stats
   let totalIncome = 0;
@@ -76,6 +133,52 @@ export default async function DashboardPage() {
           </span>
         </div>
       </div>
+
+      {!onboardingComplete && (
+        <section className="onboarding-card" aria-labelledby="onboarding-title">
+          <div className="onboarding-header">
+            <div>
+              <span className="dashboard-kicker">Primeiros passos</span>
+              <h2 id="onboarding-title">Prepare o Pila para trabalhar por você</h2>
+              <p>{completedOnboardingSteps} de {onboardingSteps.length} etapas concluídas</p>
+            </div>
+            <div
+              className="onboarding-progress"
+              role="progressbar"
+              aria-label="Progresso da configuração inicial"
+              aria-valuemin={0}
+              aria-valuemax={onboardingSteps.length}
+              aria-valuenow={completedOnboardingSteps}
+            >
+              <span style={{ width: `${(completedOnboardingSteps / onboardingSteps.length) * 100}%` }} />
+            </div>
+          </div>
+
+          <ol className="onboarding-steps">
+            {onboardingSteps.map(({ label, description, href, action, done, icon: Icon }) => (
+              <li key={label} className={done ? "onboarding-step onboarding-step--done" : "onboarding-step"}>
+                <div className="onboarding-step-icon" aria-hidden="true">
+                  <Icon />
+                </div>
+                <div>
+                  <h3>
+                    {done ? <CheckCircle2 aria-hidden="true" /> : <Circle aria-hidden="true" />}
+                    {label}
+                  </h3>
+                  <p>{description}</p>
+                </div>
+                {done ? (
+                  <span className="onboarding-complete">Concluído</span>
+                ) : (
+                  <Link href={href} className="app-button app-button--secondary app-button--compact">
+                    {action}
+                  </Link>
+                )}
+              </li>
+            ))}
+          </ol>
+        </section>
+      )}
 
       {/* Cards de resumo */}
       <div className="stats-grid">
@@ -133,6 +236,9 @@ export default async function DashboardPage() {
                <div className="empty-state py-8">
                 <Search className="w-8 h-8 text-gray-500 mb-2" />
                 <p className="text-sm">Nenhuma transação ainda.</p>
+                <Link href="/dashboard/transactions" className="app-button app-button--secondary app-button--compact mt-3">
+                  Registrar primeira transação
+                </Link>
               </div>
             ) : (
               <div className="space-y-4 mt-4">
@@ -162,6 +268,7 @@ export default async function DashboardPage() {
       </div>
 
       {/* CTA WhatsApp */}
+      {!userSetup.whatsappNumber && (
       <div className="whatsapp-cta">
         <div className="whatsapp-cta-icon">📱</div>
         <div className="whatsapp-cta-content">
@@ -175,6 +282,7 @@ export default async function DashboardPage() {
           Conectar agora
         </Link>
       </div>
+      )}
     </div>
   );
 }
