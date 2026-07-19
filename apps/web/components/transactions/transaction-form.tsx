@@ -1,9 +1,13 @@
 "use client";
 
 import { useActionState, useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { createTransaction, updateTransaction, deleteTransaction } from "@/app/actions/transactions";
 import { Pencil, Trash2 } from "lucide-react";
+import {
+  AccessibleModal,
+  ConfirmationDialog,
+} from "@/components/ui/accessible-modal";
+import { useDashboardFeedback } from "@/components/ui/dashboard-feedback";
 
 type Category = {
   id: string;
@@ -26,6 +30,7 @@ type TransactionFormProps = {
 
 export function TransactionForm({ categories, transactionToEdit }: TransactionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const { notify } = useDashboardFeedback();
   const action = transactionToEdit 
     ? updateTransaction.bind(null, transactionToEdit.id) 
     : createTransaction;
@@ -38,38 +43,28 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
 
   useEffect(() => {
     if (state?.success) {
-      queueMicrotask(() => setIsOpen(false));
+      queueMicrotask(() => {
+        setIsOpen(false);
+        notify(
+          transactionToEdit ? "Transação atualizada com sucesso." : "Transação criada com sucesso.",
+          "success"
+        );
+      });
     }
-  }, [state]);
+  }, [state, notify, transactionToEdit]);
 
   const filteredCategories = categories.filter((c) => c.kind === selectedKind);
   const isExpense = selectedKind === "EXPENSE";
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" 
-        onClick={() => setIsOpen(false)} 
-      />
-      
-      {/* Modal */}
-      <div className="relative bg-[#0d1117] border border-gray-800 rounded-3xl w-[92vw] sm:w-[480px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
-        
-        <div className="px-5 sm:px-6 py-4 flex justify-between items-center border-b border-gray-800/50">
-          <h2 className="text-lg font-bold text-white">
-            {transactionToEdit ? "Editar Transação" : "Nova Transação"}
-          </h2>
-          <button 
-            type="button"
-            onClick={() => setIsOpen(false)}
-            className="text-gray-500 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
-          >
-            ✕
-          </button>
-        </div>
-        
-        <form action={formAction} className="flex flex-col flex-1 overflow-hidden">
+    <AccessibleModal
+      open={isOpen}
+      onClose={() => setIsOpen(false)}
+      title={transactionToEdit ? "Editar transação" : "Nova transação"}
+      description="Informe o valor, o tipo e os detalhes do lançamento."
+      size="md"
+    >
+      <form action={formAction} className="flex flex-col max-h-[calc(90vh-82px)] overflow-hidden">
           {/* Tabs Receita / Despesa */}
           <div className="px-5 sm:px-6 pt-5 mb-4">
             <div className="flex p-1 bg-gray-900/80 rounded-2xl border border-gray-800/60">
@@ -115,6 +110,7 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
                   id="amount"
                   name="amount"
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   min="0.01"
                   required
@@ -122,10 +118,13 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
                   placeholder="0,00"
                   className="bg-transparent text-4xl font-bold w-40 text-center focus:outline-none placeholder:text-gray-700 text-white"
                   style={{ MozAppearance: 'textfield' }}
+                  aria-invalid={Boolean(state?.details?.amount)}
+                  aria-describedby={state?.details?.amount ? "transaction-amount-error" : undefined}
+                  data-autofocus
                 />
               </div>
               {state?.details?.amount && (
-                <p className="text-red-400 text-xs mt-1.5">{state.details.amount._errors.join(", ")}</p>
+                <p id="transaction-amount-error" className="text-red-400 text-xs mt-1.5">{state.details.amount._errors.join(", ")}</p>
               )}
             </div>
 
@@ -206,9 +205,8 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
               {isPending ? "Salvando..." : "Salvar"}
             </button>
           </div>
-        </form>
-      </div>
-    </div>
+      </form>
+    </AccessibleModal>
   );
 
   return (
@@ -230,30 +228,52 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
         </button>
       )}
 
-      {isOpen && typeof document !== "undefined" && createPortal(modalContent, document.body)}
+      {modalContent}
     </>
   );
 }
 
 export function DeleteTransactionButton({ id }: { id: string }) {
   const [isPending, setIsPending] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const { notify } = useDashboardFeedback();
 
-  const handleDelete = async () => {
-    if (confirm("Tem certeza que deseja excluir esta transação?")) {
-      setIsPending(true);
+  async function handleDelete() {
+    setIsPending(true);
+
+    try {
       await deleteTransaction(id);
+      setIsConfirmOpen(false);
+      notify("Transação excluída com sucesso.", "success");
+    } catch {
+      notify("Não foi possível excluir a transação.", "error");
+    } finally {
       setIsPending(false);
     }
-  };
+  }
 
   return (
-    <button 
-      onClick={handleDelete}
-      disabled={isPending}
-      className="text-gray-500 hover:text-red-400 p-2 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50"
-      title="Excluir"
-    >
-      <Trash2 className="w-4 h-4" />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setIsConfirmOpen(true)}
+        disabled={isPending}
+        className="icon-button icon-button--danger"
+        title="Excluir transação"
+        aria-label="Excluir transação"
+      >
+        <Trash2 className="w-4 h-4" aria-hidden="true" />
+      </button>
+
+      <ConfirmationDialog
+        open={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleDelete}
+        isPending={isPending}
+        title="Excluir transação?"
+        description="Esta ação é permanente e removerá a transação dos seus relatórios e totais."
+        confirmLabel="Excluir transação"
+      />
+    </>
   );
 }
