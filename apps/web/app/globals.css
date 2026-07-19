@@ -887,6 +887,212 @@ img, svg { display: block; max-width: 100%; }
 .empty-state-icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.6; }
 .empty-state-hint { font-size: 0.85rem; color: var(--color-text-subtle); }
 
+/* Dashboard onboarding */
+.onboarding-card {
+  margin-bottom: 1.75rem;
+  padding: 1.25rem;
+  background: linear-gradient(135deg, rgba(53, 230, 161, 0.1), rgba(19, 26, 42, 0.94));
+  border: 1px solid rgba(53, 230, 161, 0.22);
+  border-radius: var(--radius-lg);
+}
+
+.onboarding-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(10rem, 18rem);
+  align-items: end;
+  gap: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.onboarding-header h2 {
+  color: var(--color-text);
+  font-size: 1.15rem;
+  font-weight: 750;
+  letter-spacing: -0.025em;
+}
+
+.onboarding-header p {
+  margin-top: 0.2rem;
+  color: var(--color-text-muted);
+  font-size: 0.82rem;
+}
+
+.onboarding-progress {
+  height: 8px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 999px;
+}
+
+.onboarding-progress span {
+  display: block;
+  height: 100%;
+  background: var(--color-mint);
+  border-radius: inherit;
+  transition: width var(--transition-normal);
+}
+
+.onboarding-steps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  list-style: none;
+}
+
+.onboarding-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(11, 15, 25, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--radius-md);
+}
+
+.onboarding-step .app-button,
+.onboarding-complete {
+  grid-column: 1 / -1;
+  width: 100%;
+}
+
+.onboarding-step-icon {
+  width: 38px;
+  height: 38px;
+  display: grid;
+  place-items: center;
+  color: var(--color-mint);
+  background: rgba(53, 230, 161, 0.1);
+  border-radius: 11px;
+}
+
+.onboarding-step-icon svg { width: 19px; height: 19px; }
+
+.onboarding-step h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-text);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.onboarding-step h3 svg {
+  width: 15px;
+  height: 15px;
+  color: var(--color-text-muted);
+}
+
+.onboarding-step p {
+  margin-top: 0.25rem;
+  color: var(--color-text-muted);
+  font-size: 0.74rem;
+  line-height: 1.5;
+}
+
+.onboarding-step--done {
+  opacity: 0.72;
+}
+
+.onboarding-step--done h3 svg {
+  color: var(--color-mint);
+}
+
+.onboarding-complete {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-mint);
+  font-size: 0.76rem;
+  font-weight: 700;
+}
+
+/* Accessible charts */
+.accessible-chart {
+  display: grid;
+  gap: 1rem;
+}
+
+.chart-summary {
+  padding: 0.85rem 1rem;
+  color: var(--color-text-muted);
+  background: rgba(53, 230, 161, 0.06);
+  border: 1px solid rgba(53, 230, 161, 0.14);
+  border-radius: var(--radius-md);
+  font-size: 0.82rem;
+  line-height: 1.55;
+}
+
+.chart-summary strong {
+  color: var(--color-text);
+}
+
+.chart-visual {
+  min-width: 0;
+}
+
+.chart-empty-state {
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 2rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+
+.chart-empty-state strong {
+  color: var(--color-text);
+  font-size: 0.95rem;
+}
+
+.chart-empty-state span {
+  max-width: 28rem;
+  font-size: 0.8rem;
+}
+
+.chart-data-details {
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.chart-data-details summary {
+  width: fit-content;
+  padding: 0.75rem 0;
+  color: var(--color-mint);
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.accessible-table-wrapper {
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.accessible-data-table {
+  width: 100%;
+  min-width: 28rem;
+  border-collapse: collapse;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.accessible-data-table th,
+.accessible-data-table td {
+  padding: 0.7rem 0.75rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  text-align: left;
+}
+
+.accessible-data-table thead th,
+.accessible-data-table tbody th {
+  color: var(--color-text);
+  font-weight: 650;
+}
+
 /* Accessible modal and feedback */
 .modal-root {
   position: fixed;
@@ -1069,6 +1275,9 @@ img, svg { display: block; max-width: 100%; }
    Responsividade
 ============================================================================= */
 @media (max-width: 768px) {
+  .onboarding-header { grid-template-columns: 1fr; }
+  .onboarding-steps { grid-template-columns: 1fr; }
+
   .dashboard-layout {
     display: block;
   }
