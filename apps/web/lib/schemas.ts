@@ -78,6 +78,36 @@ export const BillReminderSchema = z.object({
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
 });
 
+export const FinancialGoalSchema = z
+  .object({
+    name: z.string().trim().min(2, "Nome muito curto").max(80, "Nome muito longo"),
+    icon: z.string().trim().min(1, "Escolha um ícone").max(12, "Ícone muito longo"),
+    targetAmount: z
+      .number()
+      .finite()
+      .positive("O valor da meta deve ser positivo")
+      .max(1_000_000_000),
+    savedAmount: z
+      .number()
+      .finite()
+      .min(0, "O valor guardado não pode ser negativo")
+      .max(1_000_000_000),
+    targetDate: z
+      .string()
+      .regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida")
+      .optional()
+      .or(z.literal("")),
+  })
+  .refine((data) => data.savedAmount <= data.targetAmount, {
+    path: ["savedAmount"],
+    message: "O valor guardado não pode superar a meta",
+  });
+
+export const FinancialGoalContributionSchema = z.object({
+  amount: z.number().finite().positive("Informe um valor positivo").max(1_000_000_000),
+  operation: z.enum(["DEPOSIT", "WITHDRAW"]),
+});
+
 export const TransactionRuleSchema = z.object({
   keyword: z
     .string()
