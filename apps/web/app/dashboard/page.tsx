@@ -62,8 +62,9 @@ export default async function DashboardPage() {
   return (
     <div className="dashboard-page">
       {/* Header */}
-      <div className="dashboard-header">
+      <div className="dashboard-header dashboard-hero">
         <div>
+          <span className="dashboard-kicker">Seu dinheiro, mais claro</span>
           <h1 className="dashboard-greeting">Olá, {firstName}! 👋</h1>
           <p className="dashboard-subtitle">
             Aqui está o resumo das suas finanças.
@@ -170,9 +171,9 @@ export default async function DashboardPage() {
             <code>gastei 45 no mercado</code> ou <code>recebi 3000 de salário</code>.
           </p>
         </div>
-        <a href="/dashboard/settings/whatsapp" className="btn-whatsapp">
+        <Link href="/dashboard/whatsapp" className="btn-whatsapp">
           Conectar agora
-        </a>
+        </Link>
       </div>
     </div>
   );
