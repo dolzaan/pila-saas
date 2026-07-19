@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { setBudget, deleteBudget } from "@/app/actions/budgets";
+import { BudgetModal } from "./budget-modal";
 
 interface Category {
   id: string;
@@ -61,18 +62,18 @@ export function BudgetForm({ category, currentBudget, onClose }: BudgetFormProps
   }
 
   return (
-    <div className="modal-overlay">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h2 className="modal-title">Definir Orçamento</h2>
-          <button onClick={onClose} className="modal-close" disabled={isPending}>✕</button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="modal-body">
+    <BudgetModal
+      title={currentBudget ? "Editar orçamento" : "Definir orçamento"}
+      description="Informe o limite mensal para acompanhar os gastos desta categoria."
+      onClose={onClose}
+      closeDisabled={isPending}
+    >
+      <form onSubmit={handleSubmit} className="flex min-h-0 flex-col">
+        <div className="min-h-0 space-y-5 overflow-y-auto px-5 py-5 sm:px-6">
           <div className="form-group">
             <label className="form-label">Categoria</label>
-            <div className="flex items-center gap-2 p-3 bg-white/5 border border-white/10 rounded-xl mb-4">
-              <span className="text-2xl">{category.icon}</span>
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 p-3">
+              <span className="text-2xl" aria-hidden="true">{category.icon}</span>
               <span className="text-white font-medium">{category.name}</span>
             </div>
           </div>
@@ -93,29 +94,38 @@ export function BudgetForm({ category, currentBudget, onClose }: BudgetFormProps
           </div>
 
           {error && <div className="form-error">{error}</div>}
+        </div>
 
-          <div className="modal-footer">
-            {currentBudget && (
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="btn-danger"
-                disabled={isPending}
-              >
-                Remover Orçamento
-              </button>
-            )}
-            <div className="flex gap-3 ml-auto">
-              <button type="button" onClick={onClose} className="btn-secondary" disabled={isPending}>
-                Cancelar
-              </button>
-              <button type="submit" className="btn-primary" disabled={isPending}>
-                {isPending ? "Salvando..." : "Salvar"}
-              </button>
-            </div>
+        <div className="flex flex-col-reverse gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:px-6">
+          {currentBudget && (
+            <button
+              type="button"
+              onClick={handleDelete}
+              className="app-button app-button--danger"
+              disabled={isPending}
+            >
+              Remover orçamento
+            </button>
+          )}
+          <div className="flex flex-col-reverse gap-3 sm:ml-auto sm:flex-row">
+            <button
+              type="button"
+              onClick={onClose}
+              className="app-button app-button--secondary"
+              disabled={isPending}
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="app-button app-button--primary"
+              disabled={isPending}
+            >
+              {isPending ? "Salvando..." : "Salvar"}
+            </button>
           </div>
-        </form>
-      </div>
-    </div>
+        </div>
+      </form>
+    </BudgetModal>
   );
 }
