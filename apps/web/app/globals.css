@@ -854,6 +854,145 @@ img, svg { display: block; max-width: 100%; }
 .empty-state-icon { font-size: 2.5rem; margin-bottom: 0.5rem; opacity: 0.6; }
 .empty-state-hint { font-size: 0.85rem; color: var(--color-text-subtle); }
 
+/* Accessible modal and feedback */
+.modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(3, 7, 18, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+.modal-dialog {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 32rem);
+  max-height: min(90vh, 52rem);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  color: var(--color-text);
+  background: #0d1117;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.58);
+  animation: modalIn 180ms ease-out;
+}
+
+.modal-dialog--sm { width: min(100%, 27rem); }
+.modal-dialog--lg { width: min(100%, 42rem); }
+
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.15rem 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.modal-title {
+  color: var(--color-text);
+  font-size: 1.1rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+
+.modal-description {
+  margin-top: 0.3rem;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.modal-close,
+.app-toast-close {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-text-muted);
+  border-radius: var(--radius-md);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.modal-close:hover,
+.app-toast-close:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.modal-content {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.toast-region {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  z-index: 100;
+  width: min(24rem, calc(100vw - 2rem));
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  pointer-events: none;
+}
+
+.app-toast {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 56px;
+  padding: 0.55rem 0.55rem 0.55rem 0.9rem;
+  color: var(--color-text);
+  background: rgba(19, 26, 42, 0.97);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  pointer-events: auto;
+  animation: toastIn 180ms ease-out;
+}
+
+.app-toast--success { border-color: rgba(53, 230, 161, 0.35); }
+.app-toast--success .app-toast-icon { color: var(--color-mint); }
+.app-toast--error { border-color: rgba(244, 63, 94, 0.4); }
+.app-toast--error .app-toast-icon { color: #fb7185; }
+.app-toast--info .app-toast-icon { color: #93c5fd; }
+.app-toast-icon { width: 20px; height: 20px; }
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 /* Expired subscription */
 .paywall-shell {
   min-height: calc(100vh - 4rem);
@@ -996,6 +1135,16 @@ img, svg { display: block; max-width: 100%; }
 @media (max-width: 480px) {
   .stats-grid { grid-template-columns: 1fr; }
   .dashboard-greeting { font-size: 1.4rem; }
+
+  .modal-root { padding: 0.5rem; align-items: flex-end; }
+  .modal-dialog {
+    width: 100%;
+    max-height: 92vh;
+    border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  }
+  .modal-actions { flex-direction: column-reverse; }
+  .modal-actions .app-button { width: 100%; }
+  .toast-region { top: 0.75rem; right: 0.75rem; width: calc(100vw - 1.5rem); }
 }
 
 @media (prefers-reduced-motion: reduce) {
