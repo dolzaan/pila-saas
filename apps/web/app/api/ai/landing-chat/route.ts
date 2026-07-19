@@ -11,6 +11,7 @@ import {
   rateLimitHeaders,
   RateLimitUnavailableError,
 } from "@/lib/rate-limit";
+import { sanitizeTextForAi } from "@/lib/privacy";
 
 export const runtime = "nodejs";
 
@@ -58,14 +59,23 @@ async function buildAccountContext(userId: string, message: string, transcript: 
     }),
     prisma.transaction.findMany({
       where: transactionWhere,
-      include: { category: true },
+      select: {
+        amount: true,
+        kind: true,
+        occurredAt: true,
+        category: { select: { name: true } },
+      },
       orderBy: { occurredAt: "desc" },
-      take: 30,
+      take: 10,
     }),
     prisma.budget.findMany({
       where: { userId },
-      include: { category: true },
+      select: {
+        monthlyLimit: true,
+        category: { select: { name: true } },
+      },
       orderBy: { createdAt: "desc" },
+      take: 12,
     }),
   ]);
 
@@ -74,7 +84,10 @@ async function buildAccountContext(userId: string, message: string, transcript: 
     .filter((id): id is string => Boolean(id));
   const categories = categoryIds.length > 0
     ? await prisma.category.findMany({
-        where: { userId, id: { in: categoryIds } },
+        where: {
+          id: { in: categoryIds },
+          OR: [{ userId }, { userId: null }],
+        },
         select: { id: true, name: true },
       })
     : [];
@@ -95,7 +108,7 @@ async function buildAccountContext(userId: string, message: string, transcript: 
     });
 
   const transactionLines = recentTransactions.map((transaction) =>
-    `- ${transaction.occurredAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}: ${transaction.kind === "INCOME" ? "ganho" : "gasto"} de ${formatMoney(Number(transaction.amount))} — ${transaction.description || transaction.category?.name || "Sem descrição"}`,
+    `- ${transaction.occurredAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}: ${transaction.kind === "INCOME" ? "ganho" : "gasto"} de ${formatMoney(Number(transaction.amount))} — ${transaction.category?.name || "Sem categoria"}`,
   );
 
   const budgetLines = budgets.slice(0, 12).map((budget) =>
@@ -198,7 +211,9 @@ export async function POST(request: Request) {
 
     const transcript = parsed.data.history
       .slice(-6)
-      .map((item) => `${item.role === "user" ? "Usuário" : "Pila"}: ${item.content}`)
+      .map((item) =>
+        `${item.role === "user" ? "Usuário" : "Pila"}: ${sanitizeTextForAi(item.content, 600)}`,
+      )
       .join("\n");
     const accountData = userId
       ? await buildAccountContext(userId, parsed.data.message, transcript)
