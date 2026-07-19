@@ -18,7 +18,7 @@ export function CategoryForm() {
     return (
       <button 
         onClick={() => setIsOpen(true)}
-        className="px-4 py-2 bg-emerald-500 text-white rounded-md font-medium hover:bg-emerald-600 transition-colors"
+        className="app-button app-button--primary"
       >
         + Nova Categoria
       </button>
@@ -97,14 +97,14 @@ export function CategoryForm() {
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="px-4 py-2 text-gray-300 hover:text-white transition-colors"
+              className="app-button app-button--secondary"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className="px-4 py-2 bg-emerald-500 text-white rounded-md font-medium hover:bg-emerald-600 transition-colors disabled:opacity-50"
+              className="app-button app-button--primary"
             >
               {isPending ? "Salvando..." : "Salvar"}
             </button>
