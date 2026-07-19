@@ -11,12 +11,23 @@ export async function setBudget(categoryId: string, monthlyLimit: number) {
     throw new Error("Limite mensal inválido");
   }
 
-  // Verify category belongs to user
+  // A tela oferece categorias padrão do sistema e categorias do próprio usuário.
+  // Categorias privadas de outras contas e categorias de receita continuam bloqueadas.
   const category = await prisma.category.findFirst({
-    where: { id: categoryId, userId: session.user.id },
+    where: {
+      id: categoryId,
+      kind: "EXPENSE",
+      OR: [
+        { userId: null },
+        { userId: session.user.id },
+      ],
+    },
+    select: { id: true },
   });
 
-  if (!category) throw new Error("Categoria não encontrada ou não pertence ao usuário");
+  if (!category) {
+    throw new Error("Categoria de despesa não encontrada ou não está disponível para o usuário");
+  }
 
   await prisma.budget.upsert({
     where: {
