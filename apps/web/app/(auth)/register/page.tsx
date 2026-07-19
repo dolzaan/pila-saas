@@ -102,8 +102,14 @@ export default function RegisterPage() {
   }
 
   async function handleGoogleSignIn() {
+    setError(null);
     setLoading(true);
-    await signIn("google", { callbackUrl: "/dashboard" });
+    try {
+      await signIn("google", { redirectTo: "/dashboard" });
+    } catch {
+      setError("Não foi possível iniciar o cadastro com Google. Tente novamente.");
+      setLoading(false);
+    }
   }
 
   return (
