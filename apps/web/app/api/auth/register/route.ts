@@ -4,10 +4,21 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { issueEmailVerificationCode } from "@/lib/auth-tokens";
 import { sendEmail } from "@/lib/email";
+import {
+  checkRateLimits,
+  getClientIp,
+  privateRateLimitKey,
+  rateLimitHeaders,
+  RateLimitUnavailableError,
+} from "@/lib/rate-limit";
+
+const REGISTER_WINDOW_MS = 60 * 60 * 1000;
+const REGISTER_IP_LIMIT = 5;
+const REGISTER_EMAIL_LIMIT = 3;
 
 const RegisterSchema = z.object({
   name: z.string().min(2, "Nome deve ter pelo menos 2 caracteres").max(100),
-  email: z.string().email("E-mail inválido"),
+  email: z.string().trim().toLowerCase().email("E-mail inválido"),
   password: z
     .string()
     .min(8, "Senha deve ter pelo menos 8 caracteres")
@@ -20,9 +31,28 @@ const RegisterSchema = z.object({
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    const parsed = RegisterSchema.safeParse(body);
+    const ipDecision = await checkRateLimits([
+      {
+        key: privateRateLimitKey("auth:register:ip", getClientIp(request)),
+        limit: REGISTER_IP_LIMIT,
+        windowMs: REGISTER_WINDOW_MS,
+      },
+    ]);
+    if (!ipDecision.allowed) {
+      return NextResponse.json(
+        { error: "Muitas tentativas de cadastro. Aguarde e tente novamente." },
+        { status: 429, headers: rateLimitHeaders(ipDecision) }
+      );
+    }
 
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Dados inválidos." }, { status: 400 });
+    }
+
+    const parsed = RegisterSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { error: parsed.error.errors[0].message },
@@ -31,6 +61,19 @@ export async function POST(request: Request) {
     }
 
     const { name, email, password } = parsed.data;
+    const emailDecision = await checkRateLimits([
+      {
+        key: privateRateLimitKey("auth:register:email", email),
+        limit: REGISTER_EMAIL_LIMIT,
+        windowMs: REGISTER_WINDOW_MS,
+      },
+    ]);
+    if (!emailDecision.allowed) {
+      return NextResponse.json(
+        { error: "Muitas tentativas de cadastro. Aguarde e tente novamente." },
+        { status: 429, headers: rateLimitHeaders(emailDecision) }
+      );
+    }
 
     // Verifica se e-mail já existe
     const existing = await prisma.user.findUnique({
@@ -79,6 +122,14 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (err) {
+    if (err instanceof RateLimitUnavailableError) {
+      console.error("[register] Rate limiting indisponível:", err.message);
+      return NextResponse.json(
+        { error: "Cadastro temporariamente indisponível. Tente novamente em instantes." },
+        { status: 503 }
+      );
+    }
+
     // Não logar dados sensíveis do body
     console.error("[register] Erro ao criar usuário:", err instanceof Error ? err.message : "unknown");
     return NextResponse.json(
