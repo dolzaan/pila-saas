@@ -15,63 +15,104 @@ export type CategoryData = {
 };
 
 const COLORS = [
-  "#ef4444", // red-500
-  "#f97316", // orange-500
-  "#f59e0b", // amber-500
-  "#eab308", // yellow-500
-  "#84cc16", // lime-500
-  "#22c55e", // green-500
-  "#10b981", // emerald-500
-  "#14b8a6", // teal-500
-  "#06b6d4", // cyan-500
-  "#0ea5e9", // sky-500
-  "#3b82f6", // blue-500
-  "#6366f1", // indigo-500
-  "#8b5cf6", // violet-500
-  "#a855f7", // purple-500
-  "#d946ef", // fuchsia-500
-  "#ec4899", // pink-500
-  "#f43f5e", // rose-500
+  "#fb7185",
+  "#fb923c",
+  "#fbbf24",
+  "#a3e635",
+  "#35e6a1",
+  "#2dd4bf",
+  "#38bdf8",
+  "#818cf8",
+  "#c084fc",
+  "#f472b6",
 ];
+
+const formatCurrency = (value: number) =>
+  new Intl.NumberFormat("pt-BR", {
+    style: "currency",
+    currency: "BRL",
+  }).format(value);
 
 export function CategoryExpensePieChart({ data }: { data: CategoryData[] }) {
   if (data.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[300px] text-gray-500">
-        Nenhuma despesa para exibir neste período.
+      <div className="chart-empty-state">
+        <strong>Nenhuma despesa neste período.</strong>
+        <span>Os gastos categorizados serão apresentados aqui.</span>
       </div>
     );
   }
 
-  const formatCurrency = (val: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(val);
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  const largest = data.reduce((current, item) =>
+    item.value > current.value ? item : current
+  );
+  const largestPercentage = total > 0 ? Math.round((largest.value / total) * 100) : 0;
 
   return (
-    <ResponsiveContainer width="100%" height={400}>
-      <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-        <Pie
-          data={data}
-          cx="50%"
-          cy="50%"
-          labelLine={false}
-          outerRadius={130}
-          fill="#8884d8"
-          dataKey="value"
-          label={({ name, percent }) =>
-            percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
-          }
-        >
-          {data.map((entry, index) => (
-            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-          ))}
-        </Pie>
-        <Tooltip
-          formatter={(value: number) => formatCurrency(value)}
-          contentStyle={{ backgroundColor: "#111827", borderColor: "#374151", color: "#f3f4f6" }}
-          itemStyle={{ fontWeight: "bold" }}
-        />
-        <Legend />
-      </PieChart>
-    </ResponsiveContainer>
+    <div className="accessible-chart">
+      <p className="chart-summary">
+        <strong>{largest.name}</strong> foi a maior categoria, com{" "}
+        <strong>{formatCurrency(largest.value)}</strong>, equivalente a{" "}
+        <strong>{largestPercentage}%</strong> das despesas.
+      </p>
+
+      <div className="chart-visual" aria-hidden="true">
+        <ResponsiveContainer width="100%" height={400}>
+          <PieChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+            <Pie
+              data={data}
+              cx="50%"
+              cy="50%"
+              labelLine={false}
+              outerRadius={130}
+              dataKey="value"
+              label={({ name, percent }) =>
+                percent > 0.05 ? `${name} ${(percent * 100).toFixed(0)}%` : ""
+              }
+            >
+              {data.map((entry, index) => (
+                <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip
+              formatter={(value: number) => formatCurrency(value)}
+              contentStyle={{
+                backgroundColor: "#111827",
+                borderColor: "#374151",
+                color: "#f3f4f6",
+              }}
+              itemStyle={{ fontWeight: "bold" }}
+            />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+
+      <details className="chart-data-details">
+        <summary>Ver dados do gráfico</summary>
+        <div className="accessible-table-wrapper">
+          <table className="accessible-data-table">
+            <caption className="sr-only">Despesas por categoria</caption>
+            <thead>
+              <tr>
+                <th scope="col">Categoria</th>
+                <th scope="col">Valor</th>
+                <th scope="col">Participação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.map((item) => (
+                <tr key={item.name}>
+                  <th scope="row">{item.name}</th>
+                  <td>{formatCurrency(item.value)}</td>
+                  <td>{total > 0 ? Math.round((item.value / total) * 100) : 0}%</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    </div>
   );
 }
