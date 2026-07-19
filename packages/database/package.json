@@ -21,6 +21,7 @@
     "tsx": "^4.19.1"
   },
   "exports": {
-    ".": "./node_modules/.prisma/client/index.js"
+    ".": "./node_modules/.prisma/client/index.js",
+    "./default-categories": "./default-categories.ts"
   }
 }

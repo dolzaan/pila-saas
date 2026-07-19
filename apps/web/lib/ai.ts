@@ -1,4 +1,8 @@
 import { GoogleGenAI, type ContentListUnion } from "@google/genai";
+import {
+  DEFAULT_EXPENSE_CATEGORIES,
+  DEFAULT_INCOME_CATEGORIES,
+} from "@finzap/database/default-categories";
 import { PILA_PUBLIC_KNOWLEDGE } from "@/lib/pila-knowledge";
 import { z } from "zod";
 import {
@@ -11,6 +15,10 @@ import { sanitizeTextForAi } from "@/lib/privacy";
 
 const DEFAULT_GEMINI_DAILY_REQUEST_LIMIT = 200;
 const GEMINI_DAILY_WINDOW_MS = 26 * 60 * 60 * 1000;
+const SYSTEM_CATEGORY_GUIDE = [
+  `Despesas: ${DEFAULT_EXPENSE_CATEGORIES.map((category) => category.name).join(", ")}.`,
+  `Receitas: ${DEFAULT_INCOME_CATEGORIES.map((category) => category.name).join(", ")}.`,
+].join("\n");
 
 function getGeminiDailyRequestLimit() {
   const configured = Number(process.env.GEMINI_DAILY_REQUEST_LIMIT);
@@ -78,7 +86,8 @@ Sua tarefa é ajudar clientes e visitantes a conhecer e usar o Pila, além de ex
 ${PILA_PUBLIC_KNOWLEDGE}
 
 REGRAS:
-1. GASTOS E GANHOS: Se a mensagem contiver um gasto/ganho claro (ex: "Gastei 50 num lanche"), ou uma FOTO/ÁUDIO/PDF de recibo, retorne JSON com isTransaction: true e os dados da transação. Se for mídia, transcreva o áudio ou leia o valor total do arquivo. Improvise um \`replyMessage\` natural confirmando o registro.
+1. GASTOS E GANHOS: Se a mensagem contiver um gasto/ganho claro (ex: "Gastei 50 num lanche"), ou uma FOTO/ÁUDIO/PDF de recibo, retorne JSON com isTransaction: true e os dados da transação. Se for mídia, transcreva o áudio ou leia o valor total do arquivo. Improvise um \`replyMessage\` natural confirmando o registro. Em \`categoryName\`, prefira exatamente uma das categorias oficiais abaixo, respeitando o tipo da transação; crie um nome diferente somente quando nenhuma delas representar o lançamento.
+${SYSTEM_CATEGORY_GUIDE}
 2. ALERTA DE ORÇAMENTO (BUDGET): Se identificar que a transação fará o usuário estourar (ou chegar muito perto) do Limite do Orçamento cadastrado no "CONTEXTO FINANCEIRO", inclua uma bronca amigável ou aviso no \`replyMessage\`.
 3. CONTAS A PAGAR (LEMBRETES): Se o usuário disser algo como "Me lembra de pagar o aluguel dia 10 (valor X)", retorne \`isReminder: true\`, extraindo o \`amount\`, \`description\`, e calculando a \`dueDate\` no formato "YYYY-MM-DD". A \`replyMessage\` deve confirmar o agendamento amigavelmente.
 4. AÇÕES EM LEMBRETES: Se disser que pagou uma conta, retorne \`reminderAction: "MARK_PAID"\` e \`reminderDescription\`. Se pedir para lembrar depois, retorne \`reminderAction: "SNOOZE"\`, a descrição se houver e \`snoozeUntil\` em YYYY-MM-DD.
