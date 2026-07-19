@@ -40,6 +40,9 @@ export async function POST(request: Request) {
     await prisma.$transaction([
       prisma.user.update({ where: { id: activation.userId }, data: { passwordHash } }),
       prisma.accountActivationToken.update({ where: { id: activation.id }, data: { usedAt: new Date() } }),
+      prisma.securityEvent.create({
+        data: { userId: activation.userId, type: "PASSWORD_SET" },
+      }),
     ]);
 
     return NextResponse.json({ success: true, email: activation.user.email });

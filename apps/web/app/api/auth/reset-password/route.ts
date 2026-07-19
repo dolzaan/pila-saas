@@ -87,6 +87,17 @@ export async function POST(request: Request) {
     }
 
     const userId = stored.identifier.slice("password-reset:".length);
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { passwordHash: true },
+    });
+    if (!user) {
+      return NextResponse.json(
+        { error: "Link inválido ou expirado." },
+        { status: 400 }
+      );
+    }
+
     const passwordHash = await bcrypt.hash(parsed.data.password, 12);
     await prisma.$transaction([
       prisma.user.update({
@@ -104,6 +115,12 @@ export async function POST(request: Request) {
             identifier: stored.identifier,
             token: stored.token,
           },
+        },
+      }),
+      prisma.securityEvent.create({
+        data: {
+          userId,
+          type: user.passwordHash ? "PASSWORD_CHANGED" : "PASSWORD_SET",
         },
       }),
     ]);

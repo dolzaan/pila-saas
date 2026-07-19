@@ -3,6 +3,7 @@
 import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  BellRing,
   CalendarDays,
   CreditCard,
   Landmark,
@@ -12,6 +13,7 @@ import {
   MessageSquare,
   Settings,
   Shield,
+  ShieldCheck,
   Tags,
   Target,
   type LucideIcon,
@@ -37,10 +39,12 @@ const navigationItems: NavigationItemProps[] = [
   { href: "/dashboard/transactions", label: "Transações", icon: CreditCard },
   { href: "/dashboard/accounts", label: "Contas e cartões", icon: Landmark },
   { href: "/dashboard/recurring", label: "Contas Fixas", icon: CalendarDays },
+  { href: "/dashboard/reminders", label: "Lembretes", icon: BellRing },
   { href: "/dashboard/categories", label: "Categorias", icon: Tags },
   { href: "/dashboard/budgets", label: "Orçamentos", icon: Target },
   { href: "/dashboard/reports", label: "Relatórios", icon: LineChart },
   { href: "/dashboard/whatsapp", label: "WhatsApp", icon: MessageSquare },
+  { href: "/dashboard/security", label: "Segurança", icon: ShieldCheck },
   { href: "/dashboard/settings", label: "Configurações", icon: Settings },
 ];
 
