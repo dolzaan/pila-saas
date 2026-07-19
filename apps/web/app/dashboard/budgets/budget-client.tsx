@@ -53,7 +53,7 @@ export function BudgetClient({ data }: { data: BudgetCardData[] }) {
               </span>
               <button 
                 onClick={() => handleEdit(item)}
-                className="text-xs bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors"
+                className="app-button app-button--secondary app-button--compact"
               >
                 {item.limit ? "Editar" : "Definir Orçamento"}
               </button>
