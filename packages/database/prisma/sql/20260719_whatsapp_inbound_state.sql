@@ -1,7 +1,7 @@
 -- Execute uma vez no SQL Editor do Supabase antes de publicar o código deste PR.
 -- O script é idempotente e preserva os registros criados pela versão anterior.
 
-DO $$
+DO $migration$
 BEGIN
   CREATE TYPE "WhatsappInboundStatus" AS ENUM (
     'PROCESSING',
@@ -11,7 +11,7 @@ BEGIN
 EXCEPTION
   WHEN duplicate_object THEN NULL;
 END;
-$;
+$migration$;
 
 ALTER TABLE "whatsapp_inbound_messages"
   ADD COLUMN IF NOT EXISTS "status"
