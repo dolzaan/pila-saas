@@ -40,8 +40,14 @@ export default function LoginPage() {
   }
 
   async function handleGoogleSignIn() {
+    setError(null);
     setLoading(true);
-    await signIn("google", { callbackUrl: "/dashboard" });
+    try {
+      await signIn("google", { redirectTo: "/dashboard" });
+    } catch {
+      setError("Não foi possível iniciar o login com Google. Tente novamente.");
+      setLoading(false);
+    }
   }
 
   return (

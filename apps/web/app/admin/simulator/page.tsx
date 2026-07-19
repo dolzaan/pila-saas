@@ -1,13 +1,21 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Send, Bot, User, Trash2, Paperclip, X } from "lucide-react";
+import { Send, Bot, Trash2, Paperclip, X } from "lucide-react";
 
 type ChatMessage = {
   id: string;
   sender: "user" | "bot";
   text: string;
   mediaUrl?: string;
+};
+
+type SimulatedMessage = {
+  conversation?: string;
+  imageMessage?: { caption: string; mimetype: string };
+  audioMessage?: { mimetype: string };
+  documentMessage?: { caption: string; mimetype: string };
+  base64?: string;
 };
 
 export default function SimulatorPage() {
@@ -56,7 +64,7 @@ export default function SimulatorPage() {
 
     try {
       // Montando a mensagem para simular o Evolution API
-      const messageObj: any = { conversation: currentInput };
+      const messageObj: SimulatedMessage = { conversation: currentInput };
       
       if (currentAttachment) {
         const mime = currentAttachment.file.type;

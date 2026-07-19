@@ -7,9 +7,19 @@ import {
   updateSubscriptionStatus, 
   deleteUser 
 } from "@/app/actions/admin";
-import { Shield, Key, CreditCard, Trash2, Edit } from "lucide-react";
+import { Key, CreditCard, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { getUserSubscriptionStatus } from "@/lib/subscription";
+
+const SUBSCRIPTION_STATUSES = [
+  "ACTIVE",
+  "INACTIVE",
+  "TRIALING",
+  "PAST_DUE",
+  "CANCELED",
+] as const;
+
+type SubscriptionStatus = (typeof SUBSCRIPTION_STATUSES)[number];
 
 type User = {
   id: string;
@@ -24,6 +34,16 @@ type User = {
   } | null;
 };
 
+function getErrorMessage(error: unknown) {
+  return error instanceof Error ? error.message : "Erro inesperado";
+}
+
+function isSubscriptionStatus(
+  status: string | null | undefined,
+): status is SubscriptionStatus {
+  return SUBSCRIPTION_STATUSES.some((candidate) => candidate === status);
+}
+
 export default function AdminClient({ initialUsers }: { initialUsers: User[] }) {
   const [users, setUsers] = useState<User[]>(initialUsers);
   const [loading, setLoading] = useState(false);
@@ -31,7 +51,7 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
   const [newPassword, setNewPassword] = useState("");
   
   const [editingSubId, setEditingSubId] = useState<string | null>(null);
-  const [subStatus, setSubStatus] = useState<"ACTIVE" | "INACTIVE" | "TRIALING" | "PAST_DUE" | "CANCELED">("ACTIVE");
+  const [subStatus, setSubStatus] = useState<SubscriptionStatus>("ACTIVE");
   const [subPlan, setSubPlan] = useState("pro");
 
   const handleRoleToggle = async (userId: string, currentRole: "USER" | "ADMIN") => {
@@ -41,8 +61,8 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
       const newRole = currentRole === "ADMIN" ? "USER" : "ADMIN";
       await updateUserRole(userId, newRole);
       setUsers(users.map(u => u.id === userId ? { ...u, role: newRole } : u));
-    } catch (e: any) {
-      alert(e.message);
+    } catch (error) {
+      alert(getErrorMessage(error));
     }
     setLoading(false);
   };
@@ -58,8 +78,8 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
       alert("Senha atualizada com sucesso.");
       setEditingPasswordId(null);
       setNewPassword("");
-    } catch (e: any) {
-      alert(e.message);
+    } catch (error) {
+      alert(getErrorMessage(error));
     }
     setLoading(false);
   };
@@ -71,8 +91,8 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
       setUsers(users.map(u => u.id === userId ? { ...u, subscription: { status: subStatus, plan: subPlan, currentPeriodEnd: u.subscription?.currentPeriodEnd || null } } : u));
       setEditingSubId(null);
       alert("Assinatura atualizada.");
-    } catch (e: any) {
-      alert(e.message);
+    } catch (error) {
+      alert(getErrorMessage(error));
     }
     setLoading(false);
   };
@@ -83,8 +103,8 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
     try {
       await deleteUser(userId);
       setUsers(users.filter(u => u.id !== userId));
-    } catch (e: any) {
-      alert(e.message);
+    } catch (error) {
+      alert(getErrorMessage(error));
     }
     setLoading(false);
   };
@@ -164,7 +184,11 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
                   title="Gerenciar Assinatura"
                   onClick={() => {
                     setEditingSubId(user.id);
-                    setSubStatus((user.subscription?.status as any) || "ACTIVE");
+                    setSubStatus(
+                      isSubscriptionStatus(user.subscription?.status)
+                        ? user.subscription.status
+                        : "ACTIVE",
+                    );
                     setSubPlan(user.subscription?.plan || "pro");
                   }}
                   className="p-1.5 text-green-500 hover:bg-green-50 rounded"
@@ -236,7 +260,11 @@ export default function AdminClient({ initialUsers }: { initialUsers: User[] }) 
               <label className="block text-sm font-medium mb-1 dark:text-gray-300">Status</label>
               <select 
                 value={subStatus}
-                onChange={e => setSubStatus(e.target.value as any)}
+                onChange={(event) => {
+                  if (isSubscriptionStatus(event.target.value)) {
+                    setSubStatus(event.target.value);
+                  }
+                }}
                 className="w-full border p-2 rounded bg-transparent dark:text-white"
               >
                 <option value="ACTIVE">ACTIVE</option>
