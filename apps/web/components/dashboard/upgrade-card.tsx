@@ -33,7 +33,7 @@ export function UpgradeCard({
       <button 
         onClick={handleUpgrade}
         disabled={isPending}
-        className="px-8 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-full shadow-[0_0_20px_rgba(16,185,129,0.3)] transition-all hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] disabled:opacity-50 disabled:cursor-not-allowed"
+        className="app-button app-button--primary"
       >
         {isPending ? "Carregando..." : "Assinar Plano Pro"}
       </button>
