@@ -2,8 +2,8 @@ const EMAIL_PATTERN = /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi;
 const CPF_PATTERN = /\b\d{3}\.?\d{3}\.?\d{3}-?\d{2}\b/g;
 const CNPJ_PATTERN = /\b\d{2}\.?\d{3}\.?\d{3}\/?\d{4}-?\d{2}\b/g;
 const UUID_PATTERN = /\b[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\b/gi;
-const PHONE_PATTERN = /(?<!\d)(?:\+?55[\s.-]?)?(?:\(?\d{2}\)?[\s.-]?)9?\d{4}[\s.-]?\d{4}(?!\d)/g;
-const PAYMENT_CARD_CANDIDATE_PATTERN = /(?<!\d)(?:\d[ -]?){13,19}(?!\d)/g;
+const PHONE_PATTERN = /(^|[^\d])((?:\+?55[\s.-]?)?(?:\(?\d{2}\)?[\s.-]?)9?\d{4}[\s.-]?\d{4})(?=$|[^\d])/g;
+const PAYMENT_CARD_CANDIDATE_PATTERN = /(^|[^\d])((?:\d[ -]?){13,19})(?=$|[^\d])/g;
 
 const DEFAULT_RAW_MESSAGE_RETENTION_DAYS = 60;
 const MIN_RAW_MESSAGE_RETENTION_DAYS = 30;
@@ -34,10 +34,17 @@ export function redactSensitiveData(value: string) {
     .replace(CNPJ_PATTERN, "[CNPJ_REMOVIDO]")
     .replace(CPF_PATTERN, "[CPF_REMOVIDO]")
     .replace(UUID_PATTERN, "[CHAVE_REMOVIDA]")
-    .replace(PAYMENT_CARD_CANDIDATE_PATTERN, (candidate) =>
-      passesLuhn(candidate) ? "[CARTAO_REMOVIDO]" : candidate,
+    .replace(
+      PAYMENT_CARD_CANDIDATE_PATTERN,
+      (match, prefix: string, candidate: string) =>
+        passesLuhn(candidate)
+          ? `${prefix}[CARTAO_REMOVIDO]`
+          : match,
     )
-    .replace(PHONE_PATTERN, "[TELEFONE_REMOVIDO]");
+    .replace(
+      PHONE_PATTERN,
+      (_match, prefix: string) => `${prefix}[TELEFONE_REMOVIDO]`,
+    );
 }
 
 export function sanitizeTextForAi(value: string, maxLength = 4_000) {
