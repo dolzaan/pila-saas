@@ -65,8 +65,8 @@ docker compose ps
 ### 4. Criar as tabelas do banco e carregar dados iniciais
 
 ```bash
-pnpm db:migrate       # aplica migrações Prisma
-pnpm db:seed          # insere categorias padrão
+npm run db:migrate:deploy  # cria o schema a partir das migrações versionadas
+npm run db:seed            # insere categorias padrão
 ```
 
 ### 5. Iniciar o servidor de desenvolvimento
@@ -89,11 +89,13 @@ npm run lint             # ESLint em todos os pacotes
 npm run test             # Vitest em todos os pacotes
 
 # Banco de dados
-npm run db:generate      # Gera Prisma client
-npm run db:migrate       # Aplica/cria migrações Prisma
-npm run db:push          # Sync schema sem migração (só dev)
-npm run db:seed          # Carrega dados iniciais
-npm run db:studio        # Prisma Studio na porta 5555
+npm run db:generate          # Gera Prisma client
+npm run db:migrate:dev       # Cria/aplica migrações somente em desenvolvimento
+npm run db:migrate:deploy    # Aplica migrações pendentes em CI/produção
+npm run db:migrate:status    # Exibe o estado das migrações
+npm run db:push              # Sync schema sem migração (só dev)
+npm run db:seed              # Carrega dados iniciais
+npm run db:studio            # Prisma Studio na porta 5555
 
 # Docker
 docker compose up -d        # Sobe Postgres + Redis
@@ -123,6 +125,8 @@ finzap/
 ## Variáveis de Ambiente
 
 Ver [.env.example](.env.example) com documentação de cada variável.
+
+O fluxo de baseline e deploy do banco está documentado em [docs/database-migrations.md](docs/database-migrations.md).
 
 ---
 
