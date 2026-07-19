@@ -7,6 +7,13 @@ const nextConfig: NextConfig = {
   // Habilita React strict mode para detectar problemas cedo
   reactStrictMode: true,
 
+  experimental: {
+    // A importação aceita até 1 MB; a margem cobre a serialização da Server Action.
+    serverActions: {
+      bodySizeLimit: "2mb",
+    },
+  },
+
   // Configura domínios de imagens (Google Avatar para OAuth)
   images: {
     remotePatterns: [

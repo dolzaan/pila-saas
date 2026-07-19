@@ -12,19 +12,31 @@ type Category = {
   kind: "EXPENSE" | "INCOME";
 };
 
+type FinancialAccount = {
+  id: string;
+  name: string;
+  isArchived: boolean;
+};
+
 type TransactionFormProps = {
   categories: Category[];
+  financialAccounts: FinancialAccount[];
   transactionToEdit?: {
     id: string;
     amount: number;
     kind: "EXPENSE" | "INCOME";
     description: string | null;
     categoryId: string | null;
+    financialAccountId: string | null;
     occurredAt: Date;
   };
 };
 
-export function TransactionForm({ categories, transactionToEdit }: TransactionFormProps) {
+export function TransactionForm({
+  categories,
+  financialAccounts,
+  transactionToEdit,
+}: TransactionFormProps) {
   const [isOpen, setIsOpen] = useState(false);
   const action = transactionToEdit 
     ? updateTransaction.bind(null, transactionToEdit.id) 
@@ -166,7 +178,7 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
                     ))}
                   </select>
                 </div>
-                
+
                 <div className="space-y-1">
                   <label htmlFor="occurredAt" className="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">
                     Data
@@ -184,6 +196,25 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
                     className="w-full bg-transparent border-b border-gray-700 py-2 text-sm text-gray-100 focus:outline-none focus:border-white transition-colors [color-scheme:dark] cursor-pointer"
                   />
                 </div>
+              </div>
+
+              <div className="space-y-1 pt-1">
+                <label htmlFor="financialAccountId" className="block text-[10px] font-semibold tracking-wide text-gray-400 uppercase">
+                  Conta ou cartão
+                </label>
+                <select
+                  id="financialAccountId"
+                  name="financialAccountId"
+                  defaultValue={transactionToEdit?.financialAccountId || ""}
+                  className="w-full bg-transparent border-b border-gray-700 py-2 text-sm text-gray-100 focus:outline-none focus:border-white transition-colors appearance-none cursor-pointer"
+                >
+                  <option value="" className="bg-gray-900">Sem conta vinculada</option>
+                  {financialAccounts.map((account) => (
+                    <option key={account.id} value={account.id} className="bg-gray-900">
+                      {account.name}{account.isArchived ? " (arquivada)" : ""}
+                    </option>
+                  ))}
+                </select>
               </div>
 
             </div>

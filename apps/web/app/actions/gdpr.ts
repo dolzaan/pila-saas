@@ -13,6 +13,7 @@ type UserExportData = Prisma.UserGetPayload<{
     subscription: true;
     billReminders: true;
     recurringTransactions: true;
+    financialAccounts: true;
   };
 }>;
 
@@ -29,6 +30,7 @@ export async function exportUserData() {
       subscription: true,
       billReminders: true,
       recurringTransactions: true,
+      financialAccounts: true,
     },
   });
 
@@ -49,6 +51,17 @@ export async function exportUserData() {
     } : null,
     categories: user.categories.map(c => ({ name: c.name, kind: c.kind, icon: c.icon })),
     budgets: user.budgets.map(b => ({ categoryId: b.categoryId, limit: b.monthlyLimit })),
+    financialAccounts: user.financialAccounts.map(account => ({
+      id: account.id,
+      name: account.name,
+      type: account.type,
+      initialBalance: account.initialBalance,
+      creditLimit: account.creditLimit,
+      closingDay: account.closingDay,
+      dueDay: account.dueDay,
+      isArchived: account.isArchived,
+      createdAt: account.createdAt,
+    })),
     transactions: user.transactions.map(t => ({
       amount: t.amount,
       kind: t.kind,
@@ -56,6 +69,8 @@ export async function exportUserData() {
       occurredAt: t.occurredAt,
       source: t.source,
       rawMessage: t.rawMessage,
+      categoryId: t.categoryId,
+      financialAccountId: t.financialAccountId,
     })),
     billReminders: user.billReminders.map(reminder => ({
       description: reminder.description,
