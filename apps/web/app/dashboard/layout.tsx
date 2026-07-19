@@ -8,6 +8,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import ExpiredPaywall from "@/components/expired-paywall";
 import { DashboardNav } from "@/components/dashboard/dashboard-nav";
+import { MobileDashboardNav } from "@/components/dashboard/mobile-dashboard-nav";
 
 export default async function DashboardLayout({
   children,
@@ -31,6 +32,10 @@ export default async function DashboardLayout({
 
   const subStatus = getUserSubscriptionStatus(dbUser.createdAt, dbUser.subscription);
   const isExpired = !hasProAccess(subStatus) && session.user.role !== "ADMIN";
+  async function signOutAction() {
+    "use server";
+    await signOut({ redirectTo: "/login" });
+  }
 
   return (
     <div className="dashboard-layout">
@@ -58,12 +63,7 @@ export default async function DashboardLayout({
               <span className="sidebar-user-email">{session.user.email}</span>
             </div>
           </div>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
+          <form action={signOutAction}>
             <button
               id="btn-signout"
               type="submit"
@@ -76,6 +76,23 @@ export default async function DashboardLayout({
           </form>
         </div>
       </aside>
+
+      <MobileDashboardNav
+        isAdmin={session.user.role === "ADMIN"}
+        userName={session.user.name}
+        userEmail={session.user.email}
+        signOutForm={
+          <form action={signOutAction}>
+            <button type="submit" className="mobile-more-link mobile-more-link--danger">
+              <LogOut className="h-5 w-5" aria-hidden="true" />
+              <span>
+                <strong>Sair da conta</strong>
+                <small>Encerrar esta sessão</small>
+              </span>
+            </button>
+          </form>
+        }
+      />
 
       {/* Main content */}
       <main className="dashboard-main">

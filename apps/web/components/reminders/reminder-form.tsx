@@ -10,8 +10,14 @@ import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { ReminderItem } from "./types";
 
-export function ReminderForm({ reminderToEdit }: { reminderToEdit?: ReminderItem }) {
-  const [isOpen, setIsOpen] = useState(false);
+export function ReminderForm({
+  reminderToEdit,
+  openOnMount = false,
+}: {
+  reminderToEdit?: ReminderItem;
+  openOnMount?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(openOnMount);
   const action = reminderToEdit
     ? updateBillReminder.bind(null, reminderToEdit.id)
     : createBillReminder;

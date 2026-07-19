@@ -21,6 +21,7 @@ type FinancialAccount = {
 type TransactionFormProps = {
   categories: Category[];
   financialAccounts: FinancialAccount[];
+  openOnMount?: boolean;
   transactionToEdit?: {
     id: string;
     amount: number;
@@ -35,9 +36,10 @@ type TransactionFormProps = {
 export function TransactionForm({
   categories,
   financialAccounts,
+  openOnMount = false,
   transactionToEdit,
 }: TransactionFormProps) {
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(openOnMount);
   const action = transactionToEdit 
     ? updateTransaction.bind(null, transactionToEdit.id) 
     : createTransaction;

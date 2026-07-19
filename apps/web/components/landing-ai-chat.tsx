@@ -104,7 +104,11 @@ export function LandingAiChat() {
   }
 
   return (
-    <div className={styles.chatRoot}>
+    <div
+      className={`${styles.chatRoot} ${
+        chatMode === "account" ? styles.accountChatRoot : ""
+      }`}
+    >
       {open ? (
         <section className={styles.panel} aria-label="Chat com a IA do Pila">
           <header className={styles.header}>

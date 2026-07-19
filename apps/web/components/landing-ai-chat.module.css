@@ -148,6 +148,13 @@
 .form button:disabled { opacity: 0.42; cursor: not-allowed; }
 .disclaimer { padding: 0 14px 11px; color: #65758a; background: #111a28; font-size: 0.59rem; text-align: center; }
 
+@media (max-width: 768px) {
+  .accountChatRoot { bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .accountChatRoot .panel {
+    height: min(620px, calc(100dvh - 110px - env(safe-area-inset-bottom)));
+  }
+}
+
 @media (max-width: 560px) {
   .chatRoot { right: 14px; bottom: 14px; }
   .launcherText { display: none; }
