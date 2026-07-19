@@ -3,21 +3,11 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { signOut } from "@/lib/auth";
-import {
-  LayoutDashboard,
-  CreditCard,
-  Tags,
-  Target,
-  LineChart,
-  MessageSquare,
-  Settings,
-  LogOut,
-  CalendarDays,
-  Shield
-} from "lucide-react";
+import { LogOut } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import ExpiredPaywall from "@/components/expired-paywall";
+import { DashboardNav } from "@/components/dashboard/dashboard-nav";
 
 export default async function DashboardLayout({
   children,
@@ -56,46 +46,7 @@ export default async function DashboardLayout({
           <Image src="/logo-text.png" alt="Pila" width={60} height={24} />
         </Link>
 
-        <nav className="sidebar-nav" aria-label="Menu principal">
-          <Link href="/dashboard" className="nav-item">
-            <LayoutDashboard className="w-5 h-5" />
-            <span>Dashboard</span>
-          </Link>
-          <Link href="/dashboard/transactions" className="nav-item">
-            <CreditCard className="w-5 h-5" />
-            <span>Transações</span>
-          </Link>
-          <Link href="/dashboard/recurring" className="nav-item">
-            <CalendarDays className="w-5 h-5" />
-            <span>Contas Fixas</span>
-          </Link>
-          <Link href="/dashboard/categories" className="nav-item">
-            <Tags className="w-5 h-5" />
-            <span>Categorias</span>
-          </Link>
-          <Link href="/dashboard/budgets" className="nav-item">
-            <Target className="w-5 h-5" />
-            <span>Orçamentos</span>
-          </Link>
-          <Link href="/dashboard/reports" className="nav-item">
-            <LineChart className="w-5 h-5" />
-            <span>Relatórios</span>
-          </Link>
-          <Link href="/dashboard/whatsapp" className="nav-item">
-            <MessageSquare className="w-5 h-5" />
-            <span>WhatsApp</span>
-          </Link>
-          <Link href="/dashboard/settings" className="nav-item">
-            <Settings className="w-5 h-5" />
-            <span>Configurações</span>
-          </Link>
-          {session.user.role === "ADMIN" && (
-            <Link href="/admin" className="nav-item mt-auto text-emerald-400">
-              <Shield className="w-5 h-5" />
-              <span>Admin Panel</span>
-            </Link>
-          )}
-        </nav>
+        <DashboardNav isAdmin={session.user.role === "ADMIN"} />
 
         <div className="sidebar-footer">
           <div className="sidebar-user">
