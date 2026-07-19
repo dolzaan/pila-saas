@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   BellRing,
   CalendarDays,
+  ChartNoAxesCombined,
   CreditCard,
   Landmark,
   LayoutDashboard,
@@ -40,6 +41,7 @@ export const dashboardNavigationItems: NavigationItemProps[] = [
   { href: "/dashboard/accounts", label: "Contas e cartões", icon: Landmark },
   { href: "/dashboard/recurring", label: "Contas Fixas", icon: CalendarDays },
   { href: "/dashboard/reminders", label: "Lembretes", icon: BellRing },
+  { href: "/dashboard/planning", label: "Planejamento", icon: ChartNoAxesCombined },
   { href: "/dashboard/categories", label: "Categorias", icon: Tags },
   { href: "/dashboard/budgets", label: "Orçamentos", icon: Target },
   { href: "/dashboard/reports", label: "Relatórios", icon: LineChart },
