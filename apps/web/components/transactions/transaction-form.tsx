@@ -96,7 +96,9 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
 
           <div className="px-5 sm:px-6 pb-6 space-y-5 overflow-y-auto flex-1 custom-scrollbar">
             {state?.error && (
-              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm"
+                role="alert"
+              >
                 {state.error}
               </div>
             )}
@@ -221,10 +223,11 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
       ) : (
         <button 
           onClick={() => setIsOpen(true)}
-          className="text-gray-400 hover:text-emerald-400 transition-colors p-2 hover:bg-gray-800 rounded-lg"
-          title="Editar"
+          className="icon-button"
+          title="Editar transação"
+          aria-label="Editar transação"
         >
-          <Pencil className="w-4 h-4" />
+          <Pencil className="w-4 h-4" aria-hidden="true" />
         </button>
       )}
 
