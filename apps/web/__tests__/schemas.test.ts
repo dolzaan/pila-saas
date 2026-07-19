@@ -84,6 +84,16 @@ describe("TransactionSchema", () => {
     expect(result.success).toBe(true);
   });
 
+  it("aceita categoria padrão com identificador do sistema", () => {
+    const result = TransactionSchema.safeParse({
+      amount: 300,
+      kind: "EXPENSE",
+      description: "Compras do mês",
+      categoryId: "sys_exp_mercado",
+    });
+    expect(result.success).toBe(true);
+  });
+
   it("rejeita valor negativo", () => {
     const result = TransactionSchema.safeParse({
       amount: -100,
