@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0B0F19" />
+    <title>Sem conexão — Pila</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        min-height: 100vh;
+        min-height: 100dvh;
+        margin: 0;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        color: #f8fafc;
+        background:
+          radial-gradient(circle at 50% 35%, rgba(53, 230, 161, 0.12), transparent 280px),
+          #0b0f19;
+        font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      main {
+        width: min(100%, 430px);
+        padding: 36px 28px;
+        text-align: center;
+        border: 1px solid #334155;
+        border-radius: 24px;
+        background: #131a2a;
+        box-shadow: 0 24px 70px rgba(0, 0, 0, 0.35);
+      }
+      img { width: 76px; height: auto; margin-bottom: 14px; }
+      h1 { margin: 0 0 10px; font-size: 1.55rem; letter-spacing: -0.03em; }
+      p { margin: 0 0 24px; color: #94a3b8; line-height: 1.6; }
+      button {
+        min-height: 44px;
+        padding: 0 20px;
+        border: 0;
+        border-radius: 12px;
+        color: #04120d;
+        background: #35e6a1;
+        font: inherit;
+        font-weight: 750;
+        cursor: pointer;
+      }
+      small { display: block; margin-top: 18px; color: #64748b; line-height: 1.5; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/logo-icon.png" alt="Pila" />
+      <h1>Você está sem conexão</h1>
+      <p>
+        Seus dados financeiros não foram armazenados neste dispositivo.
+        Conecte-se novamente para acessar o painel com segurança.
+      </p>
+      <button type="button" onclick="location.reload()">Tentar novamente</button>
+      <small>O Pila volta automaticamente assim que a internet estiver disponível.</small>
+    </main>
+  </body>
+</html>

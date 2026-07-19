@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Pila">
+  <rect width="512" height="512" rx="112" fill="#0B0F19"/>
+  <path d="M120 118h272a54 54 0 0 1 54 54v158a54 54 0 0 1-54 54H260l-92 63v-63h-48a54 54 0 0 1-54-54V172a54 54 0 0 1 54-54Z" fill="#35E6A1"/>
+  <rect x="151" y="241" width="42" height="78" rx="21" fill="#071710"/>
+  <rect x="235" y="190" width="42" height="129" rx="21" fill="#071710"/>
+  <rect x="319" y="158" width="42" height="161" rx="21" fill="#071710"/>
+</svg>

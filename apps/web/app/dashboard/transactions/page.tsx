@@ -10,9 +10,14 @@ export const metadata: Metadata = {
   description: "Visualize e gerencie suas transações financeiras.",
 };
 
-export default async function TransactionsPage() {
+export default async function TransactionsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ new?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  const query = await searchParams;
 
   const [transactions, categories, financialAccounts] = await Promise.all([
     prisma.transaction.findMany({
@@ -60,6 +65,7 @@ export default async function TransactionsPage() {
           <TransactionForm
             categories={serializedCategories}
             financialAccounts={financialAccounts}
+            openOnMount={query.new === "1"}
           />
         </div>
       </div>

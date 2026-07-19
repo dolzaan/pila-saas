@@ -22,9 +22,14 @@ export const metadata: Metadata = {
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
-export default async function RemindersPage() {
+export default async function RemindersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ new?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  const query = await searchParams;
 
   const [reminders, user] = await Promise.all([
     prisma.billReminder.findMany({
@@ -66,7 +71,7 @@ export default async function RemindersPage() {
             Controle vencimentos e receba avisos antes de esquecer uma conta.
           </p>
         </div>
-        <ReminderForm />
+        <ReminderForm openOnMount={query.new === "1"} />
       </div>
 
       <div className="stats-grid">

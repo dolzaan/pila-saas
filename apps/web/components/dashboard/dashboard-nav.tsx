@@ -23,7 +23,7 @@ interface DashboardNavProps {
   isAdmin: boolean;
 }
 
-interface NavigationItemProps {
+export interface NavigationItemProps {
   href: string;
   label: string;
   icon: LucideIcon;
@@ -34,7 +34,7 @@ interface NavigationLinkProps extends NavigationItemProps {
   isActive: boolean;
 }
 
-const navigationItems: NavigationItemProps[] = [
+export const dashboardNavigationItems: NavigationItemProps[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/transactions", label: "Transações", icon: CreditCard },
   { href: "/dashboard/accounts", label: "Contas e cartões", icon: Landmark },
@@ -91,7 +91,7 @@ export function DashboardNav({ isAdmin }: DashboardNavProps) {
 
   return (
     <nav className="sidebar-nav" aria-label="Menu principal">
-      {navigationItems.map((item) => (
+      {dashboardNavigationItems.map((item) => (
         <NavigationItem
           key={item.href}
           {...item}
