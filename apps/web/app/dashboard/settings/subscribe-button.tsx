@@ -17,7 +17,7 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
       type="button"
       onClick={handleSubscribe}
       disabled={isPending}
-      className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 text-black font-semibold rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      className="app-button app-button--primary"
     >
       {isPending ? "Abrindo pagamento..." : label}
     </button>

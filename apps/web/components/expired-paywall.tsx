@@ -6,18 +6,18 @@ export default function ExpiredPaywall({ status }: { status: SubStatusResult["st
   const paymentFailed = status === "PAST_DUE";
 
   return (
-    <div className="min-h-full flex items-center justify-center p-6 bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="max-w-2xl w-full bg-white dark:bg-gray-800 rounded-3xl shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+    <div className="paywall-shell">
+      <div className="paywall-card">
         
         {/* Header Section */}
-        <div className="bg-primary/10 dark:bg-primary/5 p-8 text-center border-b border-primary/20">
-          <div className="w-20 h-20 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Lock className="w-10 h-10 text-primary" />
+        <div className="paywall-hero">
+          <div className="paywall-icon">
+            <Lock className="w-10 h-10" />
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
+          <h1 className="text-3xl font-bold text-[#04120d] mb-4 tracking-[-0.04em]">
             {paymentFailed ? "Pagamento da mensalidade pendente" : "Seu Período de Teste Acabou"}
           </h1>
-          <p className="text-lg text-gray-600 dark:text-gray-300 max-w-lg mx-auto">
+          <p className="text-lg text-[#04120d]/70 max-w-lg mx-auto">
             {paymentFailed
               ? "Não conseguimos confirmar o pagamento da sua mensalidade. Regularize a cobrança para recuperar o acesso ao Pila Pro."
               : "Esperamos que você tenha aproveitado os 7 dias gratuitos do Pila! Para continuar acessando o dashboard e usar o bot do WhatsApp, assine o plano Pro."}
@@ -26,7 +26,7 @@ export default function ExpiredPaywall({ status }: { status: SubStatusResult["st
 
         {/* Benefits Section */}
         <div className="p-8">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-6 text-center">
+          <h2 className="text-xl font-semibold text-white mb-6 text-center">
             O que você garante com o Plano Pro:
           </h2>
           
@@ -41,17 +41,17 @@ export default function ExpiredPaywall({ status }: { status: SubStatusResult["st
             ].map((benefit, i) => (
               <div key={i} className="flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-green-500 shrink-0" />
-                <span className="text-gray-700 dark:text-gray-300 font-medium">{benefit}</span>
+                <span className="text-gray-300 font-medium">{benefit}</span>
               </div>
             ))}
           </div>
 
           <div className="text-center">
             <div className="inline-flex items-center gap-3">
-              <Rocket className="w-6 h-6 text-primary" />
+              <Rocket className="w-6 h-6 text-emerald-300" />
               <SubscribeButton label={paymentFailed ? "Regularizar pagamento" : "Assinar por R$ 19,90/mês"} />
             </div>
-            <p className="mt-4 text-sm text-gray-500 dark:text-gray-400">
+            <p className="mt-4 text-sm text-gray-500">
               Pagamento seguro processado via Stripe
             </p>
           </div>

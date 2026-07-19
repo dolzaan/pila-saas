@@ -50,14 +50,14 @@ export function GdprClient() {
         <button
           onClick={handleExport}
           disabled={isPending}
-          className="px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+          className="app-button app-button--secondary"
         >
           {isPending ? "Processando..." : "Baixar meus dados (JSON)"}
         </button>
         <button
           onClick={handleDelete}
           disabled={isPending}
-          className="px-4 py-2 bg-red-900/30 hover:bg-red-900/50 text-red-400 border border-red-500/30 rounded-lg transition-colors text-sm font-medium disabled:opacity-50"
+          className="app-button app-button--danger"
         >
           Excluir conta permanentemente
         </button>
