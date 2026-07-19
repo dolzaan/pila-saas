@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import ExpiredPaywall from "@/components/expired-paywall";
 import DashboardNavigation from "@/components/dashboard/dashboard-navigation";
+import { DashboardFeedbackProvider } from "@/components/ui/dashboard-feedback";
 
 export default async function DashboardLayout({
   children,
@@ -29,8 +30,9 @@ export default async function DashboardLayout({
   const isExpired = !hasProAccess(subStatus) && session.user.role !== "ADMIN";
 
   return (
-    <div className="dashboard-layout">
-      <DashboardNavigation
+    <DashboardFeedbackProvider>
+      <div className="dashboard-layout">
+        <DashboardNavigation
         user={{
           name: session.user.name,
           email: session.user.email,
@@ -38,9 +40,10 @@ export default async function DashboardLayout({
         }}
       />
 
-      <main id="dashboard-content" className="dashboard-main" tabIndex={-1}>
-        {isExpired ? <ExpiredPaywall status={subStatus.status} /> : children}
-      </main>
-    </div>
+        <main id="dashboard-content" className="dashboard-main" tabIndex={-1}>
+          {isExpired ? <ExpiredPaywall status={subStatus.status} /> : children}
+        </main>
+      </div>
+    </DashboardFeedbackProvider>
   );
 }

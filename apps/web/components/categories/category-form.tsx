@@ -3,44 +3,48 @@
 import { useActionState, useEffect, useState } from "react";
 import { createCategory, deleteCategory } from "@/app/actions/categories";
 import { Trash2 } from "lucide-react";
+import {
+  AccessibleModal,
+  ConfirmationDialog,
+} from "@/components/ui/accessible-modal";
+import { useDashboardFeedback } from "@/components/ui/dashboard-feedback";
 
 export function CategoryForm() {
   const [isOpen, setIsOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(createCategory, null);
+  const { notify } = useDashboardFeedback();
 
   useEffect(() => {
     if (state?.success) {
-      queueMicrotask(() => setIsOpen(false));
+      queueMicrotask(() => {
+        setIsOpen(false);
+        notify("Categoria criada com sucesso.", "success");
+      });
     }
-  }, [state]);
+  }, [state, notify]);
 
-  if (!isOpen) {
-    return (
-      <button 
+  return (
+    <>
+      <button
+        type="button"
         onClick={() => setIsOpen(true)}
         className="app-button app-button--primary"
       >
         + Nova Categoria
       </button>
-    );
-  }
 
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md shadow-xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-800 flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-gray-100">Nova Categoria</h2>
-          <button 
-            onClick={() => setIsOpen(false)}
-            className="text-gray-400 hover:text-gray-200"
-          >
-            ✕
-          </button>
-        </div>
-        
+      <AccessibleModal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Nova categoria"
+        description="Crie uma categoria para organizar receitas ou despesas."
+      >
         <form action={formAction} className="p-6 space-y-4">
           {state?.error && (
-            <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm">
+            <div
+              className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-400 text-sm"
+              role="alert"
+            >
               {state.error}
             </div>
           )}
@@ -49,16 +53,21 @@ export function CategoryForm() {
             <label htmlFor="name" className="block text-sm font-medium text-gray-300">
               Nome da categoria
             </label>
-            <input 
+            <input
               id="name"
               name="name"
-              type="text" 
+              type="text"
               required
               placeholder="Ex: Livros"
               className="w-full bg-gray-950 border border-gray-800 rounded-md px-3 py-2 text-gray-100 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              aria-invalid={Boolean(state?.details?.name)}
+              aria-describedby={state?.details?.name ? "category-name-error" : undefined}
+              data-autofocus
             />
             {state?.details?.name && (
-              <p className="text-red-400 text-xs">{state.details.name._errors.join(", ")}</p>
+              <p id="category-name-error" className="text-red-400 text-xs">
+                {state.details.name._errors.join(", ")}
+              </p>
             )}
           </div>
 
@@ -67,10 +76,10 @@ export function CategoryForm() {
               <label htmlFor="icon" className="block text-sm font-medium text-gray-300">
                 Ícone (Emoji)
               </label>
-              <input 
+              <input
                 id="icon"
                 name="icon"
-                type="text" 
+                type="text"
                 required
                 maxLength={2}
                 placeholder="Ex: 📚"
@@ -81,7 +90,7 @@ export function CategoryForm() {
               <label htmlFor="kind" className="block text-sm font-medium text-gray-300">
                 Tipo
               </label>
-              <select 
+              <select
                 id="kind"
                 name="kind"
                 required
@@ -93,7 +102,7 @@ export function CategoryForm() {
             </div>
           </div>
 
-          <div className="pt-4 flex justify-end gap-3">
+          <div className="modal-actions px-0 pb-0">
             <button
               type="button"
               onClick={() => setIsOpen(false)}
@@ -110,30 +119,52 @@ export function CategoryForm() {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </AccessibleModal>
+    </>
   );
 }
 
 export function DeleteCategoryButton({ id }: { id: string }) {
   const [isPending, setIsPending] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const { notify } = useDashboardFeedback();
 
-  const handleDelete = async () => {
-    if (confirm("Tem certeza que deseja excluir esta categoria?")) {
-      setIsPending(true);
+  async function handleDelete() {
+    setIsPending(true);
+
+    try {
       await deleteCategory(id);
+      setIsConfirmOpen(false);
+      notify("Categoria excluída com sucesso.", "success");
+    } catch {
+      notify("Não foi possível excluir a categoria.", "error");
+    } finally {
       setIsPending(false);
     }
-  };
+  }
 
   return (
-    <button 
-      onClick={handleDelete}
-      disabled={isPending}
-      className="p-2 text-gray-400 hover:text-red-400 hover:bg-gray-800 rounded-md transition-colors disabled:opacity-50"
-      title="Excluir categoria"
-    >
-      <Trash2 className="w-4 h-4" />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setIsConfirmOpen(true)}
+        disabled={isPending}
+        className="icon-button icon-button--danger"
+        title="Excluir categoria"
+        aria-label="Excluir categoria"
+      >
+        <Trash2 className="w-4 h-4" aria-hidden="true" />
+      </button>
+
+      <ConfirmationDialog
+        open={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleDelete}
+        isPending={isPending}
+        title="Excluir categoria?"
+        description="As transações associadas não serão apagadas, mas poderão ficar sem categoria."
+        confirmLabel="Excluir categoria"
+      />
+    </>
   );
 }

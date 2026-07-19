@@ -4,6 +4,11 @@ import { useState } from "react";
 import { createRecurringTransaction, deleteRecurringTransaction } from "@/app/actions/recurring";
 import type { RecurrenceInterval, TransactionKind } from "@prisma/client";
 import { Plus, Trash2 } from "lucide-react";
+import {
+  AccessibleModal,
+  ConfirmationDialog,
+} from "@/components/ui/accessible-modal";
+import { useDashboardFeedback } from "@/components/ui/dashboard-feedback";
 
 type CategoryOption = {
   id: string;
@@ -15,15 +20,16 @@ type CategoryOption = {
 export function RecurringForm({ categories }: { categories: CategoryOption[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { notify } = useDashboardFeedback();
 
-  async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
+  async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setIsSubmitting(true);
 
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(event.currentTarget);
     const amountStr = formData.get("amount") as string;
     const amount = parseFloat(amountStr.replace(",", "."));
-    
+
     const data = {
       description: formData.get("description") as string,
       amount,
@@ -36,9 +42,10 @@ export function RecurringForm({ categories }: { categories: CategoryOption[] }) 
     try {
       await createRecurringTransaction(data);
       setIsOpen(false);
+      notify("Conta fixa criada com sucesso.", "success");
     } catch (error) {
       console.error(error);
-      alert("Erro ao criar transação recorrente.");
+      notify("Não foi possível criar a conta fixa.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -47,161 +54,180 @@ export function RecurringForm({ categories }: { categories: CategoryOption[] }) 
   return (
     <>
       <button
+        type="button"
         onClick={() => setIsOpen(true)}
         className="app-button app-button--primary"
       >
-        <Plus className="w-4 h-4" />
+        <Plus className="w-4 h-4" aria-hidden="true" />
         Nova Conta Fixa
       </button>
 
-      {isOpen && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md overflow-hidden">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Nova Conta Recorrente</h2>
-                <button
-                  onClick={() => setIsOpen(false)}
-                  className="text-gray-500 hover:text-white"
-                >
-                  ✕
-                </button>
-              </div>
+      <AccessibleModal
+        open={isOpen}
+        onClose={() => setIsOpen(false)}
+        title="Nova conta recorrente"
+        description="Cadastre uma receita ou despesa que se repete automaticamente."
+      >
+        <form onSubmit={onSubmit} className="p-6 space-y-4">
+          <div>
+            <label htmlFor="recurring-description" className="block text-sm font-medium text-gray-400 mb-1">
+              Descrição
+            </label>
+            <input
+              id="recurring-description"
+              name="description"
+              required
+              placeholder="Ex: Conta de Luz"
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
+              data-autofocus
+            />
+          </div>
 
-              <form onSubmit={onSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    Descrição
-                  </label>
-                  <input
-                    name="description"
-                    required
-                    placeholder="Ex: Conta de Luz"
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                  />
-                </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="recurring-amount" className="block text-sm font-medium text-gray-400 mb-1">
+                Valor
+              </label>
+              <input
+                id="recurring-amount"
+                name="amount"
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                min="0.01"
+                required
+                placeholder="0,00"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
+              />
+            </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Valor
-                    </label>
-                    <input
-                      name="amount"
-                      type="number"
-                      step="0.01"
-                      required
-                      placeholder="0,00"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Tipo
-                    </label>
-                    <select
-                      name="kind"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    >
-                      <option value="EXPENSE">Despesa</option>
-                      <option value="INCOME">Receita</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Categoria
-                    </label>
-                    <select
-                      name="categoryId"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    >
-                      <option value="">Sem Categoria</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.icon} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Intervalo
-                    </label>
-                    <select
-                      name="interval"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    >
-                      <option value="MONTHLY">Mensal</option>
-                      <option value="WEEKLY">Semanal</option>
-                      <option value="DAILY">Diário</option>
-                      <option value="YEARLY">Anual</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    Data de Início
-                  </label>
-                  <input
-                    name="startDate"
-                    type="date"
-                    required
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                  />
-                </div>
-
-                <div className="pt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1 app-button app-button--secondary"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 app-button app-button--primary"
-                  >
-                    {isSubmitting ? "Salvando..." : "Salvar"}
-                  </button>
-                </div>
-              </form>
+            <div>
+              <label htmlFor="recurring-kind" className="block text-sm font-medium text-gray-400 mb-1">
+                Tipo
+              </label>
+              <select
+                id="recurring-kind"
+                name="kind"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
+              >
+                <option value="EXPENSE">Despesa</option>
+                <option value="INCOME">Receita</option>
+              </select>
             </div>
           </div>
-        </div>
-      )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label htmlFor="recurring-category" className="block text-sm font-medium text-gray-400 mb-1">
+                Categoria
+              </label>
+              <select
+                id="recurring-category"
+                name="categoryId"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
+              >
+                <option value="">Sem Categoria</option>
+                {categories.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.icon} {category.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label htmlFor="recurring-interval" className="block text-sm font-medium text-gray-400 mb-1">
+                Intervalo
+              </label>
+              <select
+                id="recurring-interval"
+                name="interval"
+                className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
+              >
+                <option value="MONTHLY">Mensal</option>
+                <option value="WEEKLY">Semanal</option>
+                <option value="DAILY">Diário</option>
+                <option value="YEARLY">Anual</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="recurring-start-date" className="block text-sm font-medium text-gray-400 mb-1">
+              Data de início
+            </label>
+            <input
+              id="recurring-start-date"
+              name="startDate"
+              type="date"
+              required
+              className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
+            />
+          </div>
+
+          <div className="modal-actions px-0 pb-0">
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="app-button app-button--secondary"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={isSubmitting}
+              className="app-button app-button--primary"
+            >
+              {isSubmitting ? "Salvando..." : "Salvar"}
+            </button>
+          </div>
+        </form>
+      </AccessibleModal>
     </>
   );
 }
 
 export function DeleteRecurringButton({ id }: { id: string }) {
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
+  const { notify } = useDashboardFeedback();
+
+  async function handleDelete() {
+    setIsDeleting(true);
+
+    try {
+      await deleteRecurringTransaction(id);
+      setIsConfirmOpen(false);
+      notify("Conta fixa excluída com sucesso.", "success");
+    } catch {
+      notify("Não foi possível excluir a conta fixa.", "error");
+    } finally {
+      setIsDeleting(false);
+    }
+  }
 
   return (
-    <button
-      onClick={async () => {
-        if (confirm("Tem certeza que deseja excluir esta conta recorrente? As transações já geradas não serão apagadas.")) {
-          setIsDeleting(true);
-          try {
-            await deleteRecurringTransaction(id);
-          } catch {
-            alert("Erro ao deletar.");
-            setIsDeleting(false);
-          }
-        }
-      }}
-      disabled={isDeleting}
-      className="p-2 text-gray-500 hover:text-red-400 hover:bg-gray-800 rounded-lg transition-colors"
-      title="Excluir"
-    >
-      <Trash2 className="w-4 h-4" />
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={() => setIsConfirmOpen(true)}
+        disabled={isDeleting}
+        className="icon-button icon-button--danger"
+        title="Excluir conta fixa"
+        aria-label="Excluir conta fixa"
+      >
+        <Trash2 className="w-4 h-4" aria-hidden="true" />
+      </button>
+
+      <ConfirmationDialog
+        open={isConfirmOpen}
+        onClose={() => setIsConfirmOpen(false)}
+        onConfirm={handleDelete}
+        isPending={isDeleting}
+        title="Excluir conta fixa?"
+        description="As transações já geradas serão mantidas. Apenas os próximos lançamentos automáticos serão interrompidos."
+        confirmLabel="Excluir conta fixa"
+      />
+    </>
   );
 }
