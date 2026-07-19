@@ -178,7 +178,7 @@
 .form .cancelButton { color: #fff1f2; background: #e11d48; }
 .form .cancelButton:hover { background: #be123c; }
 .form button:disabled { opacity: 0.42; cursor: not-allowed; }
-.disclaimer { padding: 0 14px 11px; color: #65758a; background: #111a28; font-size: 0.59rem; text-align: center; }
+.disclaimer { padding: 0 14px 11px; color: #94a3b8; background: #111a28; font-size: 0.59rem; text-align: center; }
 
 @media (max-width: 560px) {
   .chatRoot { right: 14px; bottom: 14px; }
