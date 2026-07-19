@@ -56,7 +56,7 @@ export function LandingAiChat() {
   const [failedMessage, setFailedMessage] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const launcherRef = useRef<HTMLButtonElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const activeRequest = useRef<AbortController | null>(null);
   const activeMessage = useRef<string | null>(null);
 
@@ -89,7 +89,7 @@ export function LandingAiChat() {
     return () => {
       window.clearTimeout(focusTimer);
       document.removeEventListener("keydown", handleEscape);
-      launcherRef.current?.focus();
+      returnFocusRef.current?.focus();
     };
   }, [open]);
 
@@ -307,10 +307,12 @@ export function LandingAiChat() {
         </section>
       ) : (
         <button
-          ref={launcherRef}
           type="button"
           className={styles.launcher}
-          onClick={() => setOpen(true)}
+          onClick={(event) => {
+            returnFocusRef.current = event.currentTarget;
+            setOpen(true);
+          }}
           aria-label="Conversar com a IA do Pila"
           aria-haspopup="dialog"
           aria-expanded={open}
