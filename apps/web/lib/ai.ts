@@ -1,6 +1,21 @@
 import { GoogleGenAI } from "@google/genai";
 import { PILA_PUBLIC_KNOWLEDGE } from "@/lib/pila-knowledge";
 import { z } from "zod";
+import {
+  checkRateLimits,
+  getSaoPauloDateKey,
+  RateLimitUnavailableError,
+} from "@/lib/rate-limit";
+
+const DEFAULT_GEMINI_DAILY_REQUEST_LIMIT = 200;
+const GEMINI_DAILY_WINDOW_MS = 26 * 60 * 60 * 1000;
+
+function getGeminiDailyRequestLimit() {
+  const configured = Number(process.env.GEMINI_DAILY_REQUEST_LIMIT);
+  return Number.isSafeInteger(configured) && configured > 0
+    ? configured
+    : DEFAULT_GEMINI_DAILY_REQUEST_LIMIT;
+}
 
 // Inicialização preguiçosa para não quebrar a compilação caso a chave esteja ausente no .env
 let ai: GoogleGenAI | null = null;
@@ -94,6 +109,23 @@ Mensagem do usuário: "${text}"
       };
     }
 
+    const dailyLimit = getGeminiDailyRequestLimit();
+    const dailyDecision = await checkRateLimits([
+      {
+        key: `ai:gemini:daily:${getSaoPauloDateKey()}`,
+        limit: dailyLimit,
+        windowMs: GEMINI_DAILY_WINDOW_MS,
+      },
+    ]);
+    if (!dailyDecision.allowed) {
+      console.warn("[Gemini API] Limite diário de requisições atingido.");
+      return {
+        isTransaction: false,
+        replyMessage:
+          "A IA atingiu o limite diário de segurança. Tente novamente amanhã.",
+      };
+    }
+
     // Prepara o payload para texto ou multimodal (texto + áudio/imagem/pdf)
     let aiContents: any = prompt;
     if (mediaBase64 && mediaMimeType) {
@@ -109,6 +141,7 @@ Mensagem do usuário: "${text}"
       contents: aiContents,
       config: {
         temperature: 0.2,
+        maxOutputTokens: 2_048,
       }
     });
 
@@ -127,11 +160,20 @@ Mensagem do usuário: "${text}"
       };
     }
     return parsed.data;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    if (error instanceof RateLimitUnavailableError) {
+      console.error("[Gemini API] Rate limiting indisponível:", error.message);
+      return {
+        isTransaction: false,
+        replyMessage:
+          "A IA está temporariamente indisponível. Tente novamente em instantes.",
+      };
+    }
+
     console.error("[Gemini API] Erro ao processar mensagem:", error);
     return {
       isTransaction: false,
-      replyMessage: `Desculpe, erro interno ao conectar com a IA: ${error?.message || error}`
+      replyMessage: "Desculpe, ocorreu um erro interno ao conectar com a IA.",
     };
   }
 }
