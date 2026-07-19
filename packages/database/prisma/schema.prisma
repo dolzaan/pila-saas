@@ -35,6 +35,12 @@ enum BotConnectionStatus {
   QR_PENDING
 }
 
+enum WhatsappInboundStatus {
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum RecurrenceInterval {
   DAILY
   WEEKLY
@@ -185,13 +191,21 @@ model Transaction {
   @@map("transactions")
 }
 
-// Registro mínimo para impedir reprocessamento de webhooks reenviados.
+// Estado durável do processamento de cada mensagem recebida da Evolution API.
+// O default COMPLETED preserva com segurança os registros criados antes da máquina de estados.
 model WhatsappInboundMessage {
-  id         String   @id
-  phone      String
-  receivedAt DateTime @default(now())
+  id                  String                @id
+  phone               String
+  status              WhatsappInboundStatus @default(COMPLETED)
+  attempts            Int                   @default(1)
+  processingStartedAt DateTime?
+  completedAt         DateTime?
+  failedAt            DateTime?
+  lastError           String?               @db.Text
+  receivedAt          DateTime              @default(now())
 
   @@index([phone, receivedAt])
+  @@index([status, processingStartedAt])
   @@map("whatsapp_inbound_messages")
 }
 
