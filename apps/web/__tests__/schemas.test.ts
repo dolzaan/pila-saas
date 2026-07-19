@@ -3,6 +3,7 @@ import {
   RegisterSchema,
   WhatsappLinkCodeSchema,
   TransactionSchema,
+  FinancialAccountSchema,
 } from "../lib/schemas";
 
 describe("RegisterSchema", () => {
@@ -117,5 +118,45 @@ describe("TransactionSchema", () => {
       kind: "EXPENSE",
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("FinancialAccountSchema", () => {
+  it("valida uma conta corrente", () => {
+    expect(
+      FinancialAccountSchema.safeParse({
+        name: "Conta principal",
+        type: "CHECKING",
+        initialBalance: 1250.5,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("valida um cartão com limite e datas", () => {
+    expect(
+      FinancialAccountSchema.safeParse({
+        name: "Cartão Nubank",
+        type: "CREDIT_CARD",
+        initialBalance: 0,
+        creditLimit: 5000,
+        closingDay: 10,
+        dueDay: 17,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejeita cartão sem limite, fechamento ou vencimento", () => {
+    const result = FinancialAccountSchema.safeParse({
+      name: "Cartão incompleto",
+      type: "CREDIT_CARD",
+      initialBalance: 0,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path[0])).toEqual(
+        expect.arrayContaining(["creditLimit", "closingDay", "dueDay"]),
+      );
+    }
   });
 });

@@ -14,17 +14,22 @@ export default async function TransactionsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [transactions, categories] = await Promise.all([
+  const [transactions, categories, financialAccounts] = await Promise.all([
     prisma.transaction.findMany({
       where: { userId: session.user.id },
       orderBy: { occurredAt: "desc" },
-      include: { category: true },
+      include: { category: true, financialAccount: true },
     }),
     prisma.category.findMany({
       where: {
         OR: [{ userId: null }, { userId: session.user.id }],
       },
       orderBy: [{ name: "asc" }],
+    }),
+    prisma.financialAccount.findMany({
+      where: { userId: session.user.id },
+      orderBy: [{ isArchived: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, isArchived: true },
     }),
   ]);
 
@@ -52,7 +57,10 @@ export default async function TransactionsPage() {
           </p>
         </div>
         <div>
-          <TransactionForm categories={serializedCategories} />
+          <TransactionForm
+            categories={serializedCategories}
+            financialAccounts={financialAccounts}
+          />
         </div>
       </div>
 
@@ -73,6 +81,7 @@ export default async function TransactionsPage() {
                   <th className="pb-3 font-medium">Data</th>
                   <th className="pb-3 font-medium">Descrição</th>
                   <th className="pb-3 font-medium">Categoria</th>
+                  <th className="pb-3 font-medium">Conta</th>
                   <th className="pb-3 font-medium text-right">Valor</th>
                   <th className="pb-3 font-medium text-center">Ações</th>
                 </tr>
@@ -96,6 +105,9 @@ export default async function TransactionsPage() {
                         "—"
                       )}
                     </td>
+                    <td className="py-4 text-gray-400">
+                      {tx.financialAccount?.name || "—"}
+                    </td>
                     <td className={`py-4 text-right font-medium ${tx.kind === "INCOME" ? "text-emerald-400" : "text-gray-200"}`}>
                       {tx.kind === "INCOME" ? "+" : "-"} {formatCurrency(tx.amount.toNumber())}
                     </td>
@@ -103,12 +115,14 @@ export default async function TransactionsPage() {
                       <div className="flex justify-center items-center gap-2">
                         <TransactionForm
                           categories={serializedCategories}
+                          financialAccounts={financialAccounts}
                           transactionToEdit={{
                             id: tx.id,
                             amount: tx.amount.toNumber(),
                             kind: tx.kind,
                             description: tx.description,
                             categoryId: tx.categoryId,
+                            financialAccountId: tx.financialAccountId,
                             occurredAt: tx.occurredAt,
                           }}
                         />

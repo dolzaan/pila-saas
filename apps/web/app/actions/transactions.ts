@@ -5,6 +5,43 @@ import { prisma } from "@/lib/prisma";
 import { TransactionSchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
 
+function parseOccurredAt(value: FormDataEntryValue | null) {
+  const input = value?.toString();
+  if (!input) return undefined;
+  const date = new Date(`${input}T12:00:00.000Z`);
+  return Number.isNaN(date.getTime()) ? input : date.toISOString();
+}
+
+async function validateRelations(input: {
+  userId: string;
+  kind: "EXPENSE" | "INCOME";
+  categoryId?: string | null;
+  financialAccountId?: string | null;
+}) {
+  const [category, financialAccount] = await Promise.all([
+    input.categoryId
+      ? prisma.category.findFirst({
+          where: {
+            id: input.categoryId,
+            kind: input.kind,
+            OR: [{ userId: input.userId }, { userId: null }],
+          },
+          select: { id: true },
+        })
+      : Promise.resolve({ id: "" }),
+    input.financialAccountId
+      ? prisma.financialAccount.findFirst({
+          where: { id: input.financialAccountId, userId: input.userId },
+          select: { id: true },
+        })
+      : Promise.resolve({ id: "" }),
+  ]);
+
+  if (!category) return "Categoria inválida ou acesso negado.";
+  if (!financialAccount) return "Conta inválida ou acesso negado.";
+  return null;
+}
+
 export async function createTransaction(_prevState: unknown, formData: FormData) {
   const session = await auth();
   if (!session?.user?.id) {
@@ -14,8 +51,8 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
   const amountStr = formData.get("amount")?.toString();
   const kind = formData.get("kind")?.toString();
   const description = formData.get("description")?.toString();
-  const categoryId = formData.get("categoryId")?.toString() || undefined;
-  const occurredAt = formData.get("occurredAt")?.toString() || undefined;
+  const categoryId = formData.get("categoryId")?.toString() || null;
+  const financialAccountId = formData.get("financialAccountId")?.toString() || null;
 
   const amount = amountStr ? parseFloat(amountStr.replace(",", ".")) : 0;
 
@@ -24,7 +61,8 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
     kind,
     description,
     categoryId,
-    occurredAt: occurredAt ? new Date(occurredAt).toISOString() : undefined,
+    financialAccountId,
+    occurredAt: parseOccurredAt(formData.get("occurredAt")),
   });
 
   if (!parsed.success) {
@@ -32,17 +70,13 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
   }
 
   try {
-    if (parsed.data.categoryId) {
-      const category = await prisma.category.findFirst({
-        where: {
-          id: parsed.data.categoryId,
-          kind: parsed.data.kind,
-          OR: [{ userId: session.user.id }, { userId: null }],
-        },
-        select: { id: true },
-      });
-      if (!category) return { error: "Categoria inválida ou acesso negado." };
-    }
+    const relationError = await validateRelations({
+      userId: session.user.id,
+      kind: parsed.data.kind,
+      categoryId: parsed.data.categoryId,
+      financialAccountId: parsed.data.financialAccountId,
+    });
+    if (relationError) return { error: relationError };
 
     await prisma.transaction.create({
       data: {
@@ -51,6 +85,7 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
         kind: parsed.data.kind,
         description: parsed.data.description,
         categoryId: parsed.data.categoryId,
+        financialAccountId: parsed.data.financialAccountId,
         occurredAt: parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : new Date(),
         source: "manual",
       },
@@ -74,8 +109,8 @@ export async function updateTransaction(id: string, _prevState: unknown, formDat
   const amountStr = formData.get("amount")?.toString();
   const kind = formData.get("kind")?.toString();
   const description = formData.get("description")?.toString();
-  const categoryId = formData.get("categoryId")?.toString() || undefined;
-  const occurredAt = formData.get("occurredAt")?.toString() || undefined;
+  const categoryId = formData.get("categoryId")?.toString() || null;
+  const financialAccountId = formData.get("financialAccountId")?.toString() || null;
 
   const amount = amountStr ? parseFloat(amountStr.replace(",", ".")) : 0;
 
@@ -84,7 +119,8 @@ export async function updateTransaction(id: string, _prevState: unknown, formDat
     kind,
     description,
     categoryId,
-    occurredAt: occurredAt ? new Date(occurredAt).toISOString() : undefined,
+    financialAccountId,
+    occurredAt: parseOccurredAt(formData.get("occurredAt")),
   });
 
   if (!parsed.success) {
@@ -97,17 +133,13 @@ export async function updateTransaction(id: string, _prevState: unknown, formDat
       return { error: "Transação não encontrada ou acesso negado." };
     }
 
-    if (parsed.data.categoryId) {
-      const category = await prisma.category.findFirst({
-        where: {
-          id: parsed.data.categoryId,
-          kind: parsed.data.kind,
-          OR: [{ userId: session.user.id }, { userId: null }],
-        },
-        select: { id: true },
-      });
-      if (!category) return { error: "Categoria inválida ou acesso negado." };
-    }
+    const relationError = await validateRelations({
+      userId: session.user.id,
+      kind: parsed.data.kind,
+      categoryId: parsed.data.categoryId,
+      financialAccountId: parsed.data.financialAccountId,
+    });
+    if (relationError) return { error: relationError };
 
     await prisma.transaction.update({
       where: { id },
@@ -116,6 +148,7 @@ export async function updateTransaction(id: string, _prevState: unknown, formDat
         kind: parsed.data.kind,
         description: parsed.data.description,
         categoryId: parsed.data.categoryId,
+        financialAccountId: parsed.data.financialAccountId,
         occurredAt: parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : undefined,
       },
     });

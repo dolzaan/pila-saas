@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   CalendarDays,
   CreditCard,
+  Landmark,
   LayoutDashboard,
   LineChart,
   LoaderCircle,
@@ -34,6 +35,7 @@ interface NavigationLinkProps extends NavigationItemProps {
 const navigationItems: NavigationItemProps[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/dashboard/transactions", label: "Transações", icon: CreditCard },
+  { href: "/dashboard/accounts", label: "Contas e cartões", icon: Landmark },
   { href: "/dashboard/recurring", label: "Contas Fixas", icon: CalendarDays },
   { href: "/dashboard/categories", label: "Categorias", icon: Tags },
   { href: "/dashboard/budgets", label: "Orçamentos", icon: Target },
