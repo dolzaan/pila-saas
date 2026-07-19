@@ -1,0 +1,4 @@
+- Botão principal visível no topo.
+- Seletor mostra apenas categorias sem orçamento.
+- Edição e exclusão continuam disponíveis nos cards.
+- Estado sem categorias possui mensagem adequada.
