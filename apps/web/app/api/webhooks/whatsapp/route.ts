@@ -127,14 +127,19 @@ export async function POST(req: Request) {
       });
     }
     if (claim.state === "PROCESSING") {
+      // Mantém a entrega como retryable: se o worker original morrer,
+      // a Evolution tentará novamente e poderá recuperar o claim após o TTL.
       return NextResponse.json(
         {
-          success: true,
-          accepted: true,
+          success: false,
+          retryable: true,
           duplicate: true,
           processing: true,
         },
-        { status: 202 },
+        {
+          status: 503,
+          headers: { "Retry-After": "30" },
+        },
       );
     }
     claimedMessageId = messageId;
