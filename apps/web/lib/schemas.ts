@@ -14,7 +14,13 @@ export const TransactionSchema = z.object({
   amount: z.number().positive("Valor deve ser positivo"),
   kind: z.enum(["EXPENSE", "INCOME"]),
   description: z.string().max(255).optional(),
-  categoryId: z.string().cuid("Categoria inválida").optional().nullable(),
+  categoryId: z
+    .string()
+    .trim()
+    .min(1, "Categoria inválida")
+    .max(191, "Categoria inválida")
+    .optional()
+    .nullable(),
   occurredAt: z.string().datetime().optional(),
 });
 
