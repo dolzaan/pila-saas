@@ -4,6 +4,7 @@ import {
   WhatsappLinkCodeSchema,
   TransactionSchema,
   FinancialAccountSchema,
+  BillReminderSchema,
 } from "../lib/schemas";
 
 describe("RegisterSchema", () => {
@@ -158,5 +159,27 @@ describe("FinancialAccountSchema", () => {
         expect.arrayContaining(["creditLimit", "closingDay", "dueDay"]),
       );
     }
+  });
+});
+
+describe("BillReminderSchema", () => {
+  it("valida um lembrete financeiro", () => {
+    expect(
+      BillReminderSchema.safeParse({
+        description: "Conta de internet",
+        amount: 149.9,
+        dueDate: "2026-07-25",
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejeita valor negativo e data fora do formato", () => {
+    expect(
+      BillReminderSchema.safeParse({
+        description: "Conta",
+        amount: -20,
+        dueDate: "25/07/2026",
+      }).success,
+    ).toBe(false);
   });
 });

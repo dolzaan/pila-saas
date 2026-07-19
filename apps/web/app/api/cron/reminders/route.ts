@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { sendWhatsAppMessage } from "@/lib/evolution";
+import { saoPauloDayBounds } from "@/lib/reminders";
 
 export async function GET(req: Request) {
   if (!process.env.CRON_SECRET) {
@@ -14,16 +15,13 @@ export async function GET(req: Request) {
 
   try {
     // Busca todos os lembretes que não foram pagos e que vencem hoje (ou venceram)
-    const today = new Date();
-    today.setHours(23, 59, 59, 999);
-    const startOfToday = new Date();
-    startOfToday.setHours(0, 0, 0, 0);
+    const { start: startOfToday, end: endOfToday } = saoPauloDayBounds();
 
     const pendingReminders = await prisma.billReminder.findMany({
       where: {
         isPaid: false,
-        dueDate: { lte: today },
-        OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: today } }],
+        dueDate: { lte: endOfToday },
+        OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: endOfToday } }],
         AND: [{ OR: [{ lastNotifiedAt: null }, { lastNotifiedAt: { lt: startOfToday } }] }],
       },
       include: { user: true }
@@ -32,9 +30,11 @@ export async function GET(req: Request) {
     let sentCount = 0;
 
     for (const reminder of pendingReminders) {
-      if (reminder.user.whatsappNumber) {
+      if (reminder.user.whatsappNumber && reminder.user.whatsappVerifiedAt) {
         const amountStr = Number(reminder.amount).toFixed(2);
-        const dateStr = reminder.dueDate.toLocaleDateString("pt-BR");
+        const dateStr = reminder.dueDate.toLocaleDateString("pt-BR", {
+          timeZone: "UTC",
+        });
         
         const message = `⏰ *Lembrete de Conta!* ⏰\n\nChefe, passando pra lembrar que a conta "${reminder.description}" no valor de R$ ${amountStr} está com vencimento para ${dateStr}.\n\nSe já pagou, me avisa pra eu registrar!`;
         

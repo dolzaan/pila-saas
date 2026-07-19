@@ -14,6 +14,7 @@ type UserExportData = Prisma.UserGetPayload<{
     billReminders: true;
     recurringTransactions: true;
     financialAccounts: true;
+    securityEvents: true;
   };
 }>;
 
@@ -31,6 +32,7 @@ export async function exportUserData() {
       billReminders: true,
       recurringTransactions: true,
       financialAccounts: true,
+      securityEvents: true,
     },
   });
 
@@ -89,6 +91,11 @@ export async function exportUserData() {
       startDate: item.startDate,
       endDate: item.endDate,
       nextDate: item.nextDate,
+    })),
+    securityEvents: user.securityEvents.map(event => ({
+      type: event.type,
+      provider: event.provider,
+      createdAt: event.createdAt,
     })),
   };
 

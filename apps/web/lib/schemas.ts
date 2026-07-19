@@ -71,3 +71,9 @@ export const FinancialAccountSchema = z
       });
     }
   });
+
+export const BillReminderSchema = z.object({
+  description: z.string().trim().min(2, "Descrição muito curta").max(120, "Descrição muito longa"),
+  amount: z.number().finite().positive("O valor deve ser positivo").max(1_000_000_000),
+  dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+});

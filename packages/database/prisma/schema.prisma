@@ -62,6 +62,13 @@ enum Role {
   ADMIN
 }
 
+enum SecurityEventType {
+  LOGIN
+  PASSWORD_SET
+  PASSWORD_CHANGED
+  SESSIONS_REVOKED
+}
+
 // =============================================================================
 // Models
 // =============================================================================
@@ -99,6 +106,7 @@ model User {
   accountActivationToken AccountActivationToken?
   recurringTransactions RecurringTransaction[]
   financialAccounts    FinancialAccount[]
+  securityEvents       SecurityEvent[]
 
   @@map("users")
 }
@@ -133,6 +141,19 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+model SecurityEvent {
+  id        String            @id @default(cuid())
+  userId    String
+  type      SecurityEventType
+  provider  String?
+  createdAt DateTime          @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("security_events")
 }
 
 model VerificationToken {

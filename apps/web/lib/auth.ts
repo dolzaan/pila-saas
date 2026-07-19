@@ -122,4 +122,33 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return session;
     },
   },
+  events: {
+    async signIn({ user, account }) {
+      if (!user.id) return;
+      try {
+        const retentionCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1_000);
+        await prisma.$transaction([
+          prisma.securityEvent.create({
+            data: {
+              userId: user.id,
+              type: "LOGIN",
+              provider: account?.provider || null,
+            },
+          }),
+          prisma.securityEvent.deleteMany({
+            where: {
+              userId: user.id,
+              createdAt: { lt: retentionCutoff },
+            },
+          }),
+        ]);
+      } catch (error) {
+        // O histórico é complementar e nunca deve impedir um login válido.
+        console.error(
+          "[securityEvent.signIn]",
+          error instanceof Error ? error.message : "unknown",
+        );
+      }
+    },
+  },
 });
