@@ -28,22 +28,22 @@ export async function sendEmail(input: EmailInput) {
 
   try {
     const response = await fetch("https://api.emailjs.com/api/v1.0/email/send", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       signal: externalTimeoutSignal("EMAILJS_TIMEOUT_MS", 10_000),
       body: JSON.stringify({
-      service_id: serviceId,
-      template_id: templateId,
-      user_id: publicKey,
-      accessToken: privateKey,
-      template_params: {
-        to_email: input.to,
-        to_name: input.name || "cliente",
-        action_url: "actionUrl" in input ? input.actionUrl : "",
-        verification_code: "verificationCode" in input ? input.verificationCode : "",
-        expires_in: input.template === "password-reset" ? "30 minutos" : "10 minutos",
-      },
-    }),
+        service_id: serviceId,
+        template_id: templateId,
+        user_id: publicKey,
+        accessToken: privateKey,
+        template_params: {
+          to_email: input.to,
+          to_name: input.name || "cliente",
+          action_url: "actionUrl" in input ? input.actionUrl : "",
+          verification_code: "verificationCode" in input ? input.verificationCode : "",
+          expires_in: input.template === "password-reset" ? "30 minutos" : "10 minutos",
+        },
+      }),
     });
 
     if (!response.ok) {
