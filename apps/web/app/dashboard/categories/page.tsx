@@ -2,9 +2,59 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
+import type { Category } from "@prisma/client";
 import { CategoryForm, DeleteCategoryButton } from "@/components/categories/category-form";
 
 export const metadata: Metadata = { title: "Categorias — Pila" };
+
+type CategoryItem = Pick<Category, "id" | "name" | "icon" | "kind">;
+
+function CategoryGroup({
+  title,
+  description,
+  categories,
+  custom = false,
+}: {
+  title: string;
+  description: string;
+  categories: CategoryItem[];
+  custom?: boolean;
+}) {
+  return (
+    <div className="section-card mb-0">
+      <div className="mb-5 flex items-start justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-gray-100">{title}</h3>
+          <p className="mt-1 text-sm text-gray-500">{description}</p>
+        </div>
+        <span className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs font-semibold text-gray-400">
+          {categories.length}
+        </span>
+      </div>
+
+      {categories.length === 0 ? (
+        <div className="rounded-xl border border-dashed border-gray-800 px-4 py-8 text-center text-sm text-gray-500">
+          Nenhuma categoria neste grupo.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {categories.map((category) => (
+            <div
+              key={category.id}
+              className="group flex min-w-0 items-center justify-between gap-3 rounded-xl border border-gray-800 bg-gray-950/60 p-3.5"
+            >
+              <div className="flex min-w-0 items-center gap-3">
+                <span className="text-2xl" aria-hidden="true">{category.icon}</span>
+                <span className="truncate font-medium text-gray-300">{category.name}</span>
+              </div>
+              {custom && <DeleteCategoryButton id={category.id} />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default async function CategoriesPage() {
   const session = await auth();
@@ -22,64 +72,61 @@ export default async function CategoriesPage() {
 
   const defaultCategories = categories.filter((c) => c.userId === null);
   const customCategories = categories.filter((c) => c.userId !== null);
+  const systemExpenses = defaultCategories.filter((category) => category.kind === "EXPENSE");
+  const systemIncomes = defaultCategories.filter((category) => category.kind === "INCOME");
+  const customExpenses = customCategories.filter((category) => category.kind === "EXPENSE");
+  const customIncomes = customCategories.filter((category) => category.kind === "INCOME");
 
   return (
     <div className="dashboard-page">
       <div className="dashboard-header">
         <div>
           <h1 className="dashboard-greeting">Categorias</h1>
-          <p className="dashboard-subtitle">Categorias padrão e personalizadas.</p>
+          <p className="dashboard-subtitle">Organize seus lançamentos com categorias do Pila ou crie as suas.</p>
         </div>
-        <div>
-          <CategoryForm />
-        </div>
+        <CategoryForm />
       </div>
-      
-      <div className="space-y-8 mt-6">
-        {/* Categorias Personalizadas */}
+
+      <div className="mt-6 space-y-10">
         <section>
-          <h2 className="text-xl font-semibold text-gray-100 mb-4">Minhas Categorias</h2>
-          {customCategories.length === 0 ? (
-            <div className="p-8 text-center border border-dashed border-gray-800 rounded-xl text-gray-500">
-              Você ainda não criou nenhuma categoria personalizada.
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {customCategories.map((cat) => (
-                <div key={cat.id} className="bg-gray-900 border border-gray-800 rounded-lg p-4 flex items-center justify-between group">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{cat.icon}</span>
-                    <div>
-                      <h3 className="font-medium text-gray-200">{cat.name}</h3>
-                      <span className="text-xs text-gray-500">
-                        {cat.kind === "EXPENSE" ? "Despesa" : "Receita"}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                    <DeleteCategoryButton id={cat.id} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-100">Minhas categorias</h2>
+            <p className="mt-1 text-sm text-gray-500">Categorias exclusivas da sua conta.</p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <CategoryGroup
+              title="Despesas"
+              description="Categorias personalizadas para seus gastos."
+              categories={customExpenses}
+              custom
+            />
+            <CategoryGroup
+              title="Receitas"
+              description="Categorias personalizadas para seus ganhos."
+              categories={customIncomes}
+              custom
+            />
+          </div>
         </section>
 
-        {/* Categorias Padrão */}
         <section>
-          <h2 className="text-xl font-semibold text-gray-100 mb-4">Categorias do Sistema</h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {defaultCategories.map((cat) => (
-              <div key={cat.id} className="bg-gray-950 border border-gray-900 rounded-lg p-4 flex items-center gap-3 opacity-80">
-                <span className="text-2xl">{cat.icon}</span>
-                <div>
-                  <h3 className="font-medium text-gray-300">{cat.name}</h3>
-                  <span className="text-xs text-gray-600">
-                    {cat.kind === "EXPENSE" ? "Despesa" : "Receita"}
-                  </span>
-                </div>
-              </div>
-            ))}
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-100">Categorias do sistema</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Catálogo oficial do Pila, disponível automaticamente para todos os usuários.
+            </p>
+          </div>
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+            <CategoryGroup
+              title="Despesas"
+              description="Gastos do dia a dia, contas, lazer e obrigações."
+              categories={systemExpenses}
+            />
+            <CategoryGroup
+              title="Receitas"
+              description="Entradas recorrentes, extras e rendimentos."
+              categories={systemIncomes}
+            />
           </div>
         </section>
       </div>

@@ -78,13 +78,13 @@ export default async function DashboardPage() {
       </div>
 
       {!whatsappConnected && (
-        <section className="section-card border-emerald-400/30 bg-emerald-400/5" aria-labelledby="whatsapp-onboarding-title">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex gap-4">
+        <section className="section-card whatsapp-onboarding-card border-emerald-400/30 bg-emerald-400/5" aria-labelledby="whatsapp-onboarding-title">
+          <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex min-w-0 items-start gap-4">
               <div className="h-12 w-12 shrink-0 rounded-2xl bg-emerald-400/15 flex items-center justify-center">
                 <MessageCircle className="h-6 w-6 text-emerald-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <span className="dashboard-kicker">Passo necessário para começar</span>
                 <h2 id="whatsapp-onboarding-title" className="section-title mt-1">Envie uma mensagem para o WhatsApp do Pila</h2>
                 <p className="text-gray-400 mt-2 max-w-2xl">
@@ -102,7 +102,7 @@ export default async function DashboardPage() {
                 </div>
               </div>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 lg:shrink-0">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row xl:shrink-0">
               <a
                 href={whatsappUrl}
                 target={PILA_WHATSAPP_NUMBER ? "_blank" : undefined}

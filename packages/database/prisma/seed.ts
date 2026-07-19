@@ -1,34 +1,7 @@
-import { PrismaClient, TransactionKind } from "@prisma/client";
+import { PrismaClient, type TransactionKind } from "@prisma/client";
+import { DEFAULT_CATEGORIES } from "../default-categories";
 
 const prisma = new PrismaClient();
-
-const DEFAULT_CATEGORIES: Array<{
-  name: string;
-  icon: string;
-  kind: TransactionKind;
-}> = [
-  // Despesas
-  { name: "Alimentação", icon: "🍔", kind: "EXPENSE" },
-  { name: "Mercado", icon: "🛒", kind: "EXPENSE" },
-  { name: "Transporte", icon: "🚗", kind: "EXPENSE" },
-  { name: "Moradia", icon: "🏠", kind: "EXPENSE" },
-  { name: "Saúde", icon: "❤️", kind: "EXPENSE" },
-  { name: "Educação", icon: "📚", kind: "EXPENSE" },
-  { name: "Lazer", icon: "🎮", kind: "EXPENSE" },
-  { name: "Roupas", icon: "👕", kind: "EXPENSE" },
-  { name: "Assinaturas", icon: "📱", kind: "EXPENSE" },
-  { name: "Viagem", icon: "✈️", kind: "EXPENSE" },
-  { name: "Pets", icon: "🐾", kind: "EXPENSE" },
-  { name: "Beleza", icon: "💅", kind: "EXPENSE" },
-  { name: "Outros", icon: "📦", kind: "EXPENSE" },
-
-  // Receitas
-  { name: "Salário", icon: "💼", kind: "INCOME" },
-  { name: "Freelance", icon: "💻", kind: "INCOME" },
-  { name: "Investimentos", icon: "📈", kind: "INCOME" },
-  { name: "Transferência", icon: "🔄", kind: "INCOME" },
-  { name: "Outros (Receita)", icon: "💰", kind: "INCOME" },
-];
 
 async function main() {
   console.log("🌱 Iniciando seed do banco de dados...");
@@ -45,7 +18,10 @@ async function main() {
     if (existing) {
       await prisma.category.update({
         where: { id: existing.id },
-        data: { icon: category.icon },
+        data: {
+          icon: category.icon,
+          kind: category.kind as TransactionKind,
+        },
       });
     } else {
       await prisma.category.create({
@@ -53,7 +29,7 @@ async function main() {
           userId: null,
           name: category.name,
           icon: category.icon,
-          kind: category.kind,
+          kind: category.kind as TransactionKind,
         },
       });
     }

@@ -531,24 +531,38 @@ ${contextLines.slice(0, 20).join('\n')}
     }
 
     // 7. Salvar no Banco de Dados (apenas se for transação)
-    // Buscar ou criar a categoria
+    // Prioriza uma categoria personalizada e reutiliza o catálogo do sistema
+    // antes de criar outra categoria para o usuário.
     let categoryId = null;
     if (aiResult.categoryName) {
-      let category = await prisma.category.findFirst({
-        where: {
-          userId: user.id,
-          name: { equals: aiResult.categoryName, mode: "insensitive" }
-        }
-      });
+      const transactionKind = aiResult.kind || "EXPENSE";
+      const categoryName = aiResult.categoryName;
+      const [customCategory, systemCategory] = await Promise.all([
+        prisma.category.findFirst({
+          where: {
+            userId: user.id,
+            kind: transactionKind,
+            name: { equals: categoryName, mode: "insensitive" },
+          },
+        }),
+        prisma.category.findFirst({
+          where: {
+            userId: null,
+            kind: transactionKind,
+            name: { equals: categoryName, mode: "insensitive" },
+          },
+        }),
+      ]);
+      let category = customCategory || systemCategory;
 
       if (!category) {
         category = await prisma.category.create({
           data: {
             userId: user.id,
-            name: aiResult.categoryName,
-            kind: aiResult.kind || "EXPENSE",
-            icon: aiResult.kind === "INCOME" ? "💵" : "🛍️"
-          }
+            name: categoryName,
+            kind: transactionKind,
+            icon: transactionKind === "INCOME" ? "💵" : "🛍️",
+          },
         });
       }
       categoryId = category.id;
