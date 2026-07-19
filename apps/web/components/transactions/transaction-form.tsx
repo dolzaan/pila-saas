@@ -194,16 +194,14 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
             <button
               type="button"
               onClick={() => setIsOpen(false)}
-              className="px-5 py-2.5 rounded-xl text-gray-400 text-sm font-medium hover:bg-gray-800 hover:text-white transition-colors"
+              className="app-button app-button--secondary"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={isPending}
-              className={`px-7 py-2.5 text-white text-sm rounded-xl font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:scale-105 active:scale-95 ${
-                isExpense ? "bg-red-500 hover:bg-red-600 shadow-red-500/20" : "bg-emerald-500 hover:bg-emerald-600 shadow-emerald-500/20"
-              }`}
+              className="app-button app-button--primary"
             >
               {isPending ? "Salvando..." : "Salvar"}
             </button>
@@ -218,7 +216,7 @@ export function TransactionForm({ categories, transactionToEdit }: TransactionFo
       {!transactionToEdit ? (
         <button 
           onClick={() => setIsOpen(true)}
-          className="px-5 py-2.5 bg-emerald-500 text-white rounded-xl font-semibold hover:bg-emerald-600 transition-all hover:scale-105 active:scale-95 shadow-lg shadow-emerald-500/20 whitespace-nowrap"
+          className="app-button app-button--primary"
         >
           + Nova Transação
         </button>
