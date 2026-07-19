@@ -10,8 +10,8 @@ BEGIN
   );
 EXCEPTION
   WHEN duplicate_object THEN NULL;
-END
-$$;
+END;
+$;
 
 ALTER TABLE "whatsapp_inbound_messages"
   ADD COLUMN IF NOT EXISTS "status"
