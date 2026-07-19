@@ -126,6 +126,8 @@ finzap/
 
 Ver [.env.example](.env.example) com documentação de cada variável.
 
+Consulte também [docs/privacy-and-ai.md](docs/privacy-and-ai.md) para retenção de mensagens, minimização antes da IA e timeouts das integrações.
+
 O fluxo de baseline e deploy do banco está documentado em [docs/database-migrations.md](docs/database-migrations.md).
 
 ---

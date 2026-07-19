@@ -23,6 +23,7 @@ import {
   completeWhatsappInboundMessage,
   failWhatsappInboundMessage,
 } from "@/lib/whatsapp-inbound";
+import { rawMessageForStorage } from "@/lib/privacy";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -354,14 +355,25 @@ export async function POST(req: Request) {
 
     const recentTransactions = await prisma.transaction.findMany({
       where: { userId: user.id, occurredAt: { gte: startOfMonth } },
-      include: { category: true },
-      orderBy: { occurredAt: "desc" }
+      select: {
+        amount: true,
+        kind: true,
+        occurredAt: true,
+        categoryId: true,
+        category: { select: { name: true } },
+      },
+      orderBy: { occurredAt: "desc" },
+      take: 50,
     });
 
-    // 5.1 Buscar Orçamentos do Usuário
+    // 5.1 Buscar somente os campos de orçamento necessários para a IA.
     const budgets = await prisma.budget.findMany({
       where: { userId: user.id },
-      include: { category: true }
+      select: {
+        categoryId: true,
+        monthlyLimit: true,
+        category: { select: { name: true } },
+      },
     });
 
     let monthExpenses = 0;
@@ -382,7 +394,7 @@ export async function POST(req: Request) {
         expensesByCategoryName[categoryName] = (expensesByCategoryName[categoryName] || 0) + val;
       }
       if (t.kind === "INCOME") monthIncomes += val;
-      return `- ${t.occurredAt.toLocaleDateString("pt-BR")}: R$ ${val.toFixed(2)} - ${t.description} (${t.category?.name || 'Sem categoria'}) - ${t.kind === "EXPENSE" ? "Gasto" : "Ganho"}`;
+      return `- ${t.occurredAt.toLocaleDateString("pt-BR")}: R$ ${val.toFixed(2)} - ${t.category?.name || "Sem categoria"} - ${t.kind === "EXPENSE" ? "Gasto" : "Ganho"}`;
     });
 
     const budgetLines = budgets.map(b => {
@@ -550,7 +562,7 @@ ${contextLines.slice(0, 20).join('\n')}
         description: aiResult.description || "Registro via WhatsApp",
         categoryId: categoryId,
         source: "whatsapp",
-        rawMessage: text,
+        rawMessage: rawMessageForStorage(text),
         externalMessageId: messageId,
       }
     });

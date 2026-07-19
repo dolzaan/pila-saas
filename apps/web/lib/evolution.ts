@@ -1,3 +1,5 @@
+import { externalTimeoutSignal, isTimeoutError } from "@/lib/external-service";
+
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
@@ -23,6 +25,7 @@ export async function sendWhatsAppMessage(phone: string, text: string) {
         text: text,
         delay: 1200 // Adiciona um pequeno delay humano
       }),
+      signal: externalTimeoutSignal("EVOLUTION_TIMEOUT_MS", 15_000),
     });
 
     if (!response.ok) {
@@ -33,7 +36,12 @@ export async function sendWhatsAppMessage(phone: string, text: string) {
 
     return true;
   } catch (error) {
-    console.error("[Evolution API] Request failed:", error);
+    console.error(
+      isTimeoutError(error)
+        ? "[Evolution API] Request timed out"
+        : "[Evolution API] Request failed:",
+      isTimeoutError(error) ? undefined : error,
+    );
     return false;
   }
 }
@@ -73,6 +81,7 @@ export async function sendWhatsAppMedia(
         fileName: `relatorio-pila.${extension}`,
         delay: 1200,
       }),
+      signal: externalTimeoutSignal("EVOLUTION_TIMEOUT_MS", 15_000),
     });
 
     if (!response.ok) {
@@ -83,7 +92,12 @@ export async function sendWhatsAppMedia(
 
     return true;
   } catch (error) {
-    console.error("[Evolution API] Request failed:", error);
+    console.error(
+      isTimeoutError(error)
+        ? "[Evolution API] Request timed out"
+        : "[Evolution API] Request failed:",
+      isTimeoutError(error) ? undefined : error,
+    );
     return false;
   }
 }
