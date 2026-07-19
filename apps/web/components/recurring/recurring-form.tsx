@@ -48,7 +48,7 @@ export function RecurringForm({ categories }: { categories: CategoryOption[] }) 
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className="btn-primary flex items-center gap-2"
+        className="app-button app-button--primary"
       >
         <Plus className="w-4 h-4" />
         Nova Conta Fixa
@@ -160,14 +160,14 @@ export function RecurringForm({ categories }: { categories: CategoryOption[] }) 
                   <button
                     type="button"
                     onClick={() => setIsOpen(false)}
-                    className="flex-1 btn-secondary"
+                    className="flex-1 app-button app-button--secondary"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="flex-1 btn-primary disabled:opacity-50"
+                    className="flex-1 app-button app-button--primary"
                   >
                     {isSubmitting ? "Salvando..." : "Salvar"}
                   </button>
