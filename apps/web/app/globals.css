@@ -255,6 +255,16 @@ img, svg { display: block; max-width: 100%; }
 
 .form-input:disabled { opacity: 0.5; cursor: not-allowed; }
 
+.form-hint {
+  color: var(--color-text-muted);
+  font-size: 0.76rem;
+}
+
+.text-gray-500,
+.text-gray-600 {
+  color: #8492a6;
+}
+
 .form-error {
   padding: 0.65rem 0.875rem;
   background: rgba(244, 63, 94, 0.1);
