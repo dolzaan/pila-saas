@@ -1,4 +1,4 @@
-import { GoogleGenAI } from "@google/genai";
+import { GoogleGenAI, type ContentListUnion } from "@google/genai";
 import { PILA_PUBLIC_KNOWLEDGE } from "@/lib/pila-knowledge";
 import { z } from "zod";
 import {
@@ -6,6 +6,8 @@ import {
   getSaoPauloDateKey,
   RateLimitUnavailableError,
 } from "@/lib/rate-limit";
+import { externalTimeoutSignal, isTimeoutError } from "@/lib/external-service";
+import { sanitizeTextForAi } from "@/lib/privacy";
 
 const DEFAULT_GEMINI_DAILY_REQUEST_LIMIT = 200;
 const GEMINI_DAILY_WINDOW_MS = 26 * 60 * 60 * 1000;
@@ -21,7 +23,7 @@ function getGeminiDailyRequestLimit() {
 let ai: GoogleGenAI | null = null;
 try {
   ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "dummy" });
-} catch (e) {}
+} catch {}
 
 export type ParsedTransaction = {
   isTransaction: boolean;
@@ -64,6 +66,11 @@ const ParsedTransactionSchema = z.object({
 });
 
 export async function parseFinancialMessage(text: string, userContext?: string, mediaBase64?: string, mediaMimeType?: string): Promise<ParsedTransaction> {
+  const safeText = sanitizeTextForAi(text);
+  const safeUserContext = sanitizeTextForAi(
+    userContext || "Nenhum dado disponível.",
+    12_000,
+  );
   const prompt = `
 Você é um assistente financeiro super inteligente para o WhatsApp, chamado "Pila Bot".
 Sua tarefa é ajudar clientes e visitantes a conhecer e usar o Pila, além de extrair dados de transações financeiras e responder perguntas financeiras baseando-se no contexto fornecido.
@@ -83,7 +90,7 @@ REGRAS:
 10. A resposta DEVE ser um JSON puro (sem markdown ou \`\`\`json).
 
 CONTEXTO FINANCEIRO DO USUÁRIO:
-${userContext || "Nenhum dado disponível."}
+${safeUserContext}
 
 Formato JSON esperado para Transação:
 { "isTransaction": true, "amount": 50.00, "kind": "EXPENSE", "description": "Lanche", "categoryName": "Alimentação", "replyMessage": "Beleza! Já anotei seus R$ 50 no Lanche. 🍔" }
@@ -97,7 +104,7 @@ Formato JSON esperado para Relatório Visual (Gráfico):
 Formato JSON esperado para Não-Transação/Pergunta:
 { "isTransaction": false, "replyMessage": "Sua resposta amigável aqui." }
 
-Mensagem do usuário: "${text}"
+Mensagem do usuário: "${safeText}"
   `;
 
   try {
@@ -127,7 +134,7 @@ Mensagem do usuário: "${text}"
     }
 
     // Prepara o payload para texto ou multimodal (texto + áudio/imagem/pdf)
-    let aiContents: any = prompt;
+    let aiContents: ContentListUnion = prompt;
     if (mediaBase64 && mediaMimeType) {
       const cleanBase64 = mediaBase64.replace(/^data:\w+\/[-+.\w]+;base64,/, "");
       aiContents = [
@@ -142,6 +149,7 @@ Mensagem do usuário: "${text}"
       config: {
         temperature: 0.2,
         maxOutputTokens: 2_048,
+        abortSignal: externalTimeoutSignal("GEMINI_TIMEOUT_MS", 25_000),
       }
     });
 
@@ -161,6 +169,14 @@ Mensagem do usuário: "${text}"
     }
     return parsed.data;
   } catch (error: unknown) {
+    if (isTimeoutError(error)) {
+      console.error("[Gemini API] Tempo limite excedido");
+      return {
+        isTransaction: false,
+        replyMessage: "A IA demorou mais do que o esperado. Tente novamente em instantes.",
+      };
+    }
+
     if (error instanceof RateLimitUnavailableError) {
       console.error("[Gemini API] Rate limiting indisponível:", error.message);
       return {
