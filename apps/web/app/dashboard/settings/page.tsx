@@ -29,80 +29,92 @@ export default async function SettingsPage() {
   const isPro = hasProAccess(subscription);
   const isTrial = subscription.status === "TRIALING";
   const hasStripeSubscription = isStripeSubscriptionId(
-    user.subscription?.stripeSubscriptionId
+    user.subscription?.stripeSubscriptionId,
   );
 
   return (
-    <div className="dashboard-page">
-      <div className="dashboard-header">
-        <div>
-          <h1 className="dashboard-greeting">Configurações</h1>
-          <p className="dashboard-subtitle">Sua conta e assinatura.</p>
+    <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
+      <section id="profile" className="section-card scroll-mt-28">
+        <div className="mb-5">
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+            Perfil
+          </span>
+          <h2 className="mt-1 text-xl font-semibold text-white">Seus dados</h2>
+          <p className="mt-1 text-sm text-slate-500">
+            Informações usadas para identificar sua conta no Pila.
+          </p>
         </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {/* Profile Card */}
-        <div className="section-card">
-          <h2 className="text-xl font-semibold text-white mb-4">Seu Perfil</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Nome</label>
-              <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-white">
-                {user?.name || "Usuário"}
-              </div>
+        <div className="space-y-4">
+          <div>
+            <label className="mb-1 block text-sm text-gray-400">Nome</label>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-white">
+              {user.name || "Usuário"}
             </div>
-            <div>
-              <label className="block text-sm text-gray-400 mb-1">Email</label>
-              <div className="p-3 bg-white/5 border border-white/10 rounded-xl text-white">
-                {user?.email}
-              </div>
+          </div>
+          <div>
+            <label className="mb-1 block text-sm text-gray-400">E-mail</label>
+            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-white">
+              {user.email}
             </div>
           </div>
         </div>
+      </section>
 
-        {/* Subscription Card */}
-        <div className="section-card">
-          <h2 className="text-xl font-semibold text-white mb-4">Plano Atual</h2>
-          
-          {isPro ? (
-            <div className="p-6 bg-emerald-900/20 border border-emerald-500/30 rounded-2xl">
-              <div className="flex items-center gap-3 mb-4">
-                <Star className="w-8 h-8 text-emerald-400" />
-                <div>
-                  <h3 className="text-xl font-bold text-emerald-400">Pila Pro</h3>
-                  <p className="text-sm text-gray-400">
-                    {isTrial
-                      ? `Teste gratuito — ${subscription.daysLeft} ${subscription.daysLeft === 1 ? "dia restante" : "dias restantes"}`
-                      : "Assinatura ativa"}
-                  </p>
-                </div>
+      <section id="subscription" className="section-card scroll-mt-28">
+        <div className="mb-5">
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+            Assinatura
+          </span>
+          <h2 className="mt-1 text-xl font-semibold text-white">Plano atual</h2>
+        </div>
+
+        {isPro ? (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-900/20 p-6">
+            <div className="mb-4 flex items-center gap-3">
+              <Star className="h-8 w-8 text-emerald-400" />
+              <div>
+                <h3 className="text-xl font-bold text-emerald-400">Pila Pro</h3>
+                <p className="text-sm text-gray-400">
+                  {isTrial
+                    ? `Teste gratuito — ${subscription.daysLeft} ${subscription.daysLeft === 1 ? "dia restante" : "dias restantes"}`
+                    : "Assinatura ativa"}
+                </p>
               </div>
-              <p className="text-gray-300 mb-6">
-                {isTrial
-                  ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial via WhatsApp."
-                  : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp."}
-              </p>
-              {isTrial || !hasStripeSubscription ? (
-                <SubscribeButton label="Assinar por R$ 19,90/mês" />
-              ) : (
-                <SubscriptionManager />
-              )}
             </div>
-          ) : (
-            <UpgradeCard title="Seja Pila Pro" description="Assine para liberar a IA do WhatsApp e não ter limites na plataforma." />
-          )}
-        </div>
+            <p className="mb-6 text-gray-300">
+              {isTrial
+                ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial via WhatsApp."
+                : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp."}
+            </p>
+            {isTrial || !hasStripeSubscription ? (
+              <SubscribeButton label="Assinar por R$ 19,90/mês" />
+            ) : (
+              <SubscriptionManager />
+            )}
+          </div>
+        ) : (
+          <UpgradeCard
+            title="Seja Pila Pro"
+            description="Assine para liberar a IA do WhatsApp e não ter limites na plataforma."
+          />
+        )}
+      </section>
 
-        {/* GDPR Card */}
-        <div className="section-card md:col-span-2 mt-4">
-          <h2 className="text-xl font-semibold text-white mb-2">Privacidade e Dados (LGPD)</h2>
-          <p className="text-gray-400 text-sm mb-6 max-w-2xl">
-            Acreditamos que os seus dados pertencem a você. Exporte uma cópia completa de todas as suas informações ou exclua sua conta permanentemente caso não queira mais utilizar nossos serviços.
+      <section id="privacy" className="section-card scroll-mt-28 md:col-span-2">
+        <div className="mb-6 max-w-2xl">
+          <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+            Privacidade
+          </span>
+          <h2 className="mt-1 text-xl font-semibold text-white">
+            Privacidade e dados (LGPD)
+          </h2>
+          <p className="mt-2 text-sm text-gray-400">
+            Seus dados pertencem a você. Exporte uma cópia completa das suas
+            informações ou exclua sua conta permanentemente quando desejar.
           </p>
-          <GdprClient />
         </div>
-      </div>
+        <GdprClient />
+      </section>
     </div>
   );
 }
