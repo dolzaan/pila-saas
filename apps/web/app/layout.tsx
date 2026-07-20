@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Analytics } from "@vercel/analytics/next";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LandingAiChat } from "@/components/landing-ai-chat";
+import { ProductEventTracker } from "@/components/product-event-tracker";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
@@ -50,6 +51,7 @@ export default function RootLayout({
       <body>
         {children}
         <LandingAiChat />
+        <ProductEventTracker />
         <ServiceWorkerRegister />
         <Analytics />
         <SpeedInsights />

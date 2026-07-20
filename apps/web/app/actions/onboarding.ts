@@ -6,6 +6,7 @@ import {
   saveUserOnboardingStep,
   skipUserOnboarding,
 } from "@/lib/onboarding";
+import { recordProductEvent } from "@/lib/product-events";
 import { revalidatePath } from "next/cache";
 
 export async function updateOnboardingStep(step: number) {
@@ -28,6 +29,10 @@ export async function finishOnboarding() {
 
   try {
     await completeUserOnboarding(session.user.id);
+    await recordProductEvent({
+      eventName: "onboarding_completed",
+      userId: session.user.id,
+    });
     revalidatePath("/dashboard", "layout");
     return { success: true };
   } catch (error) {
@@ -42,6 +47,10 @@ export async function skipOnboarding() {
 
   try {
     await skipUserOnboarding(session.user.id);
+    await recordProductEvent({
+      eventName: "onboarding_skipped",
+      userId: session.user.id,
+    });
     revalidatePath("/dashboard", "layout");
     return { success: true };
   } catch (error) {
