@@ -20,13 +20,15 @@ export async function GET(request: Request) {
 
     // A recorrência representa o próximo vencimento ainda não confirmado.
     // O cron não cria mais transações automaticamente: o usuário confirma
-    // o pagamento pelo painel ou pelo WhatsApp, e só então nextDate avança.
-    const pendingConfirmation = await prisma.recurringTransaction.count({
-      where: {
-        nextDate: { lte: new Date() },
-        OR: [{ endDate: null }, { endDate: { gte: new Date() } }],
-      },
+    // o pagamento pelo painel, e só então nextDate avança.
+    const dueRecurring = await prisma.recurringTransaction.findMany({
+      where: { nextDate: { lte: new Date() } },
+      select: { nextDate: true, endDate: true },
     });
+    const pendingConfirmation = dueRecurring.filter(
+      (recurring) =>
+        !recurring.endDate || recurring.nextDate <= recurring.endDate,
+    ).length;
 
     return NextResponse.json({
       success: true,
