@@ -186,7 +186,7 @@ export default async function ProductMetricsPage() {
                   </span>
                   <strong className="text-emerald-300">{formatNumber.format(item.total)}</strong>
                 </div>
-              ))}
+              ))
             )}
           </div>
         </section>
