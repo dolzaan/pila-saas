@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BellRing,
+  CalendarRange,
   CreditCard,
   LayoutDashboard,
   Menu,
@@ -32,6 +32,7 @@ interface MobileDashboardNavProps {
   userName: string | null | undefined;
   userEmail: string | null | undefined;
   signOutForm: ReactNode;
+  notificationSlot?: ReactNode;
 }
 
 type OpenPanel = "actions" | "more" | null;
@@ -39,7 +40,7 @@ type OpenPanel = "actions" | "more" | null;
 const primaryRoutes = new Set([
   "/dashboard",
   "/dashboard/transactions",
-  "/dashboard/reminders",
+  "/dashboard/agenda",
 ]);
 const focusableElements = [
   "a[href]",
@@ -86,6 +87,7 @@ export function MobileDashboardNav({
   userName,
   userEmail,
   signOutForm,
+  notificationSlot,
 }: MobileDashboardNavProps) {
   const pathname = usePathname();
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
@@ -164,11 +166,14 @@ export function MobileDashboardNav({
           />
           <span>Pila</span>
         </Link>
-        <span className="mobile-dashboard-title">
-          {pathname.startsWith("/admin")
-            ? "Admin"
-            : currentItem?.label || "Painel"}
-        </span>
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="mobile-dashboard-title max-w-[9rem] truncate">
+            {pathname.startsWith("/admin")
+              ? "Admin"
+              : currentItem?.label || "Painel"}
+          </span>
+          {notificationSlot}
+        </div>
       </header>
 
       <nav className="mobile-bottom-nav" aria-label="Navegação principal">
@@ -207,9 +212,9 @@ export function MobileDashboardNav({
         </button>
         <MobileNavLink
           item={{
-            href: "/dashboard/reminders",
-            label: "Lembretes",
-            icon: BellRing,
+            href: "/dashboard/agenda",
+            label: "Agenda",
+            icon: CalendarRange,
           }}
           pathname={pathname}
         />
