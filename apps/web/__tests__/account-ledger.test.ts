@@ -150,4 +150,77 @@ describe("calculateAccountLedgerSummaries", () => {
 
     expect(summaries.get("cash")?.balance).toBe(270);
   });
+
+  it("move saldo entre contas sem criar receita nem despesa", () => {
+    const summaries = calculateAccountLedgerSummaries({
+      accounts: [
+        {
+          id: "checking",
+          type: "CHECKING",
+          initialBalance: 1_000,
+          creditLimit: null,
+        },
+        {
+          id: "savings",
+          type: "SAVINGS",
+          initialBalance: 300,
+          creditLimit: null,
+        },
+      ],
+      transactionTotals: [],
+      cardPayments: [],
+      transfers: [
+        {
+          sourceAccountId: "checking",
+          destinationAccountId: "savings",
+          amount: 250,
+        },
+      ],
+    });
+
+    expect(summaries.get("checking")).toMatchObject({
+      balance: 750,
+      income: 0,
+      expense: 0,
+      transfersOut: 250,
+    });
+    expect(summaries.get("savings")).toMatchObject({
+      balance: 550,
+      income: 0,
+      expense: 0,
+      transfersIn: 250,
+    });
+  });
+
+  it("mantém o patrimônio total depois da transferência", () => {
+    const summaries = calculateAccountLedgerSummaries({
+      accounts: [
+        {
+          id: "first",
+          type: "CHECKING",
+          initialBalance: 600,
+          creditLimit: null,
+        },
+        {
+          id: "second",
+          type: "CASH",
+          initialBalance: 400,
+          creditLimit: null,
+        },
+      ],
+      transactionTotals: [],
+      cardPayments: [],
+      transfers: [
+        {
+          sourceAccountId: "first",
+          destinationAccountId: "second",
+          amount: 175,
+        },
+      ],
+    });
+
+    const total = (summaries.get("first")?.balance || 0)
+      + (summaries.get("second")?.balance || 0);
+    expect(total).toBe(1_000);
+  });
 });

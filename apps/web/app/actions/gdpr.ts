@@ -20,29 +20,53 @@ type UserExportData = Prisma.UserGetPayload<{
   };
 }>;
 
+type AccountTransferExportRow = {
+  sourceAccountId: string;
+  destinationAccountId: string;
+  amount: Prisma.Decimal;
+  description: string | null;
+  occurredAt: Date;
+  source: string;
+  createdAt: Date;
+};
+
 export async function exportUserData() {
   const session = await auth();
   if (!session?.user?.id) throw new Error("Não autorizado");
 
-  const user: UserExportData | null = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    include: {
-      transactions: true,
-      categories: true,
-      budgets: true,
-      subscription: true,
-      billReminders: true,
-      recurringTransactions: true,
-      financialAccounts: true,
-      transactionRules: true,
-      accountReconciliations: true,
-      securityEvents: true,
-    },
-  });
+  const [user, accountTransfers] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      include: {
+        transactions: true,
+        categories: true,
+        budgets: true,
+        subscription: true,
+        billReminders: true,
+        recurringTransactions: true,
+        financialAccounts: true,
+        transactionRules: true,
+        accountReconciliations: true,
+        securityEvents: true,
+      },
+    }) as Promise<UserExportData | null>,
+    prisma.$queryRaw<AccountTransferExportRow[]>`
+      SELECT
+        "sourceAccountId",
+        "destinationAccountId",
+        "amount",
+        "description",
+        "occurredAt",
+        "source",
+        "createdAt"
+      FROM "account_transfers"
+      WHERE "userId" = ${session.user.id}
+      ORDER BY "occurredAt" DESC
+    `,
+  ]);
 
   if (!user) throw new Error("Usuário não encontrado");
 
-  // Format data for export
   const exportData = {
     profile: {
       name: user.name,
@@ -79,6 +103,15 @@ export async function exportUserData() {
       financialAccountId: t.financialAccountId,
       reconciliationId: t.reconciliationId,
       appliedRuleId: t.appliedRuleId,
+    })),
+    accountTransfers: accountTransfers.map(transfer => ({
+      sourceAccountId: transfer.sourceAccountId,
+      destinationAccountId: transfer.destinationAccountId,
+      amount: transfer.amount,
+      description: transfer.description,
+      occurredAt: transfer.occurredAt,
+      source: transfer.source,
+      createdAt: transfer.createdAt,
     })),
     billReminders: user.billReminders.map(reminder => ({
       description: reminder.description,

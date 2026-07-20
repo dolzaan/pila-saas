@@ -13,6 +13,7 @@ import {
   WalletCards,
 } from "lucide-react";
 import { ArchiveAccountButton } from "@/components/accounts/archive-account-button";
+import { AccountTransferForm } from "@/components/accounts/account-transfer-form";
 import { FinancialAccountForm } from "@/components/accounts/financial-account-form";
 import { FinancialImporter } from "@/components/accounts/financial-importer";
 
@@ -60,6 +61,9 @@ export default async function AccountsPage() {
   ]);
 
   const activeAccounts = accounts.filter((account) => !account.isArchived);
+  const transferableAccounts = activeAccounts
+    .filter((account) => account.type !== "CREDIT_CARD")
+    .map((account) => ({ id: account.id, name: account.name }));
   const archivedAccounts = accounts.filter((account) => account.isArchived);
   const cashBalance = activeAccounts
     .filter((account) => account.type !== "CREDIT_CARD")
@@ -81,10 +85,13 @@ export default async function AccountsPage() {
         <div>
           <h1 className="dashboard-greeting">Contas e cartões</h1>
           <p className="dashboard-subtitle">
-            Acompanhe saldos, pagamentos de fatura e extratos sem duplicar lançamentos.
+            Acompanhe saldos, transferências, pagamentos de fatura e extratos.
           </p>
         </div>
-        <FinancialAccountForm />
+        <div className="flex flex-wrap gap-2">
+          <AccountTransferForm accounts={transferableAccounts} />
+          <FinancialAccountForm />
+        </div>
       </div>
 
       <div className="stats-grid">
@@ -95,7 +102,7 @@ export default async function AccountsPage() {
           </div>
           <div className="stat-value">{formatCurrency(cashBalance)}</div>
           <div className="stat-footer">
-            Saldo inicial + receitas - despesas - faturas pagas
+            Inclui receitas, despesas, transferências e faturas pagas
           </div>
         </div>
         <div className="stat-card stat-card--transactions">
@@ -127,7 +134,7 @@ export default async function AccountsPage() {
               Minhas contas
             </h2>
             <p className="mt-1 text-sm text-gray-500">
-              Os saldos consideram movimentações e pagamentos de cartão registrados no Pila.
+              Transferências movimentam o saldo sem virar receita ou despesa.
             </p>
           </div>
         </div>
@@ -206,6 +213,12 @@ export default async function AccountsPage() {
                         <span>Entradas {formatCurrency(summary?.income || 0)}</span>
                         <span>Saídas {formatCurrency(summary?.expense || 0)}</span>
                       </div>
+                      {((summary?.transfersIn || 0) > 0 || (summary?.transfersOut || 0) > 0) && (
+                        <div className="flex justify-between text-gray-600">
+                          <span>Recebido {formatCurrency(summary?.transfersIn || 0)}</span>
+                          <span>Transferido {formatCurrency(summary?.transfersOut || 0)}</span>
+                        </div>
+                      )}
                       {(summary?.cardPaymentsSent || 0) > 0 && (
                         <div className="flex justify-between text-gray-600">
                           <span>Faturas pagas</span>
