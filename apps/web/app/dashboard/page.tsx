@@ -108,20 +108,25 @@ export default async function DashboardPage() {
 
       {!whatsappBotConnected && (
         <section
-          className="section-card border-amber-400/30 bg-amber-400/5"
+          className="section-card mb-8 !p-5 sm:!p-6 border-amber-400/30 bg-amber-400/5"
           aria-labelledby="whatsapp-unavailable-title"
           role="status"
         >
-          <div className="flex items-start gap-4">
-            <div className="h-12 w-12 shrink-0 rounded-2xl bg-amber-400/15 flex items-center justify-center">
-              <AlertTriangle className="h-6 w-6 text-amber-300" />
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-400/15 sm:h-12 sm:w-12">
+              <AlertTriangle className="h-5 w-5 text-amber-300 sm:h-6 sm:w-6" />
             </div>
-            <div className="min-w-0">
-              <span className="dashboard-kicker text-amber-300">WhatsApp temporariamente indisponível</span>
-              <h2 id="whatsapp-unavailable-title" className="section-title mt-1">
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:gap-2.5">
+              <span className="dashboard-kicker !mb-0 text-amber-300">
+                WhatsApp temporariamente indisponível
+              </span>
+              <h2
+                id="whatsapp-unavailable-title"
+                className="section-title !m-0 leading-snug"
+              >
                 As funções pelo WhatsApp ainda não estão funcionando
               </h2>
-              <p className="text-gray-400 mt-2 max-w-3xl">
+              <p className="!m-0 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
                 Estamos finalizando a conexão do WhatsApp do Pila e ela estará disponível o mais breve possível. Enquanto isso, você pode continuar usando normalmente todos os demais recursos do site para registrar e acompanhar suas finanças.
               </p>
             </div>
