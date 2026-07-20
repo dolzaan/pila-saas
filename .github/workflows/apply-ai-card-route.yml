@@ -1,0 +1,38 @@
+name: Apply AI card route integration
+
+on:
+  push:
+    branches:
+      - agent/ai-card-commands
+    paths:
+      - .github/workflows/apply-ai-card-route.yml
+
+permissions:
+  contents: write
+
+jobs:
+  apply-route-integration:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/ai-card-commands
+          fetch-depth: 0
+
+      - name: Apply route changes
+        run: node scripts/apply-ai-card-route.mjs
+
+      - name: Validate patch
+        run: git diff --check
+
+      - name: Commit route integration
+        run: |
+          rm scripts/apply-ai-card-route.mjs
+          rm .github/workflows/apply-ai-card-route.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/app/api/webhooks/whatsapp/route.ts scripts/apply-ai-card-route.mjs .github/workflows/apply-ai-card-route.yml
+          git commit -m "feat: integrar comandos de cartão ao webhook"
+          git push origin HEAD:agent/ai-card-commands
