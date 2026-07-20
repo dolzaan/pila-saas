@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { NextResponse, type NextRequest } from "next/server";
+import { parseFinancialSummaryQuestion } from "@/lib/financial-summary-query";
 import {
   buildUnlinkedGreetingReply,
   buildUnlinkedWhatsappReply,
@@ -145,6 +146,41 @@ async function sendWhatsappGateReply(
   }
 }
 
+async function forwardWhatsappFinancialSummary(
+  req: NextRequest,
+  context: WhatsappGateContext,
+) {
+  const summaryUrl = new URL("/api/internal/whatsapp-financial-summary", req.url);
+  const headers = new Headers({ "content-type": "application/json" });
+  const webhookSecret = req.headers.get("x-pila-webhook-secret");
+  const cookie = req.headers.get("cookie");
+  if (webhookSecret) headers.set("x-pila-webhook-secret", webhookSecret);
+  if (cookie) headers.set("cookie", cookie);
+
+  const response = await fetch(summaryUrl, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      phone: context.phone,
+      remoteJid: context.remoteJid,
+      messageId: context.messageId,
+      text: context.text,
+    }),
+    cache: "no-store",
+  });
+
+  const payload = await response.json().catch(() => ({
+    success: false,
+    retryable: true,
+  }));
+  const retryAfter = response.headers.get("retry-after");
+
+  return NextResponse.json(payload, {
+    status: response.status,
+    headers: retryAfter ? { "Retry-After": retryAfter } : undefined,
+  });
+}
+
 function gateReplyMessage(replyKind: WhatsappGateReplyKind) {
   if (replyKind === "GREETING") return buildUnlinkedGreetingReply();
   if (replyKind === "LINK_HELP") return buildWhatsappLinkHelpReply();
@@ -213,6 +249,22 @@ export default auth(async (req) => {
               accountStatus: "UNLINKED",
               replyMessage,
             });
+          }
+        }
+
+        if (
+          access?.linked
+          && !whatsappContext.hasMedia
+          && parseFinancialSummaryQuestion(whatsappContext.text)
+        ) {
+          try {
+            return await forwardWhatsappFinancialSummary(req, whatsappContext);
+          } catch (summaryError) {
+            console.error("[WhatsApp Summary] Falha ao encaminhar consulta:", summaryError);
+            return NextResponse.json(
+              { success: false, retryable: true },
+              { status: 503, headers: { "Retry-After": "30" } },
+            );
           }
         }
       }
