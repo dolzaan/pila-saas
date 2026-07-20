@@ -2,6 +2,7 @@
 
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { recordProductEvent } from "@/lib/product-events";
 import { TransactionSchema } from "@/lib/schemas";
 import { matchTransactionRule } from "@/lib/transaction-rules";
 import { revalidatePath } from "next/cache";
@@ -79,12 +80,14 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
     });
     if (relationError) return { error: relationError };
 
-    const rules =
+    const [rules, previousTransactionCount] = await Promise.all([
       !parsed.data.categoryId || !parsed.data.financialAccountId
-        ? await prisma.transactionRule.findMany({
+        ? prisma.transactionRule.findMany({
             where: { userId: session.user.id, isActive: true, kind: parsed.data.kind },
           })
-        : [];
+        : Promise.resolve([]),
+      prisma.transaction.count({ where: { userId: session.user.id } }),
+    ]);
     const rule = matchTransactionRule(rules, {
       description: parsed.data.description,
       kind: parsed.data.kind,
@@ -109,6 +112,19 @@ export async function createTransaction(_prevState: unknown, formData: FormData)
         source: "manual",
       },
     });
+
+    await recordProductEvent({
+      eventName: "transaction_created",
+      userId: session.user.id,
+      properties: { source: "manual", kind: parsed.data.kind },
+    });
+    if (previousTransactionCount === 0) {
+      await recordProductEvent({
+        eventName: "first_transaction_created",
+        userId: session.user.id,
+        properties: { source: "manual", kind: parsed.data.kind },
+      });
+    }
 
     revalidatePath("/dashboard");
     revalidatePath("/dashboard/transactions");
