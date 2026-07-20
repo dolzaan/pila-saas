@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildUnlinkedGreetingReply,
   buildUnlinkedWhatsappReply,
   buildWhatsappLinkHelpReply,
   canUnlinkedWhatsappMessageReachBot,
   isPersonalFinancialWhatsappIntent,
   isWhatsappAccountAccessQuestion,
+  isWhatsappGreeting,
   isWhatsappLinkHelpIntent,
   isWhatsappRegistrationIntent,
   shouldCheckWhatsappAccountAccess,
@@ -34,9 +36,17 @@ describe("WhatsApp account access gate", () => {
     expect(canUnlinkedWhatsappMessageReachBot("quero criar minha conta")).toBe(true);
   });
 
+  it("recognizes natural greeting variations on the first message", () => {
+    for (const greeting of ["oi", "oii", "oiii!", "oie", "olá", "oláá", "e aí", "opaa"]) {
+      expect(isWhatsappGreeting(greeting)).toBe(true);
+      expect(canUnlinkedWhatsappMessageReachBot(greeting)).toBe(true);
+      expect(shouldCheckWhatsappAccountAccess(greeting)).toBe(true);
+    }
+  });
+
   it("allows PINs, greetings and public product questions", () => {
     expect(canUnlinkedWhatsappMessageReachBot("123456")).toBe(true);
-    expect(canUnlinkedWhatsappMessageReachBot("oi")).toBe(true);
+    expect(canUnlinkedWhatsappMessageReachBot("oii")).toBe(true);
     expect(canUnlinkedWhatsappMessageReachBot("como funciona o Pila?")).toBe(true);
     expect(canUnlinkedWhatsappMessageReachBot("quanto custa o plano?")).toBe(true);
   });
@@ -68,6 +78,13 @@ describe("WhatsApp account access gate", () => {
     expect(shouldCheckWhatsappAccountAccess("20 mercado")).toBe(true);
     expect(shouldCheckWhatsappAccountAccess("mercado 20")).toBe(true);
     expect(shouldCheckWhatsappAccountAccess("salário 5000")).toBe(true);
+  });
+
+  it("answers the first greeting with link and account creation options", () => {
+    const reply = buildUnlinkedGreetingReply();
+    expect(reply).toContain("Pila Bot");
+    expect(reply).toContain("Gerar PIN de Vínculo");
+    expect(reply).toContain("quero criar minha conta");
   });
 
   it("explains that nothing was recorded and offers both link paths", () => {
