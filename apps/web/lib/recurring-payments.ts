@@ -24,6 +24,7 @@ type ConfirmRecurringPaymentInput = {
   expectedDueDate: Date | string;
   amount?: number;
   financialAccountId?: string | null;
+  paidAt?: Date;
 };
 
 export async function confirmRecurringPayment({
@@ -32,6 +33,7 @@ export async function confirmRecurringPayment({
   expectedDueDate,
   amount,
   financialAccountId,
+  paidAt = new Date(),
 }: ConfirmRecurringPaymentInput) {
   const expectedDate =
     expectedDueDate instanceof Date
@@ -41,6 +43,12 @@ export async function confirmRecurringPayment({
   if (Number.isNaN(expectedDate.getTime())) {
     throw new RecurringPaymentError(
       "A data deste vencimento não é válida.",
+      "INVALID_DATE",
+    );
+  }
+  if (Number.isNaN(paidAt.getTime())) {
+    throw new RecurringPaymentError(
+      "A data do pagamento não é válida.",
       "INVALID_DATE",
     );
   }
@@ -114,10 +122,17 @@ export async function confirmRecurringPayment({
       }
 
       const paidAmount = amount ?? recurring.amount.toNumber();
+      const paymentFingerprint = `recurring-payment:${recurring.id}:${recurring.nextDate.toISOString()}`;
       const existingTransaction = await transaction.transaction.findFirst({
         where: {
-          recurringTransactionId: recurring.id,
-          occurredAt: recurring.nextDate,
+          userId,
+          OR: [
+            { importFingerprint: paymentFingerprint },
+            {
+              recurringTransactionId: recurring.id,
+              occurredAt: recurring.nextDate,
+            },
+          ],
         },
         select: { id: true },
       });
@@ -131,7 +146,9 @@ export async function confirmRecurringPayment({
               amount: paidAmount,
               kind: recurring.kind,
               description: recurring.description || "Transação recorrente",
+              occurredAt: paidAt,
               source: "recurring",
+              importFingerprint: paymentFingerprint,
             },
             select: { id: true },
           })
@@ -143,9 +160,10 @@ export async function confirmRecurringPayment({
               amount: paidAmount,
               kind: recurring.kind,
               description: recurring.description || "Transação recorrente",
-              occurredAt: recurring.nextDate,
+              occurredAt: paidAt,
               source: "recurring",
               recurringTransactionId: recurring.id,
+              importFingerprint: paymentFingerprint,
             },
             select: { id: true },
           });
@@ -177,6 +195,7 @@ export async function confirmRecurringPayment({
         description: recurring.description || "Transação recorrente",
         amount: paidAmount,
         paidDueDate: recurring.nextDate,
+        paidAt,
         nextDate,
         reachedEnd:
           Boolean(recurring.endDate) &&
