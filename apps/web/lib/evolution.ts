@@ -69,12 +69,24 @@ function summarizeEvolutionError(payload: UnknownRecord | null) {
   return message;
 }
 
+function restoreBrazilianMobileNinthDigit(digits: string) {
+  if (
+    digits.length === 12
+    && digits.startsWith("55")
+    && /^[1-9]\d[6-9]\d{7}$/.test(digits.slice(2))
+  ) {
+    return `${digits.slice(0, 4)}9${digits.slice(4)}`;
+  }
+
+  return digits;
+}
+
 export function normalizeWhatsappRecipient(value: string) {
   const trimmed = value.trim();
   if (!trimmed || /@lid$/i.test(trimmed)) return null;
 
   const numberPart = trimmed.split("@")[0] || "";
-  const digits = numberPart.replace(/\D/g, "");
+  const digits = restoreBrazilianMobileNinthDigit(numberPart.replace(/\D/g, ""));
   return /^\d{10,15}$/.test(digits) ? digits : null;
 }
 

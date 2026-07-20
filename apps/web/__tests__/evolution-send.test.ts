@@ -11,6 +11,15 @@ describe("Evolution outbound validation", () => {
     expect(normalizeWhatsappRecipient("+55 (47) 99778-5853")).toBe("5547997785853");
   });
 
+  it("restaura o nono dígito de celulares brasileiros recebidos no formato legado", () => {
+    expect(normalizeWhatsappRecipient("554797785853@s.whatsapp.net")).toBe("5547997785853");
+    expect(normalizeWhatsappRecipient("554787785853")).toBe("5547987785853");
+  });
+
+  it("não adiciona o nono dígito a telefones fixos brasileiros", () => {
+    expect(normalizeWhatsappRecipient("554735251234@s.whatsapp.net")).toBe("554735251234");
+  });
+
   it("não tenta enviar diretamente para um identificador @lid", () => {
     expect(normalizeWhatsappRecipient("123456789012345@lid")).toBeNull();
   });
