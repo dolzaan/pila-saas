@@ -3,6 +3,9 @@ import { NextResponse, type NextRequest } from "next/server";
 import {
   buildUnlinkedWhatsappReply,
   buildWhatsappAccessCheckFailureReply,
+  buildWhatsappLinkHelpReply,
+  canUnlinkedWhatsappMessageReachBot,
+  isWhatsappLinkHelpIntent,
   shouldCheckWhatsappAccountAccess,
 } from "@/lib/whatsapp-access-gate";
 
@@ -22,6 +25,11 @@ type WhatsappWebhookPayload = {
     };
     base64?: string;
   };
+};
+
+type WhatsappAccessStatus = {
+  linked: boolean;
+  onboardingActive: boolean;
 };
 
 function getWhatsappGateContext(payload: WhatsappWebhookPayload) {
@@ -53,7 +61,10 @@ function getWhatsappGateContext(payload: WhatsappWebhookPayload) {
   return { phone, text, hasMedia };
 }
 
-async function checkWhatsappLink(req: NextRequest, phone: string) {
+async function checkWhatsappAccess(
+  req: NextRequest,
+  phone: string,
+): Promise<WhatsappAccessStatus | null> {
   const statusUrl = new URL("/api/internal/whatsapp-access", req.url);
   statusUrl.searchParams.set("phone", phone);
 
@@ -74,15 +85,22 @@ async function checkWhatsappLink(req: NextRequest, phone: string) {
   if (response.status === 400 || response.status === 401) return null;
   if (!response.ok) throw new Error(`Falha ao verificar vínculo: ${response.status}`);
 
-  const data = await response.json() as { linked?: boolean };
-  return data.linked === true;
+  const data = await response.json() as {
+    linked?: boolean;
+    onboardingActive?: boolean;
+  };
+
+  return {
+    linked: data.linked === true,
+    onboardingActive: data.onboardingActive === true,
+  };
 }
 
 /**
  * Middleware de proteção de rotas usando Auth.js v5.
  * - /dashboard/* → exige autenticação
  * - /login, /register → redireciona para /dashboard se já autenticado
- * - /api/webhooks/whatsapp → bloqueia operações financeiras antes da IA
+ * - /api/webhooks/whatsapp → bloqueia acesso financeiro antes da IA
  * - / → landing pública (usuários autenticados seguem com acesso ao dashboard)
  */
 export default auth(async (req) => {
@@ -107,15 +125,26 @@ export default auth(async (req) => {
         context
         && shouldCheckWhatsappAccountAccess(context.text, context.hasMedia)
       ) {
-        const linked = await checkWhatsappLink(req, context.phone);
+        const access = await checkWhatsappAccess(req, context.phone);
 
-        if (linked === false) {
-          return NextResponse.json({
-            success: true,
-            blocked: true,
-            accountStatus: "UNLINKED",
-            replyMessage: buildUnlinkedWhatsappReply(),
-          });
+        if (access && !access.linked) {
+          const canContinueOnboarding = !context.hasMedia
+            && canUnlinkedWhatsappMessageReachBot(context.text, {
+              onboardingActive: access.onboardingActive,
+            });
+
+          if (!canContinueOnboarding) {
+            const replyMessage = isWhatsappLinkHelpIntent(context.text)
+              ? buildWhatsappLinkHelpReply()
+              : buildUnlinkedWhatsappReply();
+
+            return NextResponse.json({
+              success: true,
+              blocked: true,
+              accountStatus: "UNLINKED",
+              replyMessage,
+            });
+          }
         }
       }
     } catch (error) {
