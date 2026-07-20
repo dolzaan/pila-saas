@@ -1,5 +1,5 @@
 import { auth } from "@/lib/auth";
-import { NextResponse } from "next/server";
+import { NextResponse, type NextRequest } from "next/server";
 import {
   buildUnlinkedWhatsappReply,
   buildWhatsappAccessCheckFailureReply,
@@ -53,7 +53,7 @@ function getWhatsappGateContext(payload: WhatsappWebhookPayload) {
   return { phone, text, hasMedia };
 }
 
-async function checkWhatsappLink(req: Parameters<Parameters<typeof auth>[0]>[0], phone: string) {
+async function checkWhatsappLink(req: NextRequest, phone: string) {
   const statusUrl = new URL("/api/internal/whatsapp-access", req.url);
   statusUrl.searchParams.set("phone", phone);
 
