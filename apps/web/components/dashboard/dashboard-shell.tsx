@@ -19,6 +19,7 @@ import {
 } from "@/components/dashboard/dashboard-nav";
 import { MobileDashboardNav } from "@/components/dashboard/mobile-dashboard-nav";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
+import { ProductOnboarding } from "@/components/dashboard/product-onboarding";
 
 interface DashboardShellProps {
   children: ReactNode;
@@ -28,13 +29,15 @@ interface DashboardShellProps {
   signOutForm: ReactNode;
   reminders: ReminderItem[];
   pendingReminderCount: number;
+  onboarding: {
+    initialStep: number;
+    shouldAutoOpen: boolean;
+    isFirstRun: boolean;
+    hasTransaction: boolean;
+    hasFinancialAccount: boolean;
+    whatsappLinked: boolean;
+  };
 }
-
-const auxiliaryRouteTitles: Record<string, string> = {
-  "/dashboard/reminders": "Lembretes",
-  "/dashboard/recurring": "Contas fixas",
-  "/dashboard/security": "Segurança",
-};
 
 function isActiveRoute(pathname: string, href: string) {
   return href === "/dashboard"
@@ -50,6 +53,7 @@ export function DashboardShell({
   signOutForm,
   reminders,
   pendingReminderCount,
+  onboarding,
 }: DashboardShellProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -59,13 +63,6 @@ export function DashboardShell({
   const currentItem = dashboardNavigationItems.find((item) =>
     isActiveRoute(pathname, item.href),
   );
-  const currentTitle = pathname.startsWith("/admin")
-    ? "Admin"
-    : currentItem?.label ||
-      Object.entries(auxiliaryRouteTitles).find(([route]) =>
-        pathname.startsWith(route),
-      )?.[1] ||
-      "Pila";
   const searchResults = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase("pt-BR");
     if (!query) return [];
@@ -198,7 +195,9 @@ export function DashboardShell({
               Área autenticada
             </p>
             <p className="truncate text-sm font-semibold text-slate-200">
-              {currentTitle}
+              {pathname.startsWith("/admin")
+                ? "Admin"
+                : currentItem?.label || "Pila"}
             </p>
           </div>
 
@@ -250,12 +249,12 @@ export function DashboardShell({
 
           <div className="flex items-center gap-2">
             <Link
-              href="/dashboard/whatsapp"
+              href="/dashboard?guide=1"
               className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-emerald-300"
-              title="Ajuda e WhatsApp"
+              title="Abrir guia do Pila"
             >
               <CircleHelp className="h-5 w-5" />
-              <span className="sr-only">Ajuda</span>
+              <span className="sr-only">Abrir guia do Pila</span>
             </Link>
             {notificationBell}
             <Link
@@ -269,10 +268,20 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="min-h-screen px-4 pb-28 pt-24 sm:px-6 md:px-8 md:pb-8 md:pt-7">
+        <main className="min-h-screen px-4 pb-28 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:px-6 md:px-8 md:pb-8 md:pt-7">
           {children}
         </main>
       </div>
+
+      <ProductOnboarding
+        userName={userName}
+        initialStep={onboarding.initialStep}
+        shouldAutoOpen={onboarding.shouldAutoOpen}
+        isFirstRun={onboarding.isFirstRun}
+        hasTransaction={onboarding.hasTransaction}
+        hasFinancialAccount={onboarding.hasFinancialAccount}
+        whatsappLinked={onboarding.whatsappLinked}
+      />
     </div>
   );
 }
