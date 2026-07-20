@@ -2,8 +2,9 @@
 
 import { useActionState, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 import { createTransaction, updateTransaction, deleteTransaction } from "@/app/actions/transactions";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Sparkles, Trash2 } from "lucide-react";
 
 type Category = {
   id: string;
@@ -22,6 +23,7 @@ type TransactionFormProps = {
   categories: Category[];
   financialAccounts: FinancialAccount[];
   openOnMount?: boolean;
+  onboardingMode?: boolean;
   transactionToEdit?: {
     id: string;
     amount: number;
@@ -37,8 +39,10 @@ export function TransactionForm({
   categories,
   financialAccounts,
   openOnMount = false,
+  onboardingMode = false,
   transactionToEdit,
 }: TransactionFormProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(openOnMount);
   const action = transactionToEdit 
     ? updateTransaction.bind(null, transactionToEdit.id) 
@@ -51,41 +55,63 @@ export function TransactionForm({
   );
 
   useEffect(() => {
-    if (state?.success) {
-      queueMicrotask(() => setIsOpen(false));
+    if (!state?.success) return;
+
+    if (onboardingMode && !transactionToEdit) {
+      queueMicrotask(() => router.push("/dashboard?onboarding=transaction-created"));
+      return;
     }
-  }, [state]);
+
+    queueMicrotask(() => setIsOpen(false));
+  }, [onboardingMode, router, state, transactionToEdit]);
 
   const filteredCategories = categories.filter((c) => c.kind === selectedKind);
   const isExpense = selectedKind === "EXPENSE";
 
   const modalContent = (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" 
         onClick={() => setIsOpen(false)} 
       />
       
-      {/* Modal */}
       <div className="relative bg-[#0d1117] border border-gray-800 rounded-3xl w-[92vw] sm:w-[480px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
         
         <div className="px-5 sm:px-6 py-4 flex justify-between items-center border-b border-gray-800/50">
-          <h2 className="text-lg font-bold text-white">
-            {transactionToEdit ? "Editar Transação" : "Nova Transação"}
-          </h2>
+          <div>
+            {onboardingMode && !transactionToEdit && (
+              <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-emerald-300">
+                Tutorial · etapa prática
+              </span>
+            )}
+            <h2 className="text-lg font-bold text-white">
+              {transactionToEdit
+                ? "Editar Transação"
+                : onboardingMode
+                  ? "Sua primeira transação"
+                  : "Nova Transação"}
+            </h2>
+          </div>
           <button 
             type="button"
             onClick={() => setIsOpen(false)}
             className="text-gray-500 hover:text-white p-2 rounded-full hover:bg-gray-800 transition-colors"
+            aria-label="Fechar formulário"
           >
             ✕
           </button>
         </div>
         
         <form action={formAction} className="flex flex-col flex-1 overflow-hidden">
-          {/* Tabs Receita / Despesa */}
           <div className="px-5 sm:px-6 pt-5 mb-4">
+            {onboardingMode && !transactionToEdit && (
+              <div className="mb-4 flex items-start gap-3 rounded-2xl border border-emerald-400/20 bg-emerald-400/[0.06] p-3 text-sm text-gray-300">
+                <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-emerald-300" />
+                <p>
+                  Comece com algo simples. Apenas valor, tipo e data são obrigatórios; os outros campos podem ser organizados depois.
+                </p>
+              </div>
+            )}
             <div className="flex p-1 bg-gray-900/80 rounded-2xl border border-gray-800/60">
               <input type="hidden" name="kind" value={selectedKind} />
               <button
@@ -120,7 +146,6 @@ export function TransactionForm({
               </div>
             )}
 
-            {/* Valor Gigante */}
             <div className="flex flex-col items-center justify-center py-2">
               <label htmlFor="amount" className="text-xs font-medium text-gray-400 mb-1">Valor da transação</label>
               <div className="flex items-center justify-center">
@@ -135,7 +160,8 @@ export function TransactionForm({
                   defaultValue={transactionToEdit?.amount}
                   placeholder="0,00"
                   className="bg-transparent text-4xl font-bold w-40 text-center focus:outline-none placeholder:text-gray-700 text-white"
-                  style={{ MozAppearance: 'textfield' }}
+                  style={{ MozAppearance: "textfield" }}
+                  autoFocus={onboardingMode && !transactionToEdit}
                 />
               </div>
               {state?.details?.amount && (
@@ -143,7 +169,6 @@ export function TransactionForm({
               )}
             </div>
 
-            {/* Outros campos */}
             <div className="space-y-4 bg-gray-900/50 p-4 sm:p-5 rounded-2xl border border-gray-800/50">
               
               <div className="space-y-1">
@@ -170,7 +195,7 @@ export function TransactionForm({
                     name="categoryId"
                     defaultValue={transactionToEdit?.categoryId || ""}
                     className="w-full bg-transparent border-b border-gray-700 py-2 text-sm text-gray-100 focus:outline-none focus:border-white transition-colors appearance-none cursor-pointer"
-                    style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' fill=\'none\' viewBox=\'0 0 24 24\' stroke=\'%239CA3AF\'%3E%3Cpath stroke-linecap=\'round\' stroke-linejoin=\'round\' stroke-width=\'2\' d=\'M19 9l-7 7-7-7\'%3E%3C/path%3E%3C/svg%3E")', backgroundPosition: 'right center', backgroundRepeat: 'no-repeat', backgroundSize: '1.2em' }}
+                    style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%239CA3AF'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E\")", backgroundPosition: "right center", backgroundRepeat: "no-repeat", backgroundSize: "1.2em" }}
                   >
                     <option value="" className="bg-gray-900">Sem categoria</option>
                     {filteredCategories.map((cat) => (
@@ -192,8 +217,8 @@ export function TransactionForm({
                     required
                     defaultValue={
                       transactionToEdit 
-                        ? new Date(transactionToEdit.occurredAt).toISOString().split('T')[0]
-                        : new Date().toISOString().split('T')[0]
+                        ? new Date(transactionToEdit.occurredAt).toISOString().split("T")[0]
+                        : new Date().toISOString().split("T")[0]
                     }
                     className="w-full bg-transparent border-b border-gray-700 py-2 text-sm text-gray-100 focus:outline-none focus:border-white transition-colors [color-scheme:dark] cursor-pointer"
                   />
@@ -236,7 +261,7 @@ export function TransactionForm({
               disabled={isPending}
               className="app-button app-button--primary"
             >
-              {isPending ? "Salvando..." : "Salvar"}
+              {isPending ? "Salvando..." : onboardingMode ? "Salvar e continuar" : "Salvar"}
             </button>
           </div>
         </form>
