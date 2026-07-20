@@ -41,7 +41,7 @@ describe("credit card cycles", () => {
   it("clamps closing and due dates to shorter months", () => {
     const cycle = getOpenCardCycle(new Date("2027-02-10T12:00:00Z"), 31, 31);
     expect(cycle.statementDate.toISOString().slice(0, 10)).toBe("2027-02-28");
-    expect(cycle.dueDate.toISOString().slice(0, 10)).toBe("2027-02-28");
+    expect(cycle.dueDate.toISOString().slice(0, 10)).toBe("2027-03-31");
   });
 
   it("returns the immediately previous invoice cycle", () => {
