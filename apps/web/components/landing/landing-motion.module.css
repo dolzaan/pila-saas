@@ -155,6 +155,7 @@
 }
 
 :global([data-motion-card="true"]) {
+  position: relative;
   isolation: isolate;
   overflow: hidden;
 }
@@ -216,7 +217,7 @@
   animation: landingFaqOpen 260ms ease-out;
 }
 
-:global([data-landing-root] section:nth-last-of-type(2)[data-visible="true"]) {
+:global([data-landing-root] section:last-of-type[data-visible="true"]) {
   animation: landingFinalCtaGlow 5s ease-in-out infinite;
 }
 
