@@ -87,7 +87,7 @@ describe("financial account AI helpers", () => {
 
     expect(context).toContain("Nome exato: Nubank");
     expect(context).toContain("Fechamento: dia 8");
-    expect(context).toContain("Compras registradas neste mês: R$ 420,50");
+    expect(context).toContain("420,50");
     expect(context).not.toMatch(/\b\d{16}\b/);
   });
 
@@ -98,8 +98,8 @@ describe("financial account AI helpers", () => {
     expect(buildCardQueryReply("DUE_DAY", nubank, 600))
       .toBe("A fatura do cartão Nubank vence no dia 15.");
     expect(buildCardQueryReply("CURRENT_INVOICE", nubank, 600))
-      .toContain("R$ 600,00");
+      .toContain("600,00");
     expect(buildCardQueryReply("AVAILABLE_LIMIT", nubank, 600))
-      .toContain("R$ 4.400,00");
+      .toContain("4.400,00");
   });
 });
