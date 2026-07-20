@@ -46,10 +46,7 @@ export default function SimulatorPage() {
 
   useEffect(() => {
     const normalizedPhone = phone.replace(/\D/g, "");
-    if (!/^\d{10,15}$/.test(normalizedPhone)) {
-      setAccountStatus("idle");
-      return;
-    }
+    if (!/^\d{10,15}$/.test(normalizedPhone)) return;
 
     const controller = new AbortController();
     const timer = window.setTimeout(async () => {
@@ -191,7 +188,10 @@ export default function SimulatorPage() {
             <input
               type="text"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={(e) => {
+                setPhone(e.target.value);
+                setAccountStatus("idle");
+              }}
               className="px-3 py-1.5 border border-gray-300 dark:border-gray-600 rounded-lg text-sm bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
               placeholder="5511999999999"
               inputMode="numeric"
