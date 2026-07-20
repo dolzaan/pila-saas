@@ -7,6 +7,11 @@ CONTAS E CARTÕES CADASTRADOS:
 - Nome exato: Nubank | Tipo: cartão de crédito | Limite cadastrado: R$ 2.000,00
 `.trim();
 
+const SHORT_ACCOUNT_CONTEXT = `
+CONTAS E CARTÕES CADASTRADOS:
+- Nome exato: Inter | Tipo: conta corrente
+`.trim();
+
 describe("parseSimpleFinancialMessage", () => {
   it("entende o lançamento simples informado pelo usuário", () => {
     expect(parseSimpleFinancialMessage("gastei 10 reais no mercado")).toMatchObject({
@@ -62,10 +67,25 @@ describe("parseSimpleFinancialMessage", () => {
     });
   });
 
+  it("não confunde o nome Inter com a palavra internet", () => {
+    const result = parseSimpleFinancialMessage(
+      "gastei 100 reais na internet",
+      SHORT_ACCOUNT_CONTEXT,
+    );
+
+    expect(result).toMatchObject({
+      isTransaction: true,
+      amount: 100,
+      categoryName: "Contas e serviços",
+    });
+    expect(result?.financialAccountName).toBeUndefined();
+  });
+
   it("não transforma perguntas em novas transações", () => {
     expect(parseSimpleFinancialMessage("quanto gastei no mercado?")).toBeNull();
     expect(parseSimpleFinancialMessage("qual é o meu saldo?")).toBeNull();
     expect(parseSimpleFinancialMessage("paguei a fatura do Nubank")).toBeNull();
+    expect(parseSimpleFinancialMessage("eu gastei 10 reais?")).toBeNull();
   });
 
   it("deixa mensagens sem valor para o Gemini pedir esclarecimento", () => {
