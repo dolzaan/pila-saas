@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import ExpiredPaywall from "@/components/expired-paywall";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { getUserOnboardingState } from "@/lib/onboarding";
 
 export default async function DashboardLayout({
   children,
@@ -18,10 +19,22 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
-  const [dbUser, pendingReminderCount, reminderPreview] = await Promise.all([
+  const [
+    dbUser,
+    pendingReminderCount,
+    reminderPreview,
+    onboardingState,
+    transactionCount,
+    financialAccountCount,
+  ] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { createdAt: true, subscription: true },
+      select: {
+        createdAt: true,
+        subscription: true,
+        whatsappNumber: true,
+        whatsappVerifiedAt: true,
+      },
     }),
     prisma.billReminder.count({
       where: { userId: session.user.id, isPaid: false },
@@ -31,6 +44,13 @@ export default async function DashboardLayout({
       orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
       take: 5,
     }),
+    getUserOnboardingState(session.user.id),
+    prisma.transaction.count({
+      where: { userId: session.user.id },
+    }),
+    prisma.financialAccount.count({
+      where: { userId: session.user.id, isArchived: false },
+    }),
   ]);
 
   if (!dbUser) {
@@ -39,6 +59,7 @@ export default async function DashboardLayout({
 
   const subStatus = getUserSubscriptionStatus(dbUser.createdAt, dbUser.subscription);
   const isExpired = !hasProAccess(subStatus) && session.user.role !== "ADMIN";
+  const isFirstRun = !onboardingState.completedAt && !onboardingState.skippedAt;
 
   async function signOutAction() {
     "use server";
@@ -79,6 +100,16 @@ export default async function DashboardLayout({
       signOutForm={signOutForm}
       reminders={reminders}
       pendingReminderCount={pendingReminderCount}
+      onboarding={{
+        initialStep: onboardingState.step,
+        shouldAutoOpen: isFirstRun,
+        isFirstRun,
+        hasTransaction: transactionCount > 0,
+        hasFinancialAccount: financialAccountCount > 0,
+        whatsappLinked: Boolean(
+          dbUser.whatsappNumber && dbUser.whatsappVerifiedAt,
+        ),
+      }}
     >
       {isExpired ? <ExpiredPaywall status={subStatus.status} /> : children}
     </DashboardShell>

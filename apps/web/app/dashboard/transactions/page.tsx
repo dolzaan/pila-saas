@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 export default async function TransactionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ new?: string }>;
+  searchParams: Promise<{ new?: string; onboarding?: string }>;
 }) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -66,6 +66,7 @@ export default async function TransactionsPage({
             categories={serializedCategories}
             financialAccounts={financialAccounts}
             openOnMount={query.new === "1"}
+            onboardingMode={query.onboarding === "1"}
           />
         </div>
       </div>
