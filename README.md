@@ -1,149 +1,189 @@
-# Pila — Gestão Financeira Pessoal via WhatsApp
+# Pila — Gestão financeira pelo WhatsApp
 
-O **Pila** é uma plataforma SaaS (Software as a Service) open-source projetada para simplificar a gestão financeira pessoal. Em vez de usar planilhas complexas, você simplesmente manda um áudio ou texto pelo WhatsApp, e nossa Inteligência Artificial (Gemini) entende e registra o gasto ou receita automaticamente no seu painel web.
+O **Pila** é um SaaS de finanças pessoais que permite registrar gastos, receitas, compras parceladas, lembretes e consultas financeiras por meio de mensagens no WhatsApp, além de oferecer um painel web completo.
 
----
+A proposta é reduzir o atrito de manter a vida financeira organizada: o usuário conversa naturalmente com o Pila Bot e acompanha os resultados no dashboard.
+
+## Principais recursos
+
+- registro manual e pelo WhatsApp;
+- interpretação de texto, áudio, imagem e PDF com Gemini;
+- categorias e regras automáticas;
+- contas bancárias, dinheiro e cartões de crédito;
+- compras parceladas e ciclo de faturas;
+- pagamento parcial ou total de fatura sem duplicar despesas;
+- orçamentos mensais e metas financeiras;
+- contas recorrentes e lembretes;
+- relatórios e gráficos;
+- importação e conciliação de extratos;
+- onboarding guiado para novos usuários;
+- suporte humano pelo WhatsApp;
+- assinatura mensal com Stripe;
+- exportação e exclusão de dados para LGPD;
+- autenticação por senha e Google OAuth.
 
 ## Stack
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend + Backend | Next.js 14+ (App Router), TypeScript, Tailwind CSS |
-| Banco de dados | PostgreSQL + Prisma ORM |
-| Autenticação | Auth.js (e-mail/senha + Google OAuth) |
-| Bot WhatsApp | Baileys (não-oficial) |
-| Filas | BullMQ + Redis |
+| Aplicação | Next.js 16, React 19 e TypeScript |
+| Interface | Tailwind CSS e CSS Modules |
+| Banco | PostgreSQL e Prisma ORM |
+| Autenticação | Auth.js v5 |
+| Inteligência artificial | Google Gemini |
+| WhatsApp | Evolution API |
+| Rate limiting | Upstash Redis |
 | Pagamentos | Stripe |
+| E-mail | EmailJS |
+| Hospedagem | Vercel e Supabase PostgreSQL |
+| Testes | Vitest e GitHub Actions |
 
----
+## Arquitetura resumida
 
-## Setup Local
+```text
+Usuário
+  ├── Navegador ──> Next.js ──> Prisma ──> PostgreSQL
+  └── WhatsApp ──> Evolution API ──> Webhook Next.js
+                                      ├── trava de vínculo
+                                      ├── idempotência
+                                      ├── Gemini
+                                      └── domínio financeiro
+```
 
-### Pré-requisitos
+As decisões financeiras são confirmadas pelo backend. A IA não recebe nem escolhe IDs internos de usuários, contas ou cartões.
 
-- Node.js 20+
-- Docker Desktop (para Postgres e Redis)
+## Estrutura do repositório
 
-### 1. Clonar e instalar dependências
+```text
+pila-saas/
+├── apps/
+│   └── web/                    # aplicação Next.js e webhooks
+├── packages/
+│   └── database/               # Prisma, migrations e categorias padrão
+├── docs/                       # operação, privacidade e arquitetura
+├── .github/workflows/ci.yml    # lint, testes e build
+├── docker-compose.yml
+└── .env.example
+```
+
+## Requisitos locais
+
+- Node.js 20 ou superior;
+- npm;
+- Docker Desktop ou PostgreSQL e Redis disponíveis separadamente.
+
+## Instalação
+
+### 1. Clonar e instalar
 
 ```bash
-git clone https://github.com/seu-usuario/finzap.git
-cd finzap
+git clone https://github.com/dolzaan/pila-saas.git
+cd pila-saas
 npm install --legacy-peer-deps
 ```
 
-### 2. Configurar variáveis de ambiente
+### 2. Configurar as variáveis
 
 ```bash
 cp .env.example .env
 ```
 
-Abra o `.env` e preencha:
+Preencha pelo menos:
 
-| Variável | Como obter |
-|---|---|
-| `DATABASE_URL` | Deixe como está — aponta para o Docker local |
-| `REDIS_URL` | Deixe como está — aponta para o Docker local |
-| `NEXTAUTH_SECRET` | Execute: `openssl rand -base64 32` |
-| `GOOGLE_CLIENT_ID` | [Google Cloud Console](https://console.cloud.google.com/) → APIs → Credenciais OAuth |
-| `GOOGLE_CLIENT_SECRET` | Mesmo lugar do acima |
+```env
+DATABASE_URL="postgresql://..."
+AUTH_SECRET="..."
+AUTH_URL="http://localhost:3000"
+APP_URL="http://localhost:3000"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
 
-> Para login apenas com e-mail/senha, `GOOGLE_*` pode ficar com placeholder na Fase 1.
+As integrações com Google, Gemini, Stripe, EmailJS, Evolution e Upstash são opcionais para partes específicas da aplicação, mas devem ser configuradas antes de validar os respectivos fluxos.
 
-### 3. Subir os serviços locais (banco + redis)
+### 3. Subir serviços locais
 
 ```bash
 docker compose up -d
 ```
 
-Aguarde os containers ficarem healthy:
+### 4. Preparar o banco
 
 ```bash
-docker compose ps
+npm run db:migrate:deploy
+npm run db:generate
+npm run db:seed
 ```
 
-### 4. Criar as tabelas do banco e carregar dados iniciais
+### 5. Iniciar
 
 ```bash
-npm run db:migrate:deploy  # cria o schema a partir das migrações versionadas
-npm run db:seed            # insere categorias padrão
+npm run dev
 ```
 
-### 5. Iniciar o servidor de desenvolvimento
+A aplicação ficará disponível em `http://localhost:3000`.
+
+## Comandos
 
 ```bash
-pnpm dev              # Next.js em http://localhost:3000
+npm run dev
+npm run build
+npm run lint
+npm run test
+
+npm run db:generate
+npm run db:migrate:dev
+npm run db:migrate:deploy
+npm run db:migrate:status
+npm run db:seed
+npm run db:studio
 ```
 
----
+Use `db:push` apenas em desenvolvimento. Em produção, aplique migrations versionadas com `db:migrate:deploy`.
 
-## Scripts disponíveis
+## Deploy
 
-```bash
-# Desenvolvimento
-npm run dev              # Inicia o Next.js em modo dev
+Antes de publicar:
 
-# Build e qualidade
-npm run build            # Build de produção
-npm run lint             # ESLint em todos os pacotes
-npm run test             # Vitest em todos os pacotes
+1. configure as variáveis na Vercel;
+2. utilize a URL pooled do Supabase em runtime;
+3. utilize a URL direta do banco somente para migrations;
+4. configure os webhooks do Stripe e da Evolution;
+5. configure o `CRON_SECRET`;
+6. aplique as migrations;
+7. valide login, transação manual, vínculo do WhatsApp e checkout.
 
-# Banco de dados
-npm run db:generate          # Gera Prisma client
-npm run db:migrate:dev       # Cria/aplica migrações somente em desenvolvimento
-npm run db:migrate:deploy    # Aplica migrações pendentes em CI/produção
-npm run db:migrate:status    # Exibe o estado das migrações
-npm run db:push              # Sync schema sem migração (só dev)
-npm run db:seed              # Carrega dados iniciais
-npm run db:studio            # Prisma Studio na porta 5555
+Consulte:
 
-# Docker
-docker compose up -d        # Sobe Postgres + Redis
-docker compose down         # Para os containers
-docker compose down -v      # Para e apaga volumes (reset total)
-```
+- [`docs/database-migrations.md`](docs/database-migrations.md);
+- [`docs/privacy-and-ai.md`](docs/privacy-and-ai.md);
+- [`docs/credit-card-phase-two.md`](docs/credit-card-phase-two.md).
 
----
+## Privacidade e segurança
 
-## Estrutura do Projeto
+- mensagens brutas ficam desabilitadas por padrão;
+- dados diretos são mascarados antes de serem enviados à IA;
+- números de cartão, CVV, senha e códigos não devem ser solicitados;
+- webhooks e crons utilizam segredos independentes;
+- mensagens do WhatsApp possuem idempotência;
+- números não vinculados não podem criar movimentações;
+- assinaturas reais são canceladas antes da exclusão da conta.
 
-```
-finzap/
-├── apps/
-│   ├── web/          # Next.js — painel web
-│   └── bot/          # Serviço Node.js — bot WhatsApp (Fase 3+)
-├── packages/
-│   └── database/     # Schema Prisma compartilhado
-├── .github/
-│   └── workflows/ci.yml
-├── docker-compose.yml
-└── .env.example
-```
+Leia [`docs/privacy-and-ai.md`](docs/privacy-and-ai.md) para detalhes e limitações.
 
----
+## Observação sobre o WhatsApp
 
-## Variáveis de Ambiente
+A Evolution API depende de uma integração não oficial com o WhatsApp. Utilize um número dedicado e considere uma migração para a API oficial antes de operar em grande escala. Existe risco de desconexão ou bloqueio do número.
 
-Ver [.env.example](.env.example) com documentação de cada variável.
+## Status do produto
 
-Consulte também [docs/privacy-and-ai.md](docs/privacy-and-ai.md) para retenção de mensagens, minimização antes da IA e timeouts das integrações.
+O Pila já possui os fluxos principais de cadastro, gestão financeira, WhatsApp, cartões, relatórios e assinatura. As próximas prioridades são:
 
-O fluxo de baseline e deploy do banco está documentado em [docs/database-migrations.md](docs/database-migrations.md).
+- consistência de saldos entre contas e cartões;
+- testes de ponta a ponta;
+- observabilidade e recuperação de falhas;
+- métricas de ativação, retenção e conversão;
+- preparação para integração oficial do WhatsApp.
 
----
+## Licença e uso
 
-## Fases de implementação
-
-- [x] **Fase 1** — Fundação: Next.js, Auth.js, Prisma, CI
-- [ ] **Fase 2** — Painel financeiro: CRUD transações/categorias, dashboard
-- [ ] **Fase 3** — Serviço bot: Baileys, conexão WhatsApp
-- [ ] **Fase 4** — Vínculo e parser: linguagem natural → transação
-- [ ] **Fase 5** — Orçamentos e alertas
-- [ ] **Fase 6** — Stripe e monetização
-- [ ] **Fase 7** — Hardening: testes, LGPD, segurança
-
----
-
-## Aviso Legal
-
-O bot usa [Baileys](https://github.com/WhiskeySockets/Baileys), uma biblioteca não-oficial que acessa o WhatsApp via engenharia reversa do protocolo Web. **Isso viola os Termos de Serviço do WhatsApp/Meta.** Use um número dedicado exclusivamente para o bot — nunca seu número pessoal. Existe risco de banimento, especialmente com alto volume.
+O repositório é privado e o uso deve respeitar os termos dos serviços integrados, especialmente WhatsApp, Google Gemini, Stripe, Supabase e EmailJS.
