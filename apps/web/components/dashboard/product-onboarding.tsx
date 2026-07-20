@@ -18,6 +18,7 @@ import {
   Sparkles,
   WalletCards,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
@@ -34,8 +35,54 @@ type ProductOnboardingProps = {
   whatsappLinked: boolean;
 };
 
+type InfoCardProps = {
+  icon: LucideIcon;
+  title: string;
+  description: string;
+};
+
 function safeStep(step: number) {
   return Math.max(0, Math.min(TOTAL_STEPS - 1, Math.trunc(step || 0)));
+}
+
+function InfoCard({ icon: Icon, title, description }: InfoCardProps) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <Icon className="h-5 w-5 text-emerald-300" />
+      <strong className="mt-3 block text-sm text-slate-100">{title}</strong>
+      <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+    </div>
+  );
+}
+
+function ChecklistRow({
+  done,
+  title,
+  description,
+}: {
+  done: boolean;
+  title: string;
+  description: string;
+}) {
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <span
+        className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full ${
+          done ? "bg-emerald-400 text-emerald-950" : "bg-white/5 text-slate-600"
+        }`}
+      >
+        {done ? (
+          <Check className="h-4 w-4" />
+        ) : (
+          <span className="h-2 w-2 rounded-full bg-current" />
+        )}
+      </span>
+      <div>
+        <strong className="text-sm text-slate-100">{title}</strong>
+        <p className="mt-1 text-xs leading-5 text-slate-500">{description}</p>
+      </div>
+    </div>
+  );
 }
 
 export function ProductOnboarding({
@@ -50,9 +97,24 @@ export function ProductOnboarding({
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const requestKey = searchParams.get("onboarding") || searchParams.get("guide");
+  const onboardingRequest = searchParams.get("onboarding");
+  const guideRequest = searchParams.get("guide");
+  const requestKey =
+    onboardingRequest === "transaction-created"
+      ? "transaction-created"
+      : onboardingRequest === "1"
+        ? "first-transaction"
+        : guideRequest === "1"
+          ? "guide"
+          : null;
   const requestedStep =
-    requestKey === "transaction-created" ? 3 : requestKey === "1" ? 0 : null;
+    requestKey === "transaction-created"
+      ? 3
+      : requestKey === "first-transaction"
+        ? 2
+        : requestKey === "guide"
+          ? 0
+          : null;
 
   const [currentStep, setCurrentStep] = useState(() =>
     requestedStep ?? safeStep(initialStep),
@@ -90,10 +152,9 @@ export function ProductOnboarding({
   }, [isOpen, requestKey]);
 
   function clearRequest() {
-    if (requestKey) {
-      setClosedRequest(requestKey);
-      router.replace(pathname);
-    }
+    if (!requestKey) return;
+    setClosedRequest(requestKey);
+    router.replace(pathname);
   }
 
   function closeLocally() {
@@ -111,14 +172,6 @@ export function ProductOnboarding({
       const result = await updateOnboardingStep(normalizedStep);
       if (result.error) setError(result.error);
     });
-  }
-
-  function handleNext() {
-    persistStep(step + 1);
-  }
-
-  function handleBack() {
-    persistStep(step - 1);
   }
 
   function handleFirstTransaction() {
@@ -246,20 +299,9 @@ export function ProductOnboarding({
                     Em poucos minutos você vai entender o painel, registrar sua primeira movimentação e descobrir como organizar tudo sem complicação.
                   </p>
                   <div className="mt-7 grid gap-3 text-left sm:grid-cols-3">
-                    {[
-                      [LayoutDashboard, "Acompanhe", "Veja saldo, receitas e gastos."],
-                      [CreditCard, "Registre", "Adicione despesas e receitas."],
-                      [MessageCircle, "Automatize", "Use o WhatsApp quando preferir."],
-                    ].map(([Icon, title, description]) => {
-                      const StepIcon = Icon as typeof LayoutDashboard;
-                      return (
-                        <div key={String(title)} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                          <StepIcon className="h-5 w-5 text-emerald-300" />
-                          <strong className="mt-3 block text-sm text-slate-100">{String(title)}</strong>
-                          <p className="mt-1 text-xs leading-5 text-slate-500">{String(description)}</p>
-                        </div>
-                      );
-                    })}
+                    <InfoCard icon={LayoutDashboard} title="Acompanhe" description="Veja saldo, receitas e gastos." />
+                    <InfoCard icon={CreditCard} title="Registre" description="Adicione despesas e receitas." />
+                    <InfoCard icon={MessageCircle} title="Automatize" description="Use o WhatsApp quando preferir." />
                   </div>
                 </div>
               )}
@@ -278,27 +320,13 @@ export function ProductOnboarding({
                         Tudo importante aparece primeiro.
                       </h2>
                       <p className="mt-3 text-sm leading-6 text-slate-400">
-                        O Dashboard mostra seu saldo do mês, quanto entrou, quanto saiu e onde você mais gastou. Conforme novas transações forem registradas, os cartões e gráficos são atualizados automaticamente.
+                        O Dashboard mostra seu saldo do mês, quanto entrou, quanto saiu e onde você mais gastou. Os cartões e gráficos são atualizados automaticamente.
                       </p>
                     </div>
                   </div>
-
                   <div className="mt-7 grid gap-3 sm:grid-cols-2">
-                    {[
-                      [WalletCards, "Contas e cartões", "Separe banco, dinheiro, poupança e cartão de crédito."],
-                      [ShieldCheck, "Seus dados, suas regras", "Você escolhe o que cadastrar e pode exportar ou excluir seus dados."],
-                    ].map(([Icon, title, description]) => {
-                      const StepIcon = Icon as typeof WalletCards;
-                      return (
-                        <div key={String(title)} className="flex gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                          <StepIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
-                          <div>
-                            <strong className="text-sm text-slate-100">{String(title)}</strong>
-                            <p className="mt-1 text-xs leading-5 text-slate-500">{String(description)}</p>
-                          </div>
-                        </div>
-                      );
-                    })}
+                    <InfoCard icon={WalletCards} title="Contas e cartões" description="Separe banco, dinheiro, poupança e cartão de crédito." />
+                    <InfoCard icon={ShieldCheck} title="Seus dados, suas regras" description="Você escolhe o que cadastrar e pode exportar ou excluir seus dados." />
                   </div>
                 </div>
               )}
@@ -351,25 +379,13 @@ export function ProductOnboarding({
                     Você já sabe o essencial.
                   </h2>
                   <p className="mx-auto mt-3 max-w-lg text-sm leading-6 text-slate-400">
-                    Continue no seu ritmo. Os próximos passos são opcionais e ajudam a deixar os relatórios ainda mais completos.
+                    Continue no seu ritmo. Os próximos passos são opcionais e deixam os relatórios ainda mais completos.
                   </p>
 
                   <div className="mx-auto mt-7 max-w-lg space-y-3 text-left">
-                    {[
-                      [hasTransaction, "Primeira transação", "Seu painel já pode começar a mostrar resultados."],
-                      [hasFinancialAccount, "Conta ou cartão", "Ajuda a acompanhar saldos, faturas e conciliação."],
-                      [whatsappLinked, "WhatsApp vinculado", "Permite registrar movimentações conversando com o Pila."],
-                    ].map(([done, title, description]) => (
-                      <div key={String(title)} className="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                        <span className={`mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full ${done ? "bg-emerald-400 text-emerald-950" : "bg-white/5 text-slate-600"}`}>
-                          {done ? <Check className="h-4 w-4" /> : <span className="h-2 w-2 rounded-full bg-current" />}
-                        </span>
-                        <div>
-                          <strong className="text-sm text-slate-100">{String(title)}</strong>
-                          <p className="mt-1 text-xs leading-5 text-slate-500">{String(description)}</p>
-                        </div>
-                      </div>
-                    ))}
+                    <ChecklistRow done={hasTransaction} title="Primeira transação" description="Seu painel já pode começar a mostrar resultados." />
+                    <ChecklistRow done={hasFinancialAccount} title="Conta ou cartão" description="Ajuda a acompanhar saldos, faturas e conciliação." />
+                    <ChecklistRow done={whatsappLinked} title="WhatsApp vinculado" description="Permite registrar movimentações conversando com o Pila." />
                   </div>
                 </div>
               )}
@@ -405,7 +421,7 @@ export function ProductOnboarding({
                   {step > 0 && (
                     <button
                       type="button"
-                      onClick={handleBack}
+                      onClick={() => persistStep(step - 1)}
                       disabled={isPending}
                       className="app-button app-button--secondary"
                     >
@@ -437,7 +453,7 @@ export function ProductOnboarding({
                   ) : (
                     <button
                       type="button"
-                      onClick={handleNext}
+                      onClick={() => persistStep(step + 1)}
                       disabled={isPending}
                       className="app-button app-button--primary"
                     >
