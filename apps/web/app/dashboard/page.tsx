@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
 import Link from "next/link";
-import { Wallet, TrendingDown, TrendingUp, Activity, Search, MessageCircle, CheckCircle2, ArrowRight } from "lucide-react";
+import { Wallet, TrendingDown, TrendingUp, Activity, Search, MessageCircle, CheckCircle2, ArrowRight, AlertTriangle } from "lucide-react";
 import { getPilaWhatsappUrl, PILA_WHATSAPP_DISPLAY, PILA_WHATSAPP_NUMBER } from "@/lib/whatsapp-contact";
 
 export const metadata: Metadata = {
@@ -12,18 +12,47 @@ export const metadata: Metadata = {
   description: "Visão geral das suas finanças pessoais.",
 };
 
+async function isWhatsappBotConnected() {
+  const apiUrl = process.env.EVOLUTION_API_URL;
+  const apiKey = process.env.EVOLUTION_API_KEY;
+  const instanceName = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
+
+  if (!apiUrl || !apiKey) return false;
+
+  try {
+    const response = await fetch(
+      `${apiUrl}/instance/connectionState/${instanceName}`,
+      {
+        headers: { apikey: apiKey },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) return false;
+
+    const data = await response.json();
+    return data?.instance?.state === "open";
+  } catch (error) {
+    console.error("[Dashboard] Erro ao verificar conexão do WhatsApp:", error);
+    return false;
+  }
+}
+
 export default async function DashboardPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
   const firstName = session.user.name?.split(" ")[0] ?? "Usuário";
 
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { whatsappVerifiedAt: true, whatsappNumber: true },
-  });
+  const [user, whatsappBotConnected] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: { whatsappVerifiedAt: true, whatsappNumber: true },
+    }),
+    isWhatsappBotConnected(),
+  ]);
 
-  const whatsappConnected = Boolean(user?.whatsappVerifiedAt && user?.whatsappNumber);
+  const userWhatsappLinked = Boolean(user?.whatsappVerifiedAt && user?.whatsappNumber);
   const whatsappUrl = getPilaWhatsappUrl("Olá, Pila! Quero conectar minha conta e começar a registrar minhas finanças por aqui.");
 
   const now = new Date();
@@ -77,7 +106,30 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {!whatsappConnected && (
+      {!whatsappBotConnected && (
+        <section
+          className="section-card border-amber-400/30 bg-amber-400/5"
+          aria-labelledby="whatsapp-unavailable-title"
+          role="status"
+        >
+          <div className="flex items-start gap-4">
+            <div className="h-12 w-12 shrink-0 rounded-2xl bg-amber-400/15 flex items-center justify-center">
+              <AlertTriangle className="h-6 w-6 text-amber-300" />
+            </div>
+            <div className="min-w-0">
+              <span className="dashboard-kicker text-amber-300">WhatsApp temporariamente indisponível</span>
+              <h2 id="whatsapp-unavailable-title" className="section-title mt-1">
+                As funções pelo WhatsApp ainda não estão funcionando
+              </h2>
+              <p className="text-gray-400 mt-2 max-w-3xl">
+                Estamos finalizando a conexão do WhatsApp do Pila e ela estará disponível o mais breve possível. Enquanto isso, você pode continuar usando normalmente todos os demais recursos do site para registrar e acompanhar suas finanças.
+              </p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {whatsappBotConnected && !userWhatsappLinked && (
         <section className="section-card whatsapp-onboarding-card border-emerald-400/30 bg-emerald-400/5" aria-labelledby="whatsapp-onboarding-title">
           <div className="flex flex-col gap-6 xl:flex-row xl:items-center xl:justify-between">
             <div className="flex min-w-0 items-start gap-4">
@@ -120,7 +172,7 @@ export default async function DashboardPage() {
         </section>
       )}
 
-      {whatsappConnected && (
+      {whatsappBotConnected && userWhatsappLinked && (
         <div className="flex items-center gap-2 text-sm text-emerald-300 mb-6 px-1">
           <CheckCircle2 className="h-4 w-4" />
           WhatsApp conectado e pronto para receber seus lançamentos.
@@ -187,7 +239,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {whatsappConnected && (
+      {whatsappBotConnected && userWhatsappLinked && (
         <div className="whatsapp-cta">
           <div className="whatsapp-cta-icon">📱</div>
           <div className="whatsapp-cta-content">
