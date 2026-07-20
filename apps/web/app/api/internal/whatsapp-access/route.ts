@@ -25,17 +25,28 @@ function normalizePhone(value: string | null) {
 }
 
 async function getStatus(phone: string) {
-  const user = await prisma.user.findFirst({
-    where: { whatsappNumber: phone },
-    select: {
-      id: true,
-      whatsappVerifiedAt: true,
-    },
-  });
+  const now = new Date();
+  const [user, onboarding] = await Promise.all([
+    prisma.user.findFirst({
+      where: { whatsappNumber: phone },
+      select: {
+        id: true,
+        whatsappVerifiedAt: true,
+      },
+    }),
+    prisma.whatsappOnboardingSession.findFirst({
+      where: {
+        phone,
+        expiresAt: { gt: now },
+      },
+      select: { step: true },
+    }),
+  ]);
 
   const linked = Boolean(user?.id && user.whatsappVerifiedAt);
   return {
     linked,
+    onboardingActive: Boolean(onboarding),
     accountStatus: linked ? "LINKED" : "UNLINKED",
   } as const;
 }
