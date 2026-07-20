@@ -10,6 +10,7 @@ export class RecurringPaymentError extends Error {
       | "INVALID_DATE"
       | "NOT_FOUND"
       | "INVALID_ACCOUNT"
+      | "ENDED"
       | "STALE_OCCURRENCE",
   ) {
     super(message);
@@ -60,7 +61,6 @@ export async function confirmRecurringPayment({
         where: { id: recurringTransactionId, userId },
         select: {
           id: true,
-          userId: true,
           amount: true,
           kind: true,
           description: true,
@@ -75,6 +75,16 @@ export async function confirmRecurringPayment({
         throw new RecurringPaymentError(
           "Conta recorrente não encontrada.",
           "NOT_FOUND",
+        );
+      }
+
+      if (
+        recurring.endDate &&
+        recurring.nextDate.getTime() > recurring.endDate.getTime()
+      ) {
+        throw new RecurringPaymentError(
+          "Esta conta recorrente já chegou à data final.",
+          "ENDED",
         );
       }
 
@@ -112,22 +122,33 @@ export async function confirmRecurringPayment({
         select: { id: true },
       });
 
-      const transactionRecord =
-        existingTransaction ||
-        (await transaction.transaction.create({
-          data: {
-            userId,
-            categoryId: recurring.categoryId,
-            financialAccountId: normalizedAccountId,
-            amount: paidAmount,
-            kind: recurring.kind,
-            description: recurring.description || "Transação recorrente",
-            occurredAt: recurring.nextDate,
-            source: "recurring",
-            recurringTransactionId: recurring.id,
-          },
-          select: { id: true },
-        }));
+      const transactionRecord = existingTransaction
+        ? await transaction.transaction.update({
+            where: { id: existingTransaction.id },
+            data: {
+              categoryId: recurring.categoryId,
+              financialAccountId: normalizedAccountId,
+              amount: paidAmount,
+              kind: recurring.kind,
+              description: recurring.description || "Transação recorrente",
+              source: "recurring",
+            },
+            select: { id: true },
+          })
+        : await transaction.transaction.create({
+            data: {
+              userId,
+              categoryId: recurring.categoryId,
+              financialAccountId: normalizedAccountId,
+              amount: paidAmount,
+              kind: recurring.kind,
+              description: recurring.description || "Transação recorrente",
+              occurredAt: recurring.nextDate,
+              source: "recurring",
+              recurringTransactionId: recurring.id,
+            },
+            select: { id: true },
+          });
 
       const nextDate = getNextRecurringDate(
         recurring.nextDate,
