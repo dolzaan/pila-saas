@@ -40,7 +40,6 @@ export default async function ProductMetricsPage() {
   if (!session?.user?.id) redirect("/login");
   if (session.user.role !== "ADMIN") redirect("/dashboard");
 
-  const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1_000);
   const [eventMetrics, dailyActivations] = await Promise.all([
     prisma.$queryRaw<EventMetricRow[]>`
       SELECT
@@ -48,7 +47,7 @@ export default async function ProductMetricsPage() {
         COUNT(*)::int AS "total",
         COUNT(DISTINCT "userId")::int AS "users"
       FROM "product_events"
-      WHERE "createdAt" >= ${cutoff}
+      WHERE "createdAt" >= CURRENT_TIMESTAMP - INTERVAL '30 days'
       GROUP BY "eventName"
       ORDER BY "total" DESC
     `,
@@ -57,7 +56,7 @@ export default async function ProductMetricsPage() {
         DATE_TRUNC('day', "createdAt") AS "day",
         COUNT(*)::int AS "total"
       FROM "product_events"
-      WHERE "createdAt" >= ${cutoff}
+      WHERE "createdAt" >= CURRENT_TIMESTAMP - INTERVAL '30 days'
         AND "eventName" = 'first_transaction_created'
       GROUP BY DATE_TRUNC('day', "createdAt")
       ORDER BY "day" ASC
