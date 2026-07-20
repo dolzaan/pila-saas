@@ -1,4 +1,4 @@
-import type { FinancialAccountType } from "@prisma/client";
+import type { FinancialAccountType, Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type LedgerAccount = {
@@ -20,6 +20,12 @@ export type LedgerCardPayment = {
   amount: number;
 };
 
+export type LedgerTransfer = {
+  sourceAccountId: string;
+  destinationAccountId: string;
+  amount: number;
+};
+
 export type AccountLedgerSummary = {
   accountId: string;
   type: FinancialAccountType;
@@ -27,6 +33,8 @@ export type AccountLedgerSummary = {
   expense: number;
   cardPaymentsReceived: number;
   cardPaymentsSent: number;
+  transfersIn: number;
+  transfersOut: number;
   balance: number;
   outstandingBalance: number;
   availableLimit: number | null;
@@ -36,6 +44,7 @@ export function calculateAccountLedgerSummaries(input: {
   accounts: LedgerAccount[];
   transactionTotals: LedgerTransactionTotal[];
   cardPayments: LedgerCardPayment[];
+  transfers?: LedgerTransfer[];
 }) {
   const transactionByAccount = new Map<
     string,
@@ -68,6 +77,20 @@ export function calculateAccountLedgerSummaries(input: {
     }
   }
 
+  const transfersInByAccount = new Map<string, number>();
+  const transfersOutByAccount = new Map<string, number>();
+
+  for (const transfer of input.transfers || []) {
+    transfersOutByAccount.set(
+      transfer.sourceAccountId,
+      (transfersOutByAccount.get(transfer.sourceAccountId) || 0) + transfer.amount,
+    );
+    transfersInByAccount.set(
+      transfer.destinationAccountId,
+      (transfersInByAccount.get(transfer.destinationAccountId) || 0) + transfer.amount,
+    );
+  }
+
   const entries: Array<[string, AccountLedgerSummary]> = input.accounts.map(
     (account) => {
       const totals = transactionByAccount.get(account.id) || {
@@ -76,6 +99,8 @@ export function calculateAccountLedgerSummaries(input: {
       };
       const cardPaymentsReceived = paymentsReceivedByCard.get(account.id) || 0;
       const cardPaymentsSent = paymentsSentByAccount.get(account.id) || 0;
+      const transfersIn = transfersInByAccount.get(account.id) || 0;
+      const transfersOut = transfersOutByAccount.get(account.id) || 0;
 
       if (account.type === "CREDIT_CARD") {
         const outstandingBalance = Math.max(
@@ -95,6 +120,8 @@ export function calculateAccountLedgerSummaries(input: {
             expense: totals.expense,
             cardPaymentsReceived,
             cardPaymentsSent: 0,
+            transfersIn: 0,
+            transfersOut: 0,
             balance: outstandingBalance,
             outstandingBalance,
             availableLimit,
@@ -103,7 +130,12 @@ export function calculateAccountLedgerSummaries(input: {
       }
 
       const balance =
-        account.initialBalance + totals.income - totals.expense - cardPaymentsSent;
+        account.initialBalance
+        + totals.income
+        - totals.expense
+        - cardPaymentsSent
+        + transfersIn
+        - transfersOut;
 
       return [
         account.id,
@@ -114,6 +146,8 @@ export function calculateAccountLedgerSummaries(input: {
           expense: totals.expense,
           cardPaymentsReceived: 0,
           cardPaymentsSent,
+          transfersIn,
+          transfersOut,
           balance,
           outstandingBalance: 0,
           availableLimit: null,
@@ -125,8 +159,14 @@ export function calculateAccountLedgerSummaries(input: {
   return new Map(entries);
 }
 
+type AccountTransferRow = {
+  sourceAccountId: string;
+  destinationAccountId: string;
+  amount: Prisma.Decimal;
+};
+
 export async function getAccountLedgerSummaries(userId: string) {
-  const [accounts, transactionTotals, cardPayments] = await Promise.all([
+  const [accounts, transactionTotals, cardPayments, transfers] = await Promise.all([
     prisma.financialAccount.findMany({
       where: { userId },
       select: {
@@ -152,6 +192,11 @@ export async function getAccountLedgerSummaries(userId: string) {
         amount: true,
       },
     }),
+    prisma.$queryRaw<AccountTransferRow[]>`
+      SELECT "sourceAccountId", "destinationAccountId", "amount"
+      FROM "account_transfers"
+      WHERE "userId" = ${userId}
+    `,
   ]);
 
   return calculateAccountLedgerSummaries({
@@ -176,6 +221,11 @@ export async function getAccountLedgerSummaries(userId: string) {
       creditCardId: payment.creditCardId,
       sourceAccountId: payment.sourceAccountId,
       amount: payment.amount.toNumber(),
+    })),
+    transfers: transfers.map((transfer) => ({
+      sourceAccountId: transfer.sourceAccountId,
+      destinationAccountId: transfer.destinationAccountId,
+      amount: transfer.amount.toNumber(),
     })),
   });
 }
