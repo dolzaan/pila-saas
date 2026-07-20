@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   buildUnlinkedWhatsappReply,
+  buildWhatsappLinkHelpReply,
+  canUnlinkedWhatsappMessageReachBot,
   isPersonalFinancialWhatsappIntent,
   isWhatsappAccountAccessQuestion,
+  isWhatsappLinkHelpIntent,
+  isWhatsappRegistrationIntent,
   shouldCheckWhatsappAccountAccess,
 } from "@/lib/whatsapp-access-gate";
 
@@ -21,17 +25,49 @@ describe("WhatsApp account access gate", () => {
 
   it("blocks receipt media even without a caption", () => {
     expect(isPersonalFinancialWhatsappIntent("", true)).toBe(true);
+    expect(shouldCheckWhatsappAccountAccess("", true)).toBe(true);
   });
 
-  it("does not block public product questions or onboarding messages", () => {
-    expect(isPersonalFinancialWhatsappIntent("como funciona o Pila?")).toBe(false);
+  it("keeps account creation separate from personal finance", () => {
     expect(isPersonalFinancialWhatsappIntent("quero criar minha conta")).toBe(false);
-    expect(isPersonalFinancialWhatsappIntent("123456")).toBe(false);
+    expect(isWhatsappRegistrationIntent("quero criar minha conta")).toBe(true);
+    expect(canUnlinkedWhatsappMessageReachBot("quero criar minha conta")).toBe(true);
+  });
+
+  it("allows PINs, greetings and public product questions", () => {
+    expect(canUnlinkedWhatsappMessageReachBot("123456")).toBe(true);
+    expect(canUnlinkedWhatsappMessageReachBot("oi")).toBe(true);
+    expect(canUnlinkedWhatsappMessageReachBot("como funciona o Pila?")).toBe(true);
+    expect(canUnlinkedWhatsappMessageReachBot("quanto custa o plano?")).toBe(true);
+  });
+
+  it("allows onboarding continuation only when a session is active", () => {
+    expect(canUnlinkedWhatsappMessageReachBot("Paulo Cesar Dolzan")).toBe(false);
+    expect(canUnlinkedWhatsappMessageReachBot(
+      "Paulo Cesar Dolzan",
+      { onboardingActive: true },
+    )).toBe(true);
+    expect(canUnlinkedWhatsappMessageReachBot(
+      "paulo@example.com",
+      { onboardingActive: true },
+    )).toBe(true);
   });
 
   it("detects questions about where an operation was registered", () => {
     expect(isWhatsappAccountAccessQuestion("em qual conta vc ta registrando isso?")).toBe(true);
     expect(shouldCheckWhatsappAccountAccess("onde você registrou isso?")).toBe(true);
+  });
+
+  it("detects requests to link an existing account", () => {
+    expect(isWhatsappLinkHelpIntent("já tenho uma conta, como vinculo?")).toBe(true);
+    expect(isWhatsappLinkHelpIntent("quero conectar meu whatsapp")).toBe(true);
+    expect(buildWhatsappLinkHelpReply()).toContain("Gerar PIN de Vínculo");
+  });
+
+  it("blocks shorthand that is not on the public allowlist", () => {
+    expect(shouldCheckWhatsappAccountAccess("20 mercado")).toBe(true);
+    expect(shouldCheckWhatsappAccountAccess("mercado 20")).toBe(true);
+    expect(shouldCheckWhatsappAccountAccess("salário 5000")).toBe(true);
   });
 
   it("explains that nothing was recorded and offers both link paths", () => {
