@@ -96,7 +96,34 @@ export async function confirmRecurringPayment({
         );
       }
 
+      const paymentFingerprint = `recurring-payment:${recurring.id}:${expectedDate.toISOString()}`;
+      const existingPayment = await transaction.transaction.findUnique({
+        where: {
+          userId_importFingerprint: {
+            userId,
+            importFingerprint: paymentFingerprint,
+          },
+        },
+        select: { id: true },
+      });
+
       if (recurring.nextDate.getTime() !== expectedDate.getTime()) {
+        if (existingPayment) {
+          return {
+            success: true as const,
+            alreadyRecorded: true,
+            transactionId: existingPayment.id,
+            description: recurring.description || "Transação recorrente",
+            amount: amount ?? recurring.amount.toNumber(),
+            paidDueDate: expectedDate,
+            paidAt,
+            nextDate: recurring.nextDate,
+            reachedEnd:
+              Boolean(recurring.endDate) &&
+              recurring.nextDate.getTime() > recurring.endDate!.getTime(),
+          };
+        }
+
         throw new RecurringPaymentError(
           "Este vencimento já foi atualizado. Recarregue a página antes de confirmar novamente.",
           "STALE_OCCURRENCE",
@@ -122,51 +149,28 @@ export async function confirmRecurringPayment({
       }
 
       const paidAmount = amount ?? recurring.amount.toNumber();
-      const paymentFingerprint = `recurring-payment:${recurring.id}:${recurring.nextDate.toISOString()}`;
-      const existingTransaction = await transaction.transaction.findFirst({
+      const transactionRecord = await transaction.transaction.upsert({
         where: {
+          userId_importFingerprint: {
+            userId,
+            importFingerprint: paymentFingerprint,
+          },
+        },
+        update: {},
+        create: {
           userId,
-          OR: [
-            { importFingerprint: paymentFingerprint },
-            {
-              recurringTransactionId: recurring.id,
-              occurredAt: recurring.nextDate,
-            },
-          ],
+          categoryId: recurring.categoryId,
+          financialAccountId: normalizedAccountId,
+          amount: paidAmount,
+          kind: recurring.kind,
+          description: recurring.description || "Transação recorrente",
+          occurredAt: paidAt,
+          source: "recurring",
+          recurringTransactionId: recurring.id,
+          importFingerprint: paymentFingerprint,
         },
         select: { id: true },
       });
-
-      const transactionRecord = existingTransaction
-        ? await transaction.transaction.update({
-            where: { id: existingTransaction.id },
-            data: {
-              categoryId: recurring.categoryId,
-              financialAccountId: normalizedAccountId,
-              amount: paidAmount,
-              kind: recurring.kind,
-              description: recurring.description || "Transação recorrente",
-              occurredAt: paidAt,
-              source: "recurring",
-              importFingerprint: paymentFingerprint,
-            },
-            select: { id: true },
-          })
-        : await transaction.transaction.create({
-            data: {
-              userId,
-              categoryId: recurring.categoryId,
-              financialAccountId: normalizedAccountId,
-              amount: paidAmount,
-              kind: recurring.kind,
-              description: recurring.description || "Transação recorrente",
-              occurredAt: paidAt,
-              source: "recurring",
-              recurringTransactionId: recurring.id,
-              importFingerprint: paymentFingerprint,
-            },
-            select: { id: true },
-          });
 
       const nextDate = getNextRecurringDate(
         recurring.nextDate,
@@ -182,24 +186,80 @@ export async function confirmRecurringPayment({
       });
 
       if (updated.count === 0) {
-        throw new RecurringPaymentError(
-          "Este vencimento já foi atualizado. Recarregue a página antes de confirmar novamente.",
-          "STALE_OCCURRENCE",
-        );
+        const currentRecurring = await transaction.recurringTransaction.findFirst({
+          where: { id: recurring.id, userId },
+          select: { nextDate: true },
+        });
+
+        return {
+          success: true as const,
+          alreadyRecorded: true,
+          transactionId: transactionRecord.id,
+          description: recurring.description || "Transação recorrente",
+          amount: paidAmount,
+          paidDueDate: recurring.nextDate,
+          paidAt,
+          nextDate: currentRecurring?.nextDate || nextDate,
+          reachedEnd:
+            Boolean(recurring.endDate) &&
+            (currentRecurring?.nextDate || nextDate).getTime() >
+              recurring.endDate!.getTime(),
+        };
+      }
+
+      const description = recurring.description || "Transação recorrente";
+
+      await transaction.billReminder.updateMany({
+        where: {
+          userId,
+          description,
+          dueDate: recurring.nextDate,
+          isPaid: false,
+        },
+        data: {
+          isPaid: true,
+          paidAt,
+          snoozedUntil: null,
+        },
+      });
+
+      const reachedEnd =
+        Boolean(recurring.endDate) &&
+        nextDate.getTime() > recurring.endDate!.getTime();
+
+      if (!reachedEnd) {
+        const nextReminder = await transaction.billReminder.findFirst({
+          where: {
+            userId,
+            description,
+            dueDate: nextDate,
+            isPaid: false,
+          },
+          select: { id: true },
+        });
+
+        if (!nextReminder) {
+          await transaction.billReminder.create({
+            data: {
+              userId,
+              description,
+              amount: recurring.amount,
+              dueDate: nextDate,
+            },
+          });
+        }
       }
 
       return {
         success: true as const,
-        alreadyRecorded: Boolean(existingTransaction),
+        alreadyRecorded: Boolean(existingPayment),
         transactionId: transactionRecord.id,
-        description: recurring.description || "Transação recorrente",
+        description,
         amount: paidAmount,
         paidDueDate: recurring.nextDate,
         paidAt,
         nextDate,
-        reachedEnd:
-          Boolean(recurring.endDate) &&
-          nextDate.getTime() > recurring.endDate!.getTime(),
+        reachedEnd,
       };
     },
     {
