@@ -19,8 +19,8 @@ const ACCOUNT_ACCESS_QUESTIONS = [
 ];
 
 const REGISTRATION_INTENTS = [
-  /\bquero (?:criar|fazer|abrir) (?:uma )?conta\b/i,
-  /\bcriar (?:uma )?conta\b/i,
+  /\bquero (?:criar|fazer|abrir) (?:(?:uma|minha) )?conta\b/i,
+  /\bcriar (?:(?:uma|minha) )?conta\b/i,
   /\bcomeçar (?:meu )?cadastro\b/i,
   /\bquero me cadastrar\b/i,
   /\bquero testar (?:o )?pila\b/i,
