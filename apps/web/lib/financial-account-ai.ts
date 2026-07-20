@@ -115,6 +115,15 @@ export function resolveFinancialAccount(
     return { status: "AMBIGUOUS", candidates: exactMatches };
   }
 
+  // Evita transformar uma referência explícita a conta corrente em cartão
+  // apenas porque os dois produtos pertencem ao mesmo banco.
+  const explicitlyNamesNonCardAccount = options.creditCardsOnly
+    && /\bconta\b/.test(normalizedRequest)
+    && !/\b(cartao|credito)\b/.test(normalizedRequest);
+  if (explicitlyNamesNonCardAccount || canonicalRequest.length < 2) {
+    return { status: "NOT_FOUND", candidates };
+  }
+
   const partialMatches = candidates.filter((account) => {
     const candidateName = canonicalAccountName(account.name);
     return candidateName.includes(canonicalRequest)
