@@ -1,6 +1,5 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import type { Prisma } from "@prisma/client";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Activity, CheckCircle2, MousePointerClick, ReceiptText, UserRoundCheck } from "lucide-react";
@@ -187,7 +186,7 @@ export default async function ProductMetricsPage() {
                   </span>
                   <strong className="text-emerald-300">{formatNumber.format(item.total)}</strong>
                 </div>
-              ))
+              ))}
             )}
           </div>
         </section>
