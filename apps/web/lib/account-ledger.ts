@@ -68,8 +68,8 @@ export function calculateAccountLedgerSummaries(input: {
     }
   }
 
-  return new Map<string, AccountLedgerSummary>(
-    input.accounts.map((account) => {
+  const entries: Array<[string, AccountLedgerSummary]> = input.accounts.map(
+    (account) => {
       const totals = transactionByAccount.get(account.id) || {
         income: 0,
         expense: 0,
@@ -119,8 +119,10 @@ export function calculateAccountLedgerSummaries(input: {
           availableLimit: null,
         },
       ];
-    }),
+    },
   );
+
+  return new Map(entries);
 }
 
 export async function getAccountLedgerSummaries(userId: string) {
