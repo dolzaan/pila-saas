@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getAccountLedgerSummaries } from "@/lib/account-ledger";
 import type { FinancialAccountType } from "@prisma/client";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -50,43 +51,29 @@ export default async function AccountsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
 
-  const [accounts, groupedTotals] = await Promise.all([
+  const [accounts, ledgerSummaries] = await Promise.all([
     prisma.financialAccount.findMany({
       where: { userId: session.user.id },
       orderBy: [{ isArchived: "asc" }, { createdAt: "asc" }],
     }),
-    prisma.transaction.groupBy({
-      by: ["financialAccountId", "kind"],
-      where: {
-        userId: session.user.id,
-        financialAccountId: { not: null },
-      },
-      _sum: { amount: true },
-    }),
+    getAccountLedgerSummaries(session.user.id),
   ]);
-
-  const totalsByAccount = new Map<string, { income: number; expense: number }>();
-  for (const total of groupedTotals) {
-    if (!total.financialAccountId) continue;
-    const current = totalsByAccount.get(total.financialAccountId) || { income: 0, expense: 0 };
-    current[total.kind === "INCOME" ? "income" : "expense"] = total._sum.amount?.toNumber() || 0;
-    totalsByAccount.set(total.financialAccountId, current);
-  }
 
   const activeAccounts = accounts.filter((account) => !account.isArchived);
   const archivedAccounts = accounts.filter((account) => account.isArchived);
   const cashBalance = activeAccounts
     .filter((account) => account.type !== "CREDIT_CARD")
-    .reduce((sum, account) => {
-      const totals = totalsByAccount.get(account.id) || { income: 0, expense: 0 };
-      return sum + account.initialBalance.toNumber() + totals.income - totals.expense;
-    }, 0);
-  const cardPurchases = activeAccounts
+    .reduce(
+      (sum, account) => sum + (ledgerSummaries.get(account.id)?.balance || 0),
+      0,
+    );
+  const cardOutstanding = activeAccounts
     .filter((account) => account.type === "CREDIT_CARD")
-    .reduce((sum, account) => {
-      const totals = totalsByAccount.get(account.id) || { income: 0, expense: 0 };
-      return sum + Math.max(0, totals.expense - totals.income);
-    }, 0);
+    .reduce(
+      (sum, account) =>
+        sum + (ledgerSummaries.get(account.id)?.outstandingBalance || 0),
+      0,
+    );
 
   return (
     <div className="dashboard-page">
@@ -94,7 +81,7 @@ export default async function AccountsPage() {
         <div>
           <h1 className="dashboard-greeting">Contas e cartões</h1>
           <p className="dashboard-subtitle">
-            Acompanhe cada saldo e importe extratos sem duplicar lançamentos.
+            Acompanhe saldos, pagamentos de fatura e extratos sem duplicar lançamentos.
           </p>
         </div>
         <FinancialAccountForm />
@@ -107,7 +94,9 @@ export default async function AccountsPage() {
             <WalletCards className="h-6 w-6 text-emerald-400" />
           </div>
           <div className="stat-value">{formatCurrency(cashBalance)}</div>
-          <div className="stat-footer">Saldo inicial + receitas - despesas</div>
+          <div className="stat-footer">
+            Saldo inicial + receitas - despesas - faturas pagas
+          </div>
         </div>
         <div className="stat-card stat-card--transactions">
           <div className="stat-card-header">
@@ -119,11 +108,15 @@ export default async function AccountsPage() {
         </div>
         <div className="stat-card stat-card--expense">
           <div className="stat-card-header">
-            <span className="stat-label">Compras nos cartões</span>
+            <span className="stat-label">Saldo dos cartões</span>
             <CreditCard className="h-6 w-6 text-red-400" />
           </div>
-          <div className="stat-value text-red-300">{formatCurrency(cardPurchases)}</div>
-          <div className="stat-footer">Total de despesas vinculadas</div>
+          <div className="stat-value text-red-300">
+            {formatCurrency(cardOutstanding)}
+          </div>
+          <div className="stat-footer">
+            Compras registradas menos pagamentos de fatura
+          </div>
         </div>
       </div>
 
@@ -133,7 +126,9 @@ export default async function AccountsPage() {
             <h2 id="active-accounts-title" className="text-lg font-semibold text-gray-100">
               Minhas contas
             </h2>
-            <p className="mt-1 text-sm text-gray-500">Saldos calculados a partir dos lançamentos vinculados.</p>
+            <p className="mt-1 text-sm text-gray-500">
+              Os saldos consideram movimentações e pagamentos de cartão registrados no Pila.
+            </p>
           </div>
         </div>
 
@@ -146,12 +141,12 @@ export default async function AccountsPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
             {activeAccounts.map((account) => {
-              const totals = totalsByAccount.get(account.id) || { income: 0, expense: 0 };
+              const summary = ledgerSummaries.get(account.id);
               const isCard = account.type === "CREDIT_CARD";
-              const balance = isCard
-                ? Math.max(0, totals.expense - totals.income)
-                : account.initialBalance.toNumber() + totals.income - totals.expense;
+              const balance = summary?.balance || 0;
               const limit = account.creditLimit?.toNumber() || 0;
+              const availableLimit = summary?.availableLimit;
+              const limitUsage = limit > 0 ? Math.min(100, (balance / limit) * 100) : 0;
 
               return (
                 <article
@@ -174,7 +169,7 @@ export default async function AccountsPage() {
 
                   <div className="mt-6">
                     <p className="text-xs text-gray-500">
-                      {isCard ? "Compras registradas" : "Saldo atual"}
+                      {isCard ? "Saldo pendente" : "Saldo atual"}
                     </p>
                     <p className={`mt-1 text-2xl font-bold ${isCard ? "text-red-300" : "text-white"}`}>
                       {formatCurrency(balance)}
@@ -185,22 +180,38 @@ export default async function AccountsPage() {
                     <div className="mt-5 space-y-2">
                       <div className="flex justify-between text-xs text-gray-500">
                         <span>Limite disponível</span>
-                        <span>{formatCurrency(Math.max(0, limit - balance))}</span>
+                        <span className={availableLimit !== null && availableLimit < 0 ? "text-red-300" : undefined}>
+                          {availableLimit === null
+                            ? "Não cadastrado"
+                            : formatCurrency(availableLimit)}
+                        </span>
                       </div>
                       <div className="h-2 overflow-hidden rounded-full bg-white/5">
                         <div
                           className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-amber-400"
-                          style={{ width: `${limit > 0 ? Math.min(100, (balance / limit) * 100) : 0}%` }}
+                          style={{ width: `${limitUsage}%` }}
                         />
+                      </div>
+                      <div className="flex justify-between text-[11px] text-gray-600">
+                        <span>Compras {formatCurrency(summary?.expense || 0)}</span>
+                        <span>Pagamentos {formatCurrency(summary?.cardPaymentsReceived || 0)}</span>
                       </div>
                       <p className="text-xs text-gray-600">
                         Fecha dia {account.closingDay} · vence dia {account.dueDay}
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-5 flex justify-between text-xs text-gray-500">
-                      <span>Entradas {formatCurrency(totals.income)}</span>
-                      <span>Saídas {formatCurrency(totals.expense)}</span>
+                    <div className="mt-5 space-y-2 text-xs text-gray-500">
+                      <div className="flex justify-between">
+                        <span>Entradas {formatCurrency(summary?.income || 0)}</span>
+                        <span>Saídas {formatCurrency(summary?.expense || 0)}</span>
+                      </div>
+                      {(summary?.cardPaymentsSent || 0) > 0 && (
+                        <div className="flex justify-between text-gray-600">
+                          <span>Faturas pagas</span>
+                          <span>{formatCurrency(summary?.cardPaymentsSent || 0)}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </article>
