@@ -137,7 +137,7 @@ replaceOnce(
   "    // 7. Salvar no Banco de Dados (apenas se for transação)",
   code(String.raw`    if ((aiResult.installments || 1) > 1) {
       const replyMessage =
-        §Entendi que essa compra foi parcelada em ${aiResult.installments} vezes, mas ainda não registrei para não lançar o valor total na fatura errada. Por enquanto, registre as parcelas pelo painel.§;
+        §Entendi que essa compra foi parcelada em \${aiResult.installments} vezes, mas ainda não registrei para não lançar o valor total na fatura errada. Por enquanto, registre as parcelas pelo painel.§;
       await sendWhatsAppMessage(remoteJid, replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
@@ -176,13 +176,13 @@ replaceOnce(
 
 replaceOnce(
   "melhorar confirmação do lançamento",
-  code(String.raw`    const fallbackMessage = §✅ Gasto registrado: R$ ${Number(aiResult.amount).toFixed(2)} em ${aiResult.categoryName}§;
+  code(String.raw`    const fallbackMessage = §✅ Gasto registrado: R$ \${Number(aiResult.amount).toFixed(2)} em \${aiResult.categoryName}§;
     const replyMessage = aiResult.replyMessage || fallbackMessage;`),
   code(String.raw`    const movementLabel = aiResult.kind === "INCOME" ? "Ganho" : "Gasto";
     const accountSuffix = resolvedFinancialAccountName
-      ? § no ${resolvedFinancialAccountName}§
+      ? § no \${resolvedFinancialAccountName}§
       : "";
-    const fallbackMessage = §✅ ${movementLabel} registrado: R$ ${Number(aiResult.amount).toFixed(2)} em ${aiResult.categoryName || "Sem categoria"}${accountSuffix}§;
+    const fallbackMessage = §✅ \${movementLabel} registrado: R$ \${Number(aiResult.amount).toFixed(2)} em \${aiResult.categoryName || "Sem categoria"}\${accountSuffix}§;
     const replyMessage = aiResult.replyMessage || fallbackMessage;`),
 );
 
