@@ -1,13 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   createRecurringTransaction,
   deleteRecurringTransaction,
   markRecurringTransactionPaid,
 } from "@/app/actions/recurring";
 import type { RecurrenceInterval, TransactionKind } from "@prisma/client";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Check, Plus, Trash2, X } from "lucide-react";
 
 type CategoryOption = {
   id: string;
@@ -24,6 +24,23 @@ export type RecurringAccountOption = {
 export function RecurringForm({ categories }: { categories: CategoryOption[] }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSubmitting) setIsOpen(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isSubmitting]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -65,131 +82,138 @@ export function RecurringForm({ categories }: { categories: CategoryOption[] }) 
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 border border-gray-800 rounded-xl w-full max-w-md overflow-hidden">
-            <div className="p-6">
-              <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-bold">Nova Conta Recorrente</h2>
+        <div
+          className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/80 px-4 backdrop-blur-sm sm:items-center"
+          style={{
+            paddingTop: "calc(1rem + env(safe-area-inset-top))",
+            paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+          }}
+        >
+          <div
+            className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="new-recurring-title"
+          >
+            <div className="flex shrink-0 items-center justify-between gap-4 border-b border-gray-800 px-5 py-4 sm:px-6">
+              <h2 id="new-recurring-title" className="text-lg font-semibold text-gray-100 sm:text-xl">
+                Nova Conta Recorrente
+              </h2>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                disabled={isSubmitting}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+              <div className="space-y-2">
+                <label htmlFor="recurring-description" className="block text-sm font-medium text-gray-300">
+                  Descrição
+                </label>
+                <input
+                  id="recurring-description"
+                  name="description"
+                  required
+                  placeholder="Ex: Conta de Luz"
+                  className="form-input"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="recurring-amount" className="block text-sm font-medium text-gray-300">
+                    Valor
+                  </label>
+                  <input
+                    id="recurring-amount"
+                    name="amount"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    required
+                    placeholder="0,00"
+                    className="form-input"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="recurring-kind" className="block text-sm font-medium text-gray-300">
+                    Tipo
+                  </label>
+                  <select id="recurring-kind" name="kind" className="form-input">
+                    <option value="EXPENSE">Despesa</option>
+                    <option value="INCOME">Receita</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <label htmlFor="recurring-category" className="block text-sm font-medium text-gray-300">
+                    Categoria
+                  </label>
+                  <select id="recurring-category" name="categoryId" className="form-input">
+                    <option value="">Sem Categoria</option>
+                    {categories.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.icon} {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="recurring-interval" className="block text-sm font-medium text-gray-300">
+                    Intervalo
+                  </label>
+                  <select id="recurring-interval" name="interval" className="form-input">
+                    <option value="MONTHLY">Mensal</option>
+                    <option value="WEEKLY">Semanal</option>
+                    <option value="DAILY">Diário</option>
+                    <option value="YEARLY">Anual</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="recurring-start-date" className="block text-sm font-medium text-gray-300">
+                  Primeiro vencimento
+                </label>
+                <input
+                  id="recurring-start-date"
+                  name="startDate"
+                  type="date"
+                  required
+                  className="form-input"
+                />
+                <p className="text-xs leading-5 text-gray-500">
+                  A transação só será criada quando você confirmar o pagamento.
+                </p>
+              </div>
+
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="text-gray-500 hover:text-white"
-                  aria-label="Fechar"
+                  disabled={isSubmitting}
+                  className="app-button app-button--secondary w-full flex-1"
                 >
-                  ✕
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="app-button app-button--primary w-full flex-1"
+                >
+                  {isSubmitting ? "Salvando..." : "Salvar"}
                 </button>
               </div>
-
-              <form onSubmit={onSubmit} className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    Descrição
-                  </label>
-                  <input
-                    name="description"
-                    required
-                    placeholder="Ex: Conta de Luz"
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Valor
-                    </label>
-                    <input
-                      name="amount"
-                      type="number"
-                      step="0.01"
-                      min="0.01"
-                      required
-                      placeholder="0,00"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Tipo
-                    </label>
-                    <select
-                      name="kind"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    >
-                      <option value="EXPENSE">Despesa</option>
-                      <option value="INCOME">Receita</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Categoria
-                    </label>
-                    <select
-                      name="categoryId"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    >
-                      <option value="">Sem Categoria</option>
-                      {categories.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.icon} {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-1">
-                      Intervalo
-                    </label>
-                    <select
-                      name="interval"
-                      className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                    >
-                      <option value="MONTHLY">Mensal</option>
-                      <option value="WEEKLY">Semanal</option>
-                      <option value="DAILY">Diário</option>
-                      <option value="YEARLY">Anual</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-400 mb-1">
-                    Primeiro vencimento
-                  </label>
-                  <input
-                    name="startDate"
-                    type="date"
-                    required
-                    className="w-full bg-gray-800 border border-gray-700 text-white rounded-lg p-2.5"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    A transação só será criada quando você confirmar o pagamento.
-                  </p>
-                </div>
-
-                <div className="pt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    className="flex-1 app-button app-button--secondary"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 app-button app-button--primary"
-                  >
-                    {isSubmitting ? "Salvando..." : "Salvar"}
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -213,6 +237,23 @@ export function PayRecurringButton({
   const [isOpen, setIsOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !isSubmitting) setIsOpen(false);
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [isOpen, isSubmitting]);
 
   async function onSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -254,103 +295,108 @@ export function PayRecurringButton({
       </button>
 
       {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+        <div
+          className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto bg-black/80 px-4 backdrop-blur-sm sm:items-center"
+          style={{
+            paddingTop: "calc(1rem + env(safe-area-inset-top))",
+            paddingBottom: "calc(1rem + env(safe-area-inset-bottom))",
+          }}
+        >
           <div
-            className="w-full max-w-md overflow-hidden rounded-xl border border-gray-800 bg-gray-900"
+            className="my-auto flex max-h-[calc(100dvh-2rem)] w-full max-w-md flex-col overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 shadow-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby={`pay-recurring-${id}`}
           >
-            <div className="p-6">
-              <div className="mb-6 flex items-start justify-between gap-4">
-                <div>
-                  <h2 id={`pay-recurring-${id}`} className="text-xl font-bold">
-                    Confirmar pagamento
-                  </h2>
-                  <p className="mt-1 text-sm text-gray-400">{description}</p>
+            <div className="flex shrink-0 items-start justify-between gap-4 border-b border-gray-800 px-5 py-4 sm:px-6">
+              <div className="min-w-0">
+                <h2 id={`pay-recurring-${id}`} className="text-lg font-semibold text-gray-100 sm:text-xl">
+                  Confirmar pagamento
+                </h2>
+                <p className="mt-1 break-words text-sm text-gray-400">{description}</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsOpen(false)}
+                disabled={isSubmitting}
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-gray-400 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-50"
+                aria-label="Fechar"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <form onSubmit={onSubmit} className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+              <div className="space-y-2">
+                <label
+                  htmlFor={`recurring-amount-${id}`}
+                  className="block text-sm font-medium text-gray-300"
+                >
+                  Valor pago
+                </label>
+                <input
+                  id={`recurring-amount-${id}`}
+                  name="amount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  max="1000000000"
+                  required
+                  defaultValue={amount.toFixed(2)}
+                  className="form-input"
+                />
+                <p className="text-xs leading-5 text-gray-500">
+                  Você pode ajustar o valor de contas variáveis, como água e luz.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label
+                  htmlFor={`recurring-account-${id}`}
+                  className="block text-sm font-medium text-gray-300"
+                >
+                  Conta utilizada
+                </label>
+                <select
+                  id={`recurring-account-${id}`}
+                  name="financialAccountId"
+                  className="form-input"
+                  defaultValue=""
+                >
+                  <option value="">Não vincular a uma conta</option>
+                  {accounts.map((account) => (
+                    <option key={account.id} value={account.id}>
+                      {account.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {error && (
+                <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
+                  {error}
                 </div>
+              )}
+
+              <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
                 <button
                   type="button"
                   onClick={() => setIsOpen(false)}
-                  className="text-gray-500 hover:text-white"
-                  aria-label="Fechar"
+                  disabled={isSubmitting}
+                  className="app-button app-button--secondary w-full flex-1"
                 >
-                  ✕
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="app-button app-button--primary w-full flex-1"
+                >
+                  <Check className="h-4 w-4" />
+                  {isSubmitting ? "Confirmando..." : "Confirmar"}
                 </button>
               </div>
-
-              <form onSubmit={onSubmit} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor={`recurring-amount-${id}`}
-                    className="mb-1 block text-sm font-medium text-gray-400"
-                  >
-                    Valor pago
-                  </label>
-                  <input
-                    id={`recurring-amount-${id}`}
-                    name="amount"
-                    type="number"
-                    step="0.01"
-                    min="0.01"
-                    max="1000000000"
-                    required
-                    defaultValue={amount.toFixed(2)}
-                    className="form-input"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Você pode ajustar o valor de contas variáveis, como água e luz.
-                  </p>
-                </div>
-
-                <div>
-                  <label
-                    htmlFor={`recurring-account-${id}`}
-                    className="mb-1 block text-sm font-medium text-gray-400"
-                  >
-                    Conta utilizada
-                  </label>
-                  <select
-                    id={`recurring-account-${id}`}
-                    name="financialAccountId"
-                    className="form-input"
-                    defaultValue=""
-                  >
-                    <option value="">Não vincular a uma conta</option>
-                    {accounts.map((account) => (
-                      <option key={account.id} value={account.id}>
-                        {account.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {error && (
-                  <div className="rounded-xl border border-red-500/20 bg-red-500/10 p-3 text-sm text-red-300">
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex gap-3 pt-3">
-                  <button
-                    type="button"
-                    onClick={() => setIsOpen(false)}
-                    disabled={isSubmitting}
-                    className="flex-1 app-button app-button--secondary"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="flex-1 app-button app-button--primary"
-                  >
-                    <Check className="h-4 w-4" />
-                    {isSubmitting ? "Confirmando..." : "Confirmar"}
-                  </button>
-                </div>
-              </form>
-            </div>
+            </form>
           </div>
         </div>
       )}
