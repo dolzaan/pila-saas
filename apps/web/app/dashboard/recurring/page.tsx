@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { reminderDateKey, saoPauloDateKey } from "@/lib/reminders";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { CalendarDays, CircleAlert, Clock3 } from "lucide-react";
+import { CalendarDays, CheckCircle2, CircleAlert, Clock3 } from "lucide-react";
 import {
   DeleteRecurringButton,
   PayRecurringButton,
@@ -28,7 +28,7 @@ const formatCurrency = (value: number) =>
     currency: "BRL",
   }).format(value);
 
-function recurringStatus(nextDate: Date) {
+function recurringStatus(nextDate: Date, hasRecordedPayment: boolean) {
   const dueDate = reminderDateKey(nextDate);
   const today = saoPauloDateKey();
   if (dueDate < today) {
@@ -43,6 +43,13 @@ function recurringStatus(nextDate: Date) {
       label: "Vence hoje",
       className: "bg-amber-400/10 text-amber-300",
       icon: Clock3,
+    };
+  }
+  if (hasRecordedPayment) {
+    return {
+      label: "Pago · próximo agendado",
+      className: "bg-emerald-400/10 text-emerald-300",
+      icon: CheckCircle2,
     };
   }
   return {
@@ -61,7 +68,14 @@ export default async function RecurringPage() {
       prisma.recurringTransaction.findMany({
         where: { userId: session.user.id },
         orderBy: [{ nextDate: "asc" }, { createdAt: "desc" }],
-        include: { category: true },
+        include: {
+          category: true,
+          transactions: {
+            where: { source: "recurring" },
+            select: { id: true },
+            take: 1,
+          },
+        },
       }),
       prisma.category.findMany({
         where: {
@@ -108,8 +122,8 @@ export default async function RecurringPage() {
             </h2>
             <p className="mt-1 text-sm text-gray-400">
               O próximo vencimento fica pendente até você confirmar. Nesse
-              momento, o Pila cria a transação e avança a conta para o próximo
-              ciclo.
+              momento, o Pila cria uma única transação, marca o lembrete como
+              pago e agenda automaticamente o próximo ciclo.
             </p>
           </div>
         </div>
@@ -141,7 +155,10 @@ export default async function RecurringPage() {
               </thead>
               <tbody className="text-sm">
                 {recurringTransactions.map((transaction) => {
-                  const status = recurringStatus(transaction.nextDate);
+                  const status = recurringStatus(
+                    transaction.nextDate,
+                    transaction.transactions.length > 0,
+                  );
                   const StatusIcon = status.icon;
                   return (
                     <tr
