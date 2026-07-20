@@ -15,31 +15,32 @@ const items = [
     href: "/dashboard/settings#profile",
     label: "Perfil",
     icon: UserRound,
-    activePath: "/dashboard/settings",
+    active: (pathname: string) => pathname === "/dashboard/settings",
   },
   {
     href: "/dashboard/settings#subscription",
     label: "Assinatura",
     icon: CreditCard,
-    activePath: "/dashboard/settings",
+    active: () => false,
   },
   {
     href: "/dashboard/settings#privacy",
     label: "Privacidade",
     icon: LockKeyhole,
-    activePath: "/dashboard/settings",
+    active: () => false,
   },
   {
     href: "/dashboard/settings/security",
     label: "Segurança",
     icon: ShieldCheck,
-    activePath: "/dashboard/settings/security",
+    active: (pathname: string) =>
+      pathname.startsWith("/dashboard/settings/security"),
   },
   {
     href: "/dashboard/whatsapp",
     label: "Integrações",
     icon: Link2,
-    activePath: "/dashboard/whatsapp",
+    active: (pathname: string) => pathname.startsWith("/dashboard/whatsapp"),
   },
 ];
 
@@ -53,10 +54,7 @@ export function SettingsNav() {
     >
       {items.map((item) => {
         const Icon = item.icon;
-        const isSecurity = item.activePath === "/dashboard/settings/security";
-        const isActive = isSecurity
-          ? pathname.startsWith(item.activePath)
-          : pathname === item.activePath;
+        const isActive = item.active(pathname);
 
         return (
           <Link
