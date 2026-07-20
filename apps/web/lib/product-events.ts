@@ -16,6 +16,7 @@ export const PRODUCT_EVENT_NAMES = [
 ] as const;
 
 export type ProductEventName = (typeof PRODUCT_EVENT_NAMES)[number];
+type ProductEventPropertyValue = string | number | boolean;
 
 const PUBLIC_EVENT_NAMES = new Set<ProductEventName>([
   "landing_cta_clicked",
@@ -35,22 +36,28 @@ export function isPublicProductEventName(
 
 function sanitizeProperties(
   properties: Record<string, unknown> | undefined,
-): Record<string, string | number | boolean> | null {
+): Record<string, ProductEventPropertyValue> | null {
   if (!properties) return null;
 
-  const safeEntries = Object.entries(properties)
-    .slice(0, 10)
-    .flatMap(([key, value]) => {
-      if (!/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/.test(key)) return [];
-      if (typeof value === "boolean") return [[key, value] as const];
-      if (typeof value === "number" && Number.isFinite(value)) {
-        return [[key, value] as const];
-      }
-      if (typeof value === "string") {
-        return [[key, value.slice(0, 100)] as const];
-      }
-      return [];
-    });
+  const safeEntries: Array<[string, ProductEventPropertyValue]> = [];
+
+  for (const [key, value] of Object.entries(properties).slice(0, 10)) {
+    if (!/^[a-zA-Z][a-zA-Z0-9_]{0,39}$/.test(key)) continue;
+
+    if (typeof value === "boolean") {
+      safeEntries.push([key, value]);
+      continue;
+    }
+
+    if (typeof value === "number" && Number.isFinite(value)) {
+      safeEntries.push([key, value]);
+      continue;
+    }
+
+    if (typeof value === "string") {
+      safeEntries.push([key, value.slice(0, 100)]);
+    }
+  }
 
   return safeEntries.length ? Object.fromEntries(safeEntries) : null;
 }
