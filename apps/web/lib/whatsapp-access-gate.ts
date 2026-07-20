@@ -46,7 +46,15 @@ const PUBLIC_PRODUCT_INTENTS = [
   /\bpreciso instalar|tem aplicativo|tem app\b/i,
 ];
 
-const GREETINGS = /^(oi|ol[aá]|opa|e a[ií]|bom dia|boa tarde|boa noite|ajuda|menu)[!,.?\s]*$/i;
+const GREETINGS = /^(?:o+i+e*|ol[aá]+|opa+|e\s*a[ií]+|bom dia+|boa tarde+|boa noite+|ajuda+|menu+)[!,.?\s]*$/i;
+
+export const WHATSAPP_GATE_REPLY_HEADER = "x-pila-whatsapp-gate-reply";
+
+export type WhatsappGateReplyKind =
+  | "GREETING"
+  | "UNLINKED"
+  | "LINK_HELP"
+  | "CHECK_FAILED";
 
 export function isPersonalFinancialWhatsappIntent(text: string, hasMedia = false) {
   if (hasMedia) return true;
@@ -79,6 +87,10 @@ export function isWhatsappPublicProductIntent(text: string) {
   return PUBLIC_PRODUCT_INTENTS.some((pattern) => pattern.test(normalizedText));
 }
 
+export function isWhatsappGreeting(text: string) {
+  return GREETINGS.test(text.trim());
+}
+
 export function canUnlinkedWhatsappMessageReachBot(
   text: string,
   options: { onboardingActive?: boolean } = {},
@@ -87,7 +99,7 @@ export function canUnlinkedWhatsappMessageReachBot(
 
   if (options.onboardingActive) return true;
   if (/^\d{6}$/.test(normalizedText)) return true;
-  if (GREETINGS.test(normalizedText)) return true;
+  if (isWhatsappGreeting(normalizedText)) return true;
   if (isWhatsappRegistrationIntent(normalizedText)) return true;
   if (isWhatsappPublicProductIntent(normalizedText)) return true;
 
@@ -96,10 +108,26 @@ export function canUnlinkedWhatsappMessageReachBot(
 
 export function shouldCheckWhatsappAccountAccess(text: string, hasMedia = false) {
   return hasMedia
+    || isWhatsappGreeting(text)
     || isPersonalFinancialWhatsappIntent(text)
     || isWhatsappAccountAccessQuestion(text)
     || isWhatsappLinkHelpIntent(text)
     || !canUnlinkedWhatsappMessageReachBot(text);
+}
+
+export function buildUnlinkedGreetingReply() {
+  return [
+    "Olá! 👋 Eu sou o Pila Bot, seu assistente de organização financeira.",
+    "",
+    "Percebi que este número ainda não está vinculado a uma conta. Para proteger seus dados, eu só registro movimentações depois do vínculo.",
+    "",
+    "Se você já tem uma conta:",
+    `1. Entre em ${PILA_APP_URL}/dashboard/whatsapp`,
+    "2. Clique em “Gerar PIN de Vínculo”",
+    "3. Envie aqui o código de 6 dígitos.",
+    "",
+    "Se ainda não tem uma conta, responda “quero criar minha conta” e eu ajudo você por aqui.",
+  ].join("\n");
 }
 
 export function buildUnlinkedWhatsappReply() {
