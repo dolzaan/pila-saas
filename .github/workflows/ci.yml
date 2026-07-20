@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci:
-    name: Lint + Test + Build
+    name: Lint + Test + Build + E2E
     runs-on: ubuntu-latest
 
     services:
@@ -41,6 +41,8 @@ jobs:
       REDIS_URL: redis://localhost:6379
       NEXTAUTH_URL: http://localhost:3000
       NEXTAUTH_SECRET: ci-secret-for-testing-only
+      AUTH_URL: http://localhost:3000
+      AUTH_SECRET: ci-secret-for-testing-only
       GOOGLE_CLIENT_ID: placeholder
       GOOGLE_CLIENT_SECRET: placeholder
 
@@ -71,3 +73,22 @@ jobs:
 
       - name: Build Next.js app
         run: npm run build
+
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Run browser tests
+        run: npm run test:e2e --workspace=apps/web
+        env:
+          CI: "true"
+
+      - name: Upload Playwright failure report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-failure-report
+          path: |
+            apps/web/playwright-report
+            apps/web/test-results
+          if-no-files-found: ignore
+          retention-days: 7
