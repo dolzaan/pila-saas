@@ -17,6 +17,7 @@ import {
   buildHumanSupportReply,
   isHumanSupportRequest,
 } from "@/lib/support-contact";
+import { parseSimpleFinancialMessage } from "@/lib/simple-financial-parser";
 
 const DEFAULT_GEMINI_DAILY_REQUEST_LIMIT = 200;
 const GEMINI_DAILY_WINDOW_MS = 26 * 60 * 60 * 1000;
@@ -132,6 +133,13 @@ export async function parseFinancialMessage(
       isTransaction: false,
       replyMessage: buildHumanSupportReply(),
     };
+  }
+
+  // Mensagens financeiras comuns devem funcionar mesmo sem depender da IA.
+  // O Gemini continua como fallback para frases complexas e mídias.
+  if (!mediaBase64 && !mediaMimeType) {
+    const simpleTransaction = parseSimpleFinancialMessage(text, userContext);
+    if (simpleTransaction) return simpleTransaction;
   }
 
   const safeText = sanitizeTextForAi(text);
