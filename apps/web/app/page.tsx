@@ -16,6 +16,7 @@ import {
   Target,
   Wallet,
 } from "lucide-react";
+import { LandingMotion } from "@/components/landing/landing-motion";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -65,7 +66,7 @@ const steps = [
 
 export default function LandingPage() {
   return (
-    <main className={styles.page}>
+    <main className={styles.page} data-landing-root>
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link className={styles.brand} href="/" aria-label="Pila — início">
@@ -305,6 +306,8 @@ export default function LandingPage() {
         <p>Organização financeira simples, todos os dias.</p>
         <div><Link href="/privacy">Privacidade</Link><Link href="/terms">Termos</Link><Link href="/login">Entrar</Link></div>
       </footer>
+
+      <LandingMotion />
     </main>
   );
 }
