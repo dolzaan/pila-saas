@@ -20,6 +20,7 @@ import {
 import { MobileDashboardNav } from "@/components/dashboard/mobile-dashboard-nav";
 import { NotificationBell } from "@/components/dashboard/notification-bell";
 import { ProductOnboarding } from "@/components/dashboard/product-onboarding";
+import { SupportButton } from "@/components/dashboard/support-button";
 
 interface DashboardShellProps {
   children: ReactNode;
@@ -248,6 +249,7 @@ export function DashboardShell({
           </div>
 
           <div className="flex items-center gap-2">
+            <SupportButton />
             <Link
               href="/dashboard?guide=1"
               className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.03] text-slate-400 hover:border-emerald-400/30 hover:bg-emerald-400/10 hover:text-emerald-300"
@@ -273,6 +275,7 @@ export function DashboardShell({
         </main>
       </div>
 
+      <SupportButton floating />
       <ProductOnboarding
         userName={userName}
         initialStep={onboarding.initialStep}
