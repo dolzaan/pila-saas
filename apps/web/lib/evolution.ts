@@ -1,47 +1,64 @@
 import { externalTimeoutSignal, isTimeoutError } from "@/lib/external-service";
+import { createRequestId, logger } from "@/lib/logger";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
 
 export async function sendWhatsAppMessage(phone: string, text: string) {
+  const requestId = createRequestId();
+
   if (!EVOLUTION_API_KEY || EVOLUTION_API_KEY === "COLOQUE_SUA_CHAVE_DA_EVOLUTION_API") {
-    console.warn("[Evolution API] Mock mode: Sending message to", phone);
-    console.warn("[Evolution API] Message:", text);
-    return true; // Mock success
+    logger.warn("whatsapp_message_mocked", {
+      requestId,
+      phone,
+      messageLength: text.length,
+    });
+    return true;
   }
 
   const endpoint = `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
-  
+  const startedAt = Date.now();
+
   try {
     const response = await fetch(endpoint, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": EVOLUTION_API_KEY,
+        apikey: EVOLUTION_API_KEY,
       },
       body: JSON.stringify({
         number: phone,
-        text: text,
-        delay: 1200 // Adiciona um pequeno delay humano
+        text,
+        delay: 1200,
       }),
       signal: externalTimeoutSignal("EVOLUTION_TIMEOUT_MS", 15_000),
     });
 
     if (!response.ok) {
-      const err = await response.text();
-      console.error("[Evolution API] Error sending message:", err);
+      logger.error("whatsapp_message_failed", {
+        requestId,
+        phone,
+        status: response.status,
+        latencyMs: Date.now() - startedAt,
+      });
       return false;
     }
 
+    logger.info("whatsapp_message_sent", {
+      requestId,
+      phone,
+      latencyMs: Date.now() - startedAt,
+    });
     return true;
   } catch (error) {
-    console.error(
-      isTimeoutError(error)
-        ? "[Evolution API] Request timed out"
-        : "[Evolution API] Request failed:",
-      isTimeoutError(error) ? undefined : error,
-    );
+    logger.error("whatsapp_message_exception", {
+      requestId,
+      phone,
+      latencyMs: Date.now() - startedAt,
+      timeout: isTimeoutError(error),
+      error,
+    });
     return false;
   }
 }
@@ -52,12 +69,19 @@ export async function sendWhatsAppMedia(
   mediatype: "image" | "document" | "audio" | "video",
   caption?: string,
 ) {
+  const requestId = createRequestId();
+
   if (!EVOLUTION_API_KEY || EVOLUTION_API_KEY === "COLOQUE_SUA_CHAVE_DA_EVOLUTION_API") {
-    console.warn("[Evolution API] Mock mode: Sending MEDIA to", phone);
+    logger.warn("whatsapp_media_mocked", {
+      requestId,
+      phone,
+      mediatype,
+    });
     return true;
   }
 
   const endpoint = `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE_NAME}`;
+  const startedAt = Date.now();
 
   try {
     const dataUrlMatch = mediaUrlOrBase64.match(/^data:([^;]+);base64,([\s\S]+)$/);
@@ -70,7 +94,7 @@ export async function sendWhatsAppMedia(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "apikey": EVOLUTION_API_KEY,
+        apikey: EVOLUTION_API_KEY,
       },
       body: JSON.stringify({
         number: phone,
@@ -85,19 +109,32 @@ export async function sendWhatsAppMedia(
     });
 
     if (!response.ok) {
-      const errorBody = await response.text();
-      console.error("[Evolution API] Error sending media:", response.status, errorBody);
+      logger.error("whatsapp_media_failed", {
+        requestId,
+        phone,
+        mediatype,
+        status: response.status,
+        latencyMs: Date.now() - startedAt,
+      });
       return false;
     }
 
+    logger.info("whatsapp_media_sent", {
+      requestId,
+      phone,
+      mediatype,
+      latencyMs: Date.now() - startedAt,
+    });
     return true;
   } catch (error) {
-    console.error(
-      isTimeoutError(error)
-        ? "[Evolution API] Request timed out"
-        : "[Evolution API] Request failed:",
-      isTimeoutError(error) ? undefined : error,
-    );
+    logger.error("whatsapp_media_exception", {
+      requestId,
+      phone,
+      mediatype,
+      latencyMs: Date.now() - startedAt,
+      timeout: isTimeoutError(error),
+      error,
+    });
     return false;
   }
 }
