@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { parseFinancialMessage } from "@/lib/ai";
 import { parseSimpleFinancialMessage } from "@/lib/simple-financial-parser";
 
 const ACCOUNT_CONTEXT = `
@@ -21,6 +22,15 @@ describe("parseSimpleFinancialMessage", () => {
       description: "Mercado",
       categoryName: "Mercado",
       installments: 1,
+    });
+  });
+
+  it("prioriza o parser local na função principal usada pelo webhook", async () => {
+    await expect(parseFinancialMessage("gastei 10 reais no mercado")).resolves.toMatchObject({
+      isTransaction: true,
+      amount: 10,
+      kind: "EXPENSE",
+      categoryName: "Mercado",
     });
   });
 
