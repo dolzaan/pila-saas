@@ -13,6 +13,10 @@ import {
 import { externalTimeoutSignal, isTimeoutError } from "@/lib/external-service";
 import { sanitizeTextForAi } from "@/lib/privacy";
 import type { CardQuery } from "@/lib/financial-account-ai";
+import {
+  buildHumanSupportReply,
+  isHumanSupportRequest,
+} from "@/lib/support-contact";
 
 const DEFAULT_GEMINI_DAILY_REQUEST_LIMIT = 200;
 const GEMINI_DAILY_WINDOW_MS = 26 * 60 * 60 * 1000;
@@ -123,6 +127,13 @@ export async function parseFinancialMessage(
   mediaBase64?: string,
   mediaMimeType?: string,
 ): Promise<ParsedTransaction> {
+  if (isHumanSupportRequest(text)) {
+    return {
+      isTransaction: false,
+      replyMessage: buildHumanSupportReply(),
+    };
+  }
+
   const safeText = sanitizeTextForAi(text);
   const safeUserContext = sanitizeTextForAi(
     userContext || "Nenhum dado disponível.",
