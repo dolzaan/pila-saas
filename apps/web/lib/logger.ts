@@ -28,17 +28,21 @@ function sanitizeValue(value: unknown, key = "", depth = 0): unknown {
   }
 
   if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .slice(0, 30)
-        .map(([childKey, childValue]) => [
-          childKey,
-          sanitizeValue(childValue, childKey, depth + 1),
-        ]),
-    );
+    return sanitizeContext(value as Record<string, unknown>, depth + 1);
   }
 
   return value;
+}
+
+function sanitizeContext(
+  context: Record<string, unknown>,
+  depth = 0,
+): Record<string, unknown> {
+  return Object.fromEntries(
+    Object.entries(context)
+      .slice(0, 30)
+      .map(([key, value]) => [key, sanitizeValue(value, key, depth)]),
+  );
 }
 
 function writeLog(level: LogLevel, event: string, context: LogContext = {}) {
@@ -46,7 +50,7 @@ function writeLog(level: LogLevel, event: string, context: LogContext = {}) {
     timestamp: new Date().toISOString(),
     level,
     event,
-    ...sanitizeValue(context),
+    ...sanitizeContext(context),
   });
 
   if (level === "error") {
