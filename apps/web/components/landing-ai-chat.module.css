@@ -157,6 +157,7 @@
 
 @media (max-width: 560px) {
   .chatRoot { right: 14px; bottom: 14px; }
+  .accountChatRoot { bottom: calc(88px + env(safe-area-inset-bottom)); }
   .launcherText { display: none; }
   .launcher { padding: 6px; }
   .panel { width: calc(100vw - 28px); height: min(620px, calc(100dvh - 28px)); }
