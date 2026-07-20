@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
@@ -26,11 +26,20 @@ import {
 import { rawMessageForStorage } from "@/lib/privacy";
 import {
   buildAccountClarificationMessage,
-  buildCardQueryReply,
   formatFinancialAccountsForAi,
   resolveFinancialAccount,
   type FinancialAccountForAi,
 } from "@/lib/financial-account-ai";
+import {
+  buildAdvancedCardQueryReply,
+  buildCardPaymentReply,
+  buildInstallmentPlan,
+  getCardCycleForPurchase,
+  getOpenCardCycle,
+  getPreviousCardCycle,
+  parseCardPaymentCommand,
+  type CardCycle,
+} from "@/lib/credit-card";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -51,6 +60,92 @@ async function authorizeWebhook(req: Request) {
   // Permite o simulador apenas para uma sessão administrativa autenticada.
   const session = await auth();
   return session?.user?.role === "ADMIN";
+}
+
+function startOfCurrentMonth() {
+  const date = new Date();
+  date.setDate(1);
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
+function startOfNextMonth(startOfMonth: Date) {
+  const date = new Date(startOfMonth);
+  date.setMonth(date.getMonth() + 1);
+  return date;
+}
+
+async function getCardInvoiceTotals(
+  userId: string,
+  cardId: string,
+  cycle: CardCycle,
+) {
+  const [transactions, payments] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: {
+        userId,
+        financialAccountId: cardId,
+        kind: "EXPENSE",
+        OR: [
+          { cardStatementDate: cycle.statementDate },
+          {
+            cardStatementDate: null,
+            occurredAt: {
+              gte: cycle.periodStart,
+              lte: cycle.periodEnd,
+            },
+          },
+        ],
+      },
+      _sum: { amount: true },
+    }),
+    prisma.creditCardPayment.aggregate({
+      where: {
+        userId,
+        creditCardId: cardId,
+        statementDate: cycle.statementDate,
+      },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const invoiceTotal = Number(transactions._sum.amount || 0);
+  const invoicePaid = Number(payments._sum.amount || 0);
+  return {
+    invoiceTotal,
+    invoicePaid,
+    remaining: Math.max(0, invoiceTotal - invoicePaid),
+  };
+}
+
+async function getCardOutstandingBalance(
+  userId: string,
+  cardId: string,
+  legacyStartDate: Date,
+) {
+  const [transactions, payments] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: {
+        userId,
+        financialAccountId: cardId,
+        kind: "EXPENSE",
+        OR: [
+          { cardStatementDate: { not: null } },
+          { cardStatementDate: null, occurredAt: { gte: legacyStartDate } },
+        ],
+      },
+      _sum: { amount: true },
+    }),
+    prisma.creditCardPayment.aggregate({
+      where: { userId, creditCardId: cardId },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  return Math.max(
+    0,
+    Number(transactions._sum.amount || 0) - Number(payments._sum.amount || 0),
+  );
 }
 
 export async function POST(req: Request) {
@@ -356,13 +451,15 @@ export async function POST(req: Request) {
     }
 
     // 5. Preparar Contexto Financeiro do Mês
-    const startOfMonth = new Date();
-    startOfMonth.setDate(1);
-    startOfMonth.setHours(0, 0, 0, 0);
+    const startOfMonth = startOfCurrentMonth();
+    const nextMonth = startOfNextMonth(startOfMonth);
 
     const [recentTransactions, budgets, rawFinancialAccounts, expensesByAccount] = await Promise.all([
       prisma.transaction.findMany({
-        where: { userId: user.id, occurredAt: { gte: startOfMonth } },
+        where: {
+          userId: user.id,
+          occurredAt: { gte: startOfMonth, lt: nextMonth },
+        },
         select: {
           amount: true,
           kind: true,
@@ -398,7 +495,7 @@ export async function POST(req: Request) {
         where: {
           userId: user.id,
           kind: "EXPENSE",
-          occurredAt: { gte: startOfMonth },
+          occurredAt: { gte: startOfMonth, lt: nextMonth },
           financialAccountId: { not: null },
         },
         _sum: { amount: true },
@@ -470,10 +567,77 @@ ${budgetLines.length > 0 ? budgetLines.join("\n") : "Nenhum orçamento configura
 ${contextLines.slice(0, 20).join("\n")}
     `.trim();
 
-    // 6. Processar via IA com Contexto e possível Mídia (Áudio, Imagem, PDF)
+    // 6. Pagamentos de fatura são identificados de forma determinística antes da IA.
+    const paymentCommand = parseCardPaymentCommand(text);
+    if (paymentCommand.matched) {
+      const resolution = resolveFinancialAccount(
+        paymentCommand.cardHint,
+        financialAccounts,
+        { creditCardsOnly: true },
+      );
+
+      if (resolution.status !== "MATCHED") {
+        const replyMessage = buildAccountClarificationMessage(resolution.candidates);
+        await sendWhatsAppMessage(remoteJid, replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
+      }
+
+      const card = resolution.account;
+      if (card.closingDay === null || card.dueDay === null) {
+        const replyMessage = `Cadastre o fechamento e o vencimento do cartão ${card.name} antes de registrar pagamentos de fatura.`;
+        await sendWhatsAppMessage(remoteJid, replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
+      }
+
+      const openCycle = getOpenCardCycle(new Date(), card.closingDay, card.dueDay);
+      const previousCycle = getPreviousCardCycle(openCycle, card.closingDay, card.dueDay);
+      const [previousTotals, openTotals] = await Promise.all([
+        getCardInvoiceTotals(user.id, card.id, previousCycle),
+        getCardInvoiceTotals(user.id, card.id, openCycle),
+      ]);
+      const target = previousTotals.remaining > 0
+        ? { cycle: previousCycle, totals: previousTotals }
+        : { cycle: openCycle, totals: openTotals };
+
+      if (target.totals.remaining <= 0) {
+        const replyMessage = `Não encontrei uma fatura pendente do cartão ${card.name} para registrar o pagamento.`;
+        await sendWhatsAppMessage(remoteJid, replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
+      }
+
+      const paymentAmount = paymentCommand.amount || target.totals.remaining;
+      if (paymentAmount > target.totals.remaining + 0.009) {
+        const replyMessage = `O valor informado é maior que o saldo estimado da fatura do cartão ${card.name}, que está em R$ ${target.totals.remaining.toFixed(2).replace(".", ",")}. Confira o valor e envie novamente.`;
+        await sendWhatsAppMessage(remoteJid, replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
+      }
+
+      await prisma.creditCardPayment.create({
+        data: {
+          userId: user.id,
+          creditCardId: card.id,
+          statementDate: target.cycle.statementDate,
+          amount: paymentAmount,
+          source: "whatsapp",
+          externalMessageId: messageId,
+        },
+      });
+
+      const remaining = Math.max(0, target.totals.remaining - paymentAmount);
+      const replyMessage = buildCardPaymentReply({
+        cardName: card.name,
+        amount: paymentAmount,
+        statementDate: target.cycle.statementDate,
+        remaining,
+      });
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, processed: true, replyMessage });
+    }
+
+    // 6.1 Processar via IA com Contexto e possível Mídia (Áudio, Imagem, PDF)
     const aiResult = await parseFinancialMessage(text, userContext, mediaBase64, mediaMimeType);
 
-    // 6.0 Consultas de cartão são respondidas com dados determinísticos do banco.
+    // 6.2 Consultas de cartão são respondidas com dados determinísticos do banco.
     if (aiResult.isCardQuery && aiResult.cardQuery) {
       const resolution = resolveFinancialAccount(
         aiResult.cardName || aiResult.financialAccountName,
@@ -487,11 +651,27 @@ ${contextLines.slice(0, 20).join("\n")}
         return NextResponse.json({ success: true, replyMessage });
       }
 
-      const replyMessage = buildCardQueryReply(
-        aiResult.cardQuery,
-        resolution.account,
-        expensesThisMonthByAccountId.get(resolution.account.id) || 0,
+      const card = resolution.account;
+      const cycle = card.closingDay !== null && card.dueDay !== null
+        ? getOpenCardCycle(new Date(), card.closingDay, card.dueDay)
+        : null;
+      const invoice = cycle
+        ? await getCardInvoiceTotals(user.id, card.id, cycle)
+        : { invoiceTotal: 0, invoicePaid: 0, remaining: 0 };
+      const outstandingBalance = await getCardOutstandingBalance(
+        user.id,
+        card.id,
+        startOfMonth,
       );
+
+      const replyMessage = buildAdvancedCardQueryReply({
+        query: aiResult.cardQuery,
+        card,
+        cycle,
+        invoiceTotal: invoice.invoiceTotal,
+        invoicePaid: invoice.invoicePaid,
+        outstandingBalance,
+      });
       await sendWhatsAppMessage(remoteJid, replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
@@ -505,7 +685,7 @@ ${contextLines.slice(0, 20).join("\n")}
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    // 6.1 Marcar lembrete como pago ou adiar pelo WhatsApp.
+    // 6.3 Marcar lembrete como pago ou adiar pelo WhatsApp.
     if (aiResult.reminderAction) {
       const reminder = await prisma.billReminder.findFirst({
         where: {
@@ -543,7 +723,7 @@ ${contextLines.slice(0, 20).join("\n")}
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    // 6.2 Tratamento de Lembretes de Contas a Pagar
+    // 6.4 Tratamento de Lembretes de Contas a Pagar
     if (aiResult.isReminder) {
       if (aiResult.dueDate && aiResult.amount && aiResult.description) {
         await prisma.billReminder.create({
@@ -560,7 +740,7 @@ ${contextLines.slice(0, 20).join("\n")}
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    // 6.3 Tratamento de Gráficos/Relatórios Visuais.
+    // 6.5 Tratamento de Gráficos/Relatórios Visuais.
     // O período, a métrica e o agrupamento são extraídos da consulta do usuário.
     const explicitlyRequestedReport = /\b(gr[aá]fico|relat[oó]rio|resumo(?:\s+visual)?|gastos por categoria)\b/i.test(text);
     if (aiResult.isReport || explicitlyRequestedReport) {
@@ -609,23 +789,16 @@ ${contextLines.slice(0, 20).join("\n")}
       return NextResponse.json({ success: true, replyMessage: emptyMessage });
     }
 
-    // 6.4 Tratamento de Não-Transações em geral
+    // 6.6 Tratamento de Não-Transações em geral
     if (!aiResult.isTransaction) {
       const replyMessage = aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!";
       await sendWhatsAppMessage(remoteJid, replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    if ((aiResult.installments || 1) > 1) {
-      const replyMessage = `Entendi que essa compra foi parcelada em ${aiResult.installments} vezes, mas ainda não registrei para não lançar o valor total na fatura errada. Por enquanto, registre as parcelas pelo painel.`;
-      await sendWhatsAppMessage(remoteJid, replyMessage);
-      return NextResponse.json({ success: true, replyMessage });
-    }
-
     // Resolve o nome retornado pela IA somente entre contas pertencentes ao usuário.
     // IDs nunca são aceitos do modelo.
-    let financialAccountId: string | null = null;
-    let resolvedFinancialAccountName: string | null = null;
+    let resolvedFinancialAccount: FinancialAccountForAi | null = null;
     const shouldResolveCreditCard = aiResult.paymentMethod === "CREDIT_CARD";
     if (shouldResolveCreditCard || aiResult.financialAccountName) {
       const resolution = resolveFinancialAccount(
@@ -641,8 +814,24 @@ ${contextLines.slice(0, 20).join("\n")}
         return NextResponse.json({ success: true, replyMessage });
       }
 
-      financialAccountId = resolution.account.id;
-      resolvedFinancialAccountName = resolution.account.name;
+      resolvedFinancialAccount = resolution.account;
+    }
+
+    const installmentCount = aiResult.installments || 1;
+    if (installmentCount > 1 && resolvedFinancialAccount?.type !== "CREDIT_CARD") {
+      const replyMessage = "Consigo parcelar automaticamente apenas compras feitas em um cartão de crédito cadastrado. Informe qual cartão foi usado.";
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, replyMessage });
+    }
+
+    if (
+      installmentCount > 1
+      && resolvedFinancialAccount
+      && (resolvedFinancialAccount.closingDay === null || resolvedFinancialAccount.dueDay === null)
+    ) {
+      const replyMessage = `Cadastre o fechamento e o vencimento do cartão ${resolvedFinancialAccount.name} para eu distribuir as parcelas nas faturas corretas.`;
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, replyMessage });
     }
 
     // 7. Salvar no Banco de Dados (apenas se for transação)
@@ -683,24 +872,89 @@ ${contextLines.slice(0, 20).join("\n")}
       categoryId = category.id;
     }
 
+    const purchasedAt = new Date();
+    const storedRawMessage = rawMessageForStorage(text);
+    const amount = aiResult.amount || 0;
+    const description = aiResult.description || "Registro via WhatsApp";
+
+    if (
+      installmentCount > 1
+      && resolvedFinancialAccount?.type === "CREDIT_CARD"
+      && resolvedFinancialAccount.closingDay !== null
+      && resolvedFinancialAccount.dueDay !== null
+    ) {
+      const installmentGroupId = randomUUID();
+      const plan = buildInstallmentPlan(
+        amount,
+        installmentCount,
+        purchasedAt,
+        resolvedFinancialAccount.closingDay,
+        resolvedFinancialAccount.dueDay,
+      );
+
+      await prisma.$transaction(
+        plan.map((installment, index) => prisma.transaction.create({
+          data: {
+            userId: user.id,
+            amount: installment.amount,
+            kind: aiResult.kind || "EXPENSE",
+            description: `${description} (${installment.number}/${installment.count})`,
+            categoryId,
+            financialAccountId: resolvedFinancialAccount.id,
+            occurredAt: installment.occurredAt,
+            purchasedAt,
+            cardStatementDate: installment.statementDate,
+            cardDueDate: installment.dueDate,
+            installmentGroupId,
+            installmentNumber: installment.number,
+            installmentCount: installment.count,
+            originalAmount: amount,
+            source: "whatsapp",
+            rawMessage: index === 0 ? storedRawMessage : null,
+            externalMessageId: index === 0 ? messageId : null,
+          },
+        })),
+      );
+
+      const first = plan[0];
+      const last = plan[plan.length - 1];
+      const replyMessage = `✅ Compra de R$ ${amount.toFixed(2).replace(".", ",")} registrada no ${resolvedFinancialAccount.name} em ${installmentCount} parcelas. A primeira, de R$ ${first.amount.toFixed(2).replace(".", ",")}, vence em ${first.dueDate.toLocaleDateString("pt-BR", { timeZone: "UTC" })}; a última vence em ${last.dueDate.toLocaleDateString("pt-BR", { timeZone: "UTC" })}.`;
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      return NextResponse.json({ success: true, processed: true, replyMessage });
+    }
+
+    const cardCycle = resolvedFinancialAccount?.type === "CREDIT_CARD"
+      && resolvedFinancialAccount.closingDay !== null
+      && resolvedFinancialAccount.dueDay !== null
+      ? getCardCycleForPurchase(
+          purchasedAt,
+          resolvedFinancialAccount.closingDay,
+          resolvedFinancialAccount.dueDay,
+        )
+      : null;
+
     await prisma.transaction.create({
       data: {
         userId: user.id,
-        amount: aiResult.amount || 0,
+        amount,
         kind: aiResult.kind || "EXPENSE",
-        description: aiResult.description || "Registro via WhatsApp",
+        description,
         categoryId,
-        financialAccountId,
+        financialAccountId: resolvedFinancialAccount?.id || null,
+        purchasedAt: resolvedFinancialAccount?.type === "CREDIT_CARD" ? purchasedAt : null,
+        cardStatementDate: cardCycle?.statementDate || null,
+        cardDueDate: cardCycle?.dueDate || null,
+        originalAmount: resolvedFinancialAccount?.type === "CREDIT_CARD" ? amount : null,
         source: "whatsapp",
-        rawMessage: rawMessageForStorage(text),
+        rawMessage: storedRawMessage,
         externalMessageId: messageId,
       },
     });
 
     // 8. Responder sucesso usando a mensagem improvisada pela IA
     const movementLabel = aiResult.kind === "INCOME" ? "Ganho" : "Gasto";
-    const accountSuffix = resolvedFinancialAccountName
-      ? ` no ${resolvedFinancialAccountName}`
+    const accountSuffix = resolvedFinancialAccount
+      ? ` no ${resolvedFinancialAccount.name}`
       : "";
     const fallbackMessage = `✅ ${movementLabel} registrado: R$ ${Number(aiResult.amount).toFixed(2)} em ${aiResult.categoryName || "Sem categoria"}${accountSuffix}`;
     const replyMessage = aiResult.replyMessage || fallbackMessage;
