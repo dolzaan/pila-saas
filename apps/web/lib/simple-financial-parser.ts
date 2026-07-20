@@ -52,6 +52,11 @@ function normalizeText(value: string) {
     .replace(/\s+/g, " ");
 }
 
+function containsNormalizedPhrase(text: string, phrase: string) {
+  if (!phrase) return false;
+  return ` ${text} `.includes(` ${phrase} `);
+}
+
 function parseBrazilianNumber(rawValue: string, multiplier?: string) {
   let normalized = rawValue.replace(/\s/g, "");
 
@@ -109,11 +114,27 @@ function resolveAccountHint(text: string, userContext?: string) {
   const normalized = normalizeText(text);
   const accounts = extractAccountsFromContext(userContext);
   const explicitMatches = accounts.filter((account) =>
-    account.normalizedName.length >= 2 && normalized.includes(account.normalizedName),
+    account.normalizedName.length >= 2
+    && containsNormalizedPhrase(normalized, account.normalizedName),
   );
 
-  if (explicitMatches.length === 1) return { account: explicitMatches[0], ambiguousCards: [] };
-  if (explicitMatches.length > 1) return { account: null, ambiguousCards: explicitMatches };
+  if (explicitMatches.length > 0) {
+    const longestNameLength = Math.max(
+      ...explicitMatches.map((account) => account.normalizedName.length),
+    );
+    const mostSpecificMatches = explicitMatches.filter(
+      (account) => account.normalizedName.length === longestNameLength,
+    );
+
+    if (mostSpecificMatches.length === 1) {
+      return { account: mostSpecificMatches[0], ambiguousCards: [] };
+    }
+
+    const matchingCards = mostSpecificMatches.filter((account) => account.isCreditCard);
+    if (matchingCards.length > 1) {
+      return { account: null, ambiguousCards: matchingCards };
+    }
+  }
 
   const alias = normalized.includes("roxinho") || normalized.includes("roxinha")
     ? "nubank"
@@ -204,7 +225,13 @@ export function parseSimpleFinancialMessage(
   userContext?: string,
 ): ParsedTransaction | null {
   const trimmed = text.trim();
-  if (!trimmed || QUESTION_OR_NON_TRANSACTION.test(trimmed)) return null;
+  if (
+    !trimmed
+    || trimmed.endsWith("?")
+    || QUESTION_OR_NON_TRANSACTION.test(trimmed)
+  ) {
+    return null;
+  }
 
   const isExpense = EXPENSE_INTENT.test(trimmed);
   const isIncome = INCOME_INTENT.test(trimmed);
