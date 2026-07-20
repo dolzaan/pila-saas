@@ -1,11 +1,23 @@
+import {
+  DataEncryptionUnavailableError,
+} from "@/lib/data-encryption";
 import { externalTimeoutSignal, isTimeoutError } from "@/lib/external-service";
 import { createRequestId, logger } from "@/lib/logger";
+import { enqueueWhatsappTextMessage } from "@/lib/whatsapp-outbox";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
 
-export async function sendWhatsAppMessage(phone: string, text: string) {
+type SendTextResult = {
+  success: boolean;
+  error?: string;
+};
+
+export async function sendWhatsAppMessageDirect(
+  phone: string,
+  text: string,
+): Promise<SendTextResult> {
   const requestId = createRequestId();
 
   if (!EVOLUTION_API_KEY || EVOLUTION_API_KEY === "COLOQUE_SUA_CHAVE_DA_EVOLUTION_API") {
@@ -14,7 +26,7 @@ export async function sendWhatsAppMessage(phone: string, text: string) {
       phone,
       messageLength: text.length,
     });
-    return true;
+    return { success: true };
   }
 
   const endpoint = `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
@@ -36,13 +48,14 @@ export async function sendWhatsAppMessage(phone: string, text: string) {
     });
 
     if (!response.ok) {
+      const error = `Evolution respondeu HTTP ${response.status}`;
       logger.error("whatsapp_message_failed", {
         requestId,
         phone,
         status: response.status,
         latencyMs: Date.now() - startedAt,
       });
-      return false;
+      return { success: false, error };
     }
 
     logger.info("whatsapp_message_sent", {
@@ -50,8 +63,13 @@ export async function sendWhatsAppMessage(phone: string, text: string) {
       phone,
       latencyMs: Date.now() - startedAt,
     });
-    return true;
+    return { success: true };
   } catch (error) {
+    const message = isTimeoutError(error)
+      ? "Tempo limite excedido ao enviar mensagem"
+      : error instanceof Error
+        ? error.message
+        : "Falha desconhecida ao enviar mensagem";
     logger.error("whatsapp_message_exception", {
       requestId,
       phone,
@@ -59,8 +77,33 @@ export async function sendWhatsAppMessage(phone: string, text: string) {
       timeout: isTimeoutError(error),
       error,
     });
-    return false;
+    return { success: false, error: message };
   }
+}
+
+export async function sendWhatsAppMessage(phone: string, text: string) {
+  const result = await sendWhatsAppMessageDirect(phone, text);
+  if (result.success) return true;
+
+  try {
+    await enqueueWhatsappTextMessage({
+      phone,
+      text,
+      error: result.error,
+    });
+    logger.warn("whatsapp_message_queued", {
+      phone,
+      reason: result.error,
+    });
+  } catch (error) {
+    logger.error("whatsapp_message_queue_failed", {
+      phone,
+      encryptionUnavailable: error instanceof DataEncryptionUnavailableError,
+      error,
+    });
+  }
+
+  return false;
 }
 
 export async function sendWhatsAppMedia(
