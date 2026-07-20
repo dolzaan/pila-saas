@@ -30,6 +30,12 @@ interface DashboardShellProps {
   pendingReminderCount: number;
 }
 
+const auxiliaryRouteTitles: Record<string, string> = {
+  "/dashboard/reminders": "Lembretes",
+  "/dashboard/recurring": "Contas fixas",
+  "/dashboard/security": "Segurança",
+};
+
 function isActiveRoute(pathname: string, href: string) {
   return href === "/dashboard"
     ? pathname === href
@@ -53,6 +59,13 @@ export function DashboardShell({
   const currentItem = dashboardNavigationItems.find((item) =>
     isActiveRoute(pathname, item.href),
   );
+  const currentTitle = pathname.startsWith("/admin")
+    ? "Admin"
+    : currentItem?.label ||
+      Object.entries(auxiliaryRouteTitles).find(([route]) =>
+        pathname.startsWith(route),
+      )?.[1] ||
+      "Pila";
   const searchResults = useMemo(() => {
     const query = searchQuery.trim().toLocaleLowerCase("pt-BR");
     if (!query) return [];
@@ -185,9 +198,7 @@ export function DashboardShell({
               Área autenticada
             </p>
             <p className="truncate text-sm font-semibold text-slate-200">
-              {pathname.startsWith("/admin")
-                ? "Admin"
-                : currentItem?.label || "Pila"}
+              {currentTitle}
             </p>
           </div>
 
@@ -258,7 +269,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="min-h-screen px-4 pb-28 pt-5 sm:px-6 md:px-8 md:pb-8 md:pt-7">
+        <main className="min-h-screen px-4 pb-28 pt-24 sm:px-6 md:px-8 md:pb-8 md:pt-7">
           {children}
         </main>
       </div>
