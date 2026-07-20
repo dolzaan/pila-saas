@@ -12,6 +12,7 @@ import type { RecurrenceInterval, TransactionKind } from "@prisma/client";
 function revalidateRecurringPaymentPages() {
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/recurring");
+  revalidatePath("/dashboard/reminders");
   revalidatePath("/dashboard/transactions");
   revalidatePath("/dashboard/planning");
   revalidatePath("/dashboard/reports");
@@ -34,6 +35,9 @@ export async function createRecurringTransaction(data: {
   if (!data.description || data.description.trim().length > 255) {
     throw new Error("Descrição inválida");
   }
+  if (Number.isNaN(data.startDate.getTime())) {
+    throw new Error("Data de vencimento inválida");
+  }
   if (data.categoryId) {
     const category = await prisma.category.findFirst({
       where: {
@@ -46,21 +50,45 @@ export async function createRecurringTransaction(data: {
     if (!category) throw new Error("Categoria inválida ou acesso negado");
   }
 
-  await prisma.recurringTransaction.create({
-    data: {
-      userId: session.user.id,
-      amount: data.amount,
-      kind: data.kind,
-      description: data.description.trim(),
-      categoryId: data.categoryId,
-      interval: data.interval,
-      startDate: data.startDate,
-      nextDate: data.startDate,
-    },
+  const description = data.description.trim();
+
+  await prisma.$transaction(async (transaction) => {
+    await transaction.recurringTransaction.create({
+      data: {
+        userId: session.user.id,
+        amount: data.amount,
+        kind: data.kind,
+        description,
+        categoryId: data.categoryId,
+        interval: data.interval,
+        startDate: data.startDate,
+        nextDate: data.startDate,
+      },
+    });
+
+    const existingReminder = await transaction.billReminder.findFirst({
+      where: {
+        userId: session.user.id,
+        description,
+        dueDate: data.startDate,
+        isPaid: false,
+      },
+      select: { id: true },
+    });
+
+    if (!existingReminder) {
+      await transaction.billReminder.create({
+        data: {
+          userId: session.user.id,
+          description,
+          amount: data.amount,
+          dueDate: data.startDate,
+        },
+      });
+    }
   });
 
-  revalidatePath("/dashboard/recurring");
-  revalidatePath("/dashboard/planning");
+  revalidateRecurringPaymentPages();
 }
 
 export async function markRecurringTransactionPaid(
