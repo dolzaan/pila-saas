@@ -1,97 +1,46 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { addDays, addWeeks, addMonths, addYears } from "date-fns";
-import type { RecurrenceInterval } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
-
-function getNextDate(date: Date, interval: RecurrenceInterval): Date {
-  switch (interval) {
-    case "DAILY": return addDays(date, 1);
-    case "WEEKLY": return addWeeks(date, 1);
-    case "MONTHLY": return addMonths(date, 1);
-    case "YEARLY": return addYears(date, 1);
-    default: return addMonths(date, 1);
-  }
-}
 
 export async function GET(request: Request) {
   try {
     if (!process.env.CRON_SECRET) {
       console.error("[Cron Recurring] CRON_SECRET não configurado");
-      return NextResponse.json({ error: "Cron is not configured" }, { status: 503 });
+      return NextResponse.json(
+        { error: "Cron is not configured" },
+        { status: 503 },
+      );
     }
+
     const authHeader = request.headers.get("authorization");
     if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const now = new Date();
-
-    // Buscar todas as contas recorrentes que precisam ser processadas
+    // A recorrência representa o próximo vencimento ainda não confirmado.
+    // O cron não cria mais transações automaticamente: o usuário confirma
+    // o pagamento pelo painel, e só então nextDate avança.
     const dueRecurring = await prisma.recurringTransaction.findMany({
-      where: {
-        nextDate: { lte: now },
-      },
+      where: { nextDate: { lte: new Date() } },
+      select: { nextDate: true, endDate: true },
     });
-
-    let createdCount = 0;
-
-    for (const rt of dueRecurring) {
-      // Se tiver data final e já passou, não gerar mais
-      if (rt.endDate && rt.nextDate > rt.endDate) {
-        continue;
-      }
-
-      let currentDateToProcess = rt.nextDate;
-      const transactionsToCreate = [];
-
-      // Gerar transações para todos os períodos que passaram
-      while (currentDateToProcess <= now) {
-        if (rt.endDate && currentDateToProcess > rt.endDate) {
-          break;
-        }
-
-        transactionsToCreate.push({
-          userId: rt.userId,
-          categoryId: rt.categoryId,
-          amount: rt.amount,
-          kind: rt.kind,
-          description: rt.description || "Transação Recorrente",
-          occurredAt: currentDateToProcess,
-          source: "cron",
-          recurringTransactionId: rt.id,
-        });
-
-        currentDateToProcess = getNextDate(currentDateToProcess, rt.interval);
-      }
-
-      if (transactionsToCreate.length > 0) {
-        // Criar as transações
-        const created = await prisma.transaction.createMany({
-          data: transactionsToCreate,
-          skipDuplicates: true,
-        });
-        createdCount += created.count;
-
-        // Atualizar a próxima data na recurring transaction
-        await prisma.recurringTransaction.update({
-          where: { id: rt.id },
-          data: { nextDate: currentDateToProcess },
-        });
-      }
-    }
+    const pendingConfirmation = dueRecurring.filter(
+      (recurring) =>
+        !recurring.endDate || recurring.nextDate <= recurring.endDate,
+    ).length;
 
     return NextResponse.json({
       success: true,
-      processed: dueRecurring.length,
-      transactionsCreated: createdCount,
+      mode: "manual-confirmation",
+      pendingConfirmation,
+      transactionsCreated: 0,
     });
   } catch (error) {
-    console.error("Erro ao processar transações recorrentes:", error);
+    console.error("Erro ao verificar transações recorrentes:", error);
     return NextResponse.json(
       { error: "Internal Server Error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
