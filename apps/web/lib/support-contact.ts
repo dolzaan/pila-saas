@@ -1,5 +1,6 @@
-const rawSupportNumber =
-  process.env.NEXT_PUBLIC_PILA_SUPPORT_WHATSAPP_NUMBER ?? "5547997785853";
+const configuredSupportNumber =
+  process.env.NEXT_PUBLIC_PILA_SUPPORT_WHATSAPP_NUMBER?.trim();
+const rawSupportNumber = configuredSupportNumber || "5547997785853";
 
 export const PILA_SUPPORT_WHATSAPP_NUMBER = rawSupportNumber.replace(/\D/g, "");
 
