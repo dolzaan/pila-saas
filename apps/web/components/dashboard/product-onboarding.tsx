@@ -239,7 +239,11 @@ export function ProductOnboarding({
       )}
 
       {isOpen && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-3 sm:p-6">
+        <div
+          className={`fixed inset-0 flex items-center justify-center p-3 sm:p-6 ${
+            requestKey === "first-transaction" ? "z-[90]" : "z-[120]"
+          }`}
+        >
           <button
             type="button"
             className="absolute inset-0 cursor-default bg-black/75 backdrop-blur-md"
