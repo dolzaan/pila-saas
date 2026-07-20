@@ -145,7 +145,7 @@ export default async function AccountsPage() {
               const isCard = account.type === "CREDIT_CARD";
               const balance = summary?.balance || 0;
               const limit = account.creditLimit?.toNumber() || 0;
-              const availableLimit = summary?.availableLimit;
+              const availableLimit = summary?.availableLimit ?? null;
               const limitUsage = limit > 0 ? Math.min(100, (balance / limit) * 100) : 0;
 
               return (
