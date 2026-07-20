@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { PrismaClient } from "@finzap/database";
+import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
