@@ -1,17 +1,21 @@
 import { auth } from "@/lib/auth";
 import { NextResponse, type NextRequest } from "next/server";
 import {
+  buildUnlinkedGreetingReply,
   buildUnlinkedWhatsappReply,
   buildWhatsappAccessCheckFailureReply,
   buildWhatsappLinkHelpReply,
   canUnlinkedWhatsappMessageReachBot,
+  isWhatsappGreeting,
   isWhatsappLinkHelpIntent,
   shouldCheckWhatsappAccountAccess,
+  type WhatsappGateReplyKind,
 } from "@/lib/whatsapp-access-gate";
 
 type WhatsappWebhookPayload = {
   data?: {
     key?: {
+      id?: string;
       remoteJid?: string;
       fromMe?: boolean;
     };
@@ -32,7 +36,15 @@ type WhatsappAccessStatus = {
   onboardingActive: boolean;
 };
 
-function getWhatsappGateContext(payload: WhatsappWebhookPayload) {
+type WhatsappGateContext = {
+  phone: string;
+  remoteJid: string;
+  messageId: string;
+  text: string;
+  hasMedia: boolean;
+};
+
+function getWhatsappGateContext(payload: WhatsappWebhookPayload): WhatsappGateContext | null {
   const key = payload.data?.key;
   const message = payload.data?.message;
   const remoteJid = key?.remoteJid || "";
@@ -58,7 +70,13 @@ function getWhatsappGateContext(payload: WhatsappWebhookPayload) {
     || payload.data?.base64,
   );
 
-  return { phone, text, hasMedia };
+  return {
+    phone,
+    remoteJid,
+    messageId: typeof key?.id === "string" ? key.id.trim() : "",
+    text,
+    hasMedia,
+  };
 }
 
 async function checkWhatsappAccess(
@@ -96,6 +114,44 @@ async function checkWhatsappAccess(
   };
 }
 
+async function sendWhatsappGateReply(
+  req: NextRequest,
+  context: WhatsappGateContext,
+  replyKind: WhatsappGateReplyKind,
+) {
+  const webhookSecret = req.headers.get("x-pila-webhook-secret");
+
+  // O simulador administrativo exibe a resposta recebida no JSON e não deve
+  // disparar uma mensagem real para o número digitado na interface.
+  if (!webhookSecret) return;
+
+  const replyUrl = new URL("/api/internal/whatsapp-gate-reply", req.url);
+  const response = await fetch(replyUrl, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-pila-webhook-secret": webhookSecret,
+    },
+    body: JSON.stringify({
+      remoteJid: context.remoteJid,
+      messageId: context.messageId,
+      replyKind,
+    }),
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Falha ao enviar resposta da trava: ${response.status}`);
+  }
+}
+
+function gateReplyMessage(replyKind: WhatsappGateReplyKind) {
+  if (replyKind === "GREETING") return buildUnlinkedGreetingReply();
+  if (replyKind === "LINK_HELP") return buildWhatsappLinkHelpReply();
+  if (replyKind === "CHECK_FAILED") return buildWhatsappAccessCheckFailureReply();
+  return buildUnlinkedWhatsappReply();
+}
+
 /**
  * Middleware de proteção de rotas usando Auth.js v5.
  * - /dashboard/* → exige autenticação
@@ -106,6 +162,7 @@ async function checkWhatsappAccess(
 export default auth(async (req) => {
   const { pathname } = req.nextUrl;
   const isAuthenticated = !!req.auth?.user;
+  let whatsappContext: WhatsappGateContext | null = null;
 
   // A barreira é aplicada apenas a chamadas que podem ser legítimas:
   // webhook com segredo ou simulador com sessão administrativa.
@@ -119,28 +176,40 @@ export default auth(async (req) => {
   ) {
     try {
       const payload = await req.clone().json() as WhatsappWebhookPayload;
-      const context = getWhatsappGateContext(payload);
+      whatsappContext = getWhatsappGateContext(payload);
 
       if (
-        context
-        && shouldCheckWhatsappAccountAccess(context.text, context.hasMedia)
+        whatsappContext
+        && shouldCheckWhatsappAccountAccess(
+          whatsappContext.text,
+          whatsappContext.hasMedia,
+        )
       ) {
-        const access = await checkWhatsappAccess(req, context.phone);
+        const access = await checkWhatsappAccess(req, whatsappContext.phone);
 
-        if (access && !access.linked) {
-          const canContinueOnboarding = !context.hasMedia
-            && canUnlinkedWhatsappMessageReachBot(context.text, {
-              onboardingActive: access.onboardingActive,
-            });
+        if (access && !access.linked && !access.onboardingActive) {
+          let replyKind: WhatsappGateReplyKind | null = null;
 
-          if (!canContinueOnboarding) {
-            const replyMessage = isWhatsappLinkHelpIntent(context.text)
-              ? buildWhatsappLinkHelpReply()
-              : buildUnlinkedWhatsappReply();
+          if (!whatsappContext.hasMedia && isWhatsappGreeting(whatsappContext.text)) {
+            replyKind = "GREETING";
+          } else {
+            const canContinue = !whatsappContext.hasMedia
+              && canUnlinkedWhatsappMessageReachBot(whatsappContext.text);
+
+            if (!canContinue) {
+              replyKind = isWhatsappLinkHelpIntent(whatsappContext.text)
+                ? "LINK_HELP"
+                : "UNLINKED";
+            }
+          }
+
+          if (replyKind) {
+            await sendWhatsappGateReply(req, whatsappContext, replyKind);
+            const replyMessage = gateReplyMessage(replyKind);
 
             return NextResponse.json({
               success: true,
-              blocked: true,
+              blocked: replyKind !== "GREETING",
               accountStatus: "UNLINKED",
               replyMessage,
             });
@@ -149,6 +218,15 @@ export default auth(async (req) => {
       }
     } catch (error) {
       console.error("[WhatsApp Access Gate] Erro:", error);
+
+      if (whatsappContext) {
+        try {
+          await sendWhatsappGateReply(req, whatsappContext, "CHECK_FAILED");
+        } catch (replyError) {
+          console.error("[WhatsApp Access Gate] Falha ao responder erro:", replyError);
+        }
+      }
+
       return NextResponse.json(
         {
           success: false,
