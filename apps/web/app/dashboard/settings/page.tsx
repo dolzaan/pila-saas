@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { UpgradeCard } from "@/components/dashboard/upgrade-card";
 import { SubscriptionManager } from "./subscription-manager";
 import { GdprClient } from "./gdpr-client";
+import { TelegramConnectionCard } from "./telegram-connection-card";
 import { Star } from "lucide-react";
 import type { Metadata } from "next";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
@@ -27,7 +28,14 @@ export default async function SettingsPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    include: { subscription: true },
+    include: {
+      subscription: true,
+      accounts: {
+        where: { provider: "telegram" },
+        select: { token_type: true },
+        take: 1,
+      },
+    },
   });
 
   if (!user) redirect("/login");
@@ -42,6 +50,7 @@ export default async function SettingsPage() {
     !isTrial && hasStripeSubscription && user.subscription?.currentPeriodEnd
       ? user.subscription.currentPeriodEnd
       : null;
+  const telegramAccount = user.accounts[0] || null;
 
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -94,8 +103,8 @@ export default async function SettingsPage() {
             </div>
             <p className={nextBillingDate ? "mb-4 text-gray-300" : "mb-6 text-gray-300"}>
               {isTrial
-                ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial via WhatsApp."
-                : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp."}
+                ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial pelo WhatsApp e Telegram."
+                : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial pelo WhatsApp e Telegram."}
             </p>
             {nextBillingDate ? (
               <div className="mb-6 rounded-xl border border-emerald-400/20 bg-black/10 px-4 py-3">
@@ -119,10 +128,15 @@ export default async function SettingsPage() {
         ) : (
           <UpgradeCard
             title="Seja Pila Pro"
-            description="Assine para liberar a IA do WhatsApp e não ter limites na plataforma."
+            description="Assine para liberar a IA pelo WhatsApp e Telegram e não ter limites na plataforma."
           />
         )}
       </section>
+
+      <TelegramConnectionCard
+        connected={Boolean(telegramAccount)}
+        connectedUsername={telegramAccount?.token_type}
+      />
 
       <section id="privacy" className="section-card scroll-mt-28 md:col-span-2">
         <div className="mb-6 max-w-2xl">

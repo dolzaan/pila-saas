@@ -1,8 +1,10 @@
+import { AsyncLocalStorage } from "node:async_hooks";
 import {
   DataEncryptionUnavailableError,
 } from "@/lib/data-encryption";
 import { externalTimeoutSignal, isTimeoutError } from "@/lib/external-service";
 import { createRequestId, logger } from "@/lib/logger";
+import { sendTelegramMedia, sendTelegramMessage } from "@/lib/telegram";
 import { enqueueWhatsappTextMessage } from "@/lib/whatsapp-outbox";
 
 const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:8080";
@@ -22,7 +24,26 @@ type EvolutionSendMetadata = {
   status?: string;
 };
 
+type MessageDeliveryContext = {
+  channel: "telegram";
+  chatId: string;
+};
+
 type UnknownRecord = Record<string, unknown>;
+
+const messageDeliveryContext = new AsyncLocalStorage<MessageDeliveryContext>();
+
+export function runWithTelegramDelivery<T>(
+  chatId: string,
+  operation: () => Promise<T>,
+): Promise<T> {
+  return messageDeliveryContext.run({ channel: "telegram", chatId }, operation);
+}
+
+function activeTelegramChatId() {
+  const context = messageDeliveryContext.getStore();
+  return context?.channel === "telegram" ? context.chatId : null;
+}
 
 function asRecord(value: unknown): UnknownRecord | null {
   return typeof value === "object" && value !== null && !Array.isArray(value)
@@ -246,6 +267,15 @@ export async function sendWhatsAppMessageDirect(
 }
 
 export async function sendWhatsAppMessage(phone: string, text: string) {
+  const telegramChatId = activeTelegramChatId();
+  if (telegramChatId) {
+    const sent = await sendTelegramMessage(telegramChatId, text);
+    if (!sent) {
+      throw new Error("Telegram não confirmou o envio da resposta");
+    }
+    return true;
+  }
+
   const result = await sendWhatsAppMessageDirect(phone, text);
   if (result.success) return true;
 
@@ -276,6 +306,20 @@ export async function sendWhatsAppMedia(
   mediatype: "image" | "document" | "audio" | "video",
   caption?: string,
 ) {
+  const telegramChatId = activeTelegramChatId();
+  if (telegramChatId) {
+    const sent = await sendTelegramMedia(
+      telegramChatId,
+      mediaUrlOrBase64,
+      mediatype,
+      caption,
+    );
+    if (!sent) {
+      throw new Error("Telegram não confirmou o envio da mídia");
+    }
+    return true;
+  }
+
   const requestId = createRequestId();
   const normalizedPhone = normalizeWhatsappRecipient(phone);
 
