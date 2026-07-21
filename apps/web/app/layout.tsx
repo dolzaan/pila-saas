@@ -6,8 +6,6 @@ import { ProductEventTracker } from "@/components/product-event-tracker";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
 import "./globals.css";
 
-<meta name="google-site-verification" content="0biihb-npAIgtOy5GoqNScEF5f-39aAipA8vdw8brcY" />
-
 export const metadata: Metadata = {
   title: {
     default: "Pila — Finanças Pessoais pelo WhatsApp",
@@ -19,6 +17,9 @@ export const metadata: Metadata = {
   authors: [{ name: "Pila" }],
   applicationName: "Pila",
   manifest: "/manifest.webmanifest",
+  verification: {
+    google: "0biihb-npAIgtOy5GoqNScEF5f-39aAipA8vdw8brcY",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
