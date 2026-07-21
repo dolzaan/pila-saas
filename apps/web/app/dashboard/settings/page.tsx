@@ -14,6 +14,13 @@ export const metadata: Metadata = {
   title: "Configurações — Pila",
 };
 
+const billingDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "America/Sao_Paulo",
+});
+
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -31,6 +38,10 @@ export default async function SettingsPage() {
   const hasStripeSubscription = isStripeSubscriptionId(
     user.subscription?.stripeSubscriptionId,
   );
+  const nextBillingDate =
+    !isTrial && hasStripeSubscription && user.subscription?.currentPeriodEnd
+      ? user.subscription.currentPeriodEnd
+      : null;
 
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -81,11 +92,24 @@ export default async function SettingsPage() {
                 </p>
               </div>
             </div>
-            <p className="mb-6 text-gray-300">
+            <p className={nextBillingDate ? "mb-4 text-gray-300" : "mb-6 text-gray-300"}>
               {isTrial
                 ? "Durante o teste, você tem acesso completo ao Pila Pro, incluindo a inteligência artificial via WhatsApp."
                 : "Obrigado por apoiar o Pila! Você tem acesso ilimitado à inteligência artificial via WhatsApp."}
             </p>
+            {nextBillingDate ? (
+              <div className="mb-6 rounded-xl border border-emerald-400/20 bg-black/10 px-4 py-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-emerald-300/80">
+                  Próximo vencimento
+                </p>
+                <time
+                  dateTime={nextBillingDate.toISOString()}
+                  className="mt-1 block text-base font-semibold text-white"
+                >
+                  {billingDateFormatter.format(nextBillingDate)}
+                </time>
+              </div>
+            ) : null}
             {isTrial || !hasStripeSubscription ? (
               <SubscribeButton label="Assinar por R$ 19,90/mês" />
             ) : (
