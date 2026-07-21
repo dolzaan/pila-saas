@@ -4,9 +4,10 @@ import { redirect } from "next/navigation";
 import WhatsappClient from "./whatsapp-client";
 import { UpgradeCard } from "@/components/dashboard/upgrade-card";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
+import { TelegramConnectionCard } from "../settings/telegram-connection-card";
 
 export const metadata = {
-  title: "WhatsApp | Pila",
+  title: "Integrações | Pila",
 };
 
 export default async function WhatsappPage() {
@@ -22,6 +23,11 @@ export default async function WhatsappPage() {
       whatsappVerifiedAt: true,
       createdAt: true,
       subscription: true,
+      accounts: {
+        where: { provider: "telegram" },
+        select: { token_type: true },
+        take: 1,
+      },
     },
   });
 
@@ -29,9 +35,10 @@ export default async function WhatsappPage() {
 
   const subscription = getUserSubscriptionStatus(user.createdAt, user.subscription);
   const isPro = hasProAccess(subscription);
+  const telegramAccount = user.accounts[0] || null;
 
   const activeLinkCode = await prisma.whatsappLinkCode.findFirst({
-    where: { 
+    where: {
       userId: session.user.id,
       expiresAt: { gt: new Date() },
       usedAt: null,
@@ -40,25 +47,30 @@ export default async function WhatsappPage() {
   });
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="mx-auto max-w-4xl space-y-8 p-6 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">WhatsApp</h1>
+        <h1 className="mb-2 text-3xl font-bold text-white">Integrações</h1>
         <p className="text-gray-400">
-          Vincule seu número para adicionar despesas e receitas usando linguagem natural.
+          Conecte WhatsApp e Telegram para registrar despesas e receitas usando linguagem natural.
         </p>
       </div>
 
-      <div className="bg-[#0d1117] border border-gray-800 rounded-3xl p-6 sm:p-8 shadow-xl">
+      <div className="rounded-3xl border border-gray-800 bg-[#0d1117] p-6 shadow-xl sm:p-8">
         {!isPro ? (
           <UpgradeCard blockAccess />
         ) : (
-          <WhatsappClient 
-            initialWhatsappNumber={user?.whatsappNumber || null}
+          <WhatsappClient
+            initialWhatsappNumber={user.whatsappNumber || null}
             initialPin={activeLinkCode?.code || null}
             expiresAt={activeLinkCode?.expiresAt || null}
           />
         )}
       </div>
+
+      <TelegramConnectionCard
+        connected={Boolean(telegramAccount)}
+        connectedUsername={telegramAccount?.token_type}
+      />
     </div>
   );
 }
