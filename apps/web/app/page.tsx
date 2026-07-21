@@ -166,7 +166,7 @@ export default function LandingPage() {
           <span>DOIS CANAIS, UMA ÚNICA CONTA</span>
           <h2>WhatsApp como principal. Telegram para você continuar.</h2>
           <p>
-            O Pila nasceu para simplificar sua vida financeira pelo WhatsApp. E, quando houver instabilidade ou você preferir outra opção, o Telegram mantém as funções essenciais disponíveis.
+            O Pila nasceu para simplificar sua vida financeira pelo WhatsApp. O Telegram amplia essa experiência com uma segunda opção para registrar movimentações, consultar dados e acompanhar suas finanças do jeito que for mais conveniente para você.
           </p>
         </div>
         <div className={styles.featureGrid}>
