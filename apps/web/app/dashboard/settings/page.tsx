@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { UpgradeCard } from "@/components/dashboard/upgrade-card";
 import { SubscriptionManager } from "./subscription-manager";
 import { GdprClient } from "./gdpr-client";
+import { ProfileNameForm } from "./profile-name-form";
 import { Star } from "lucide-react";
 import type { Metadata } from "next";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
@@ -58,12 +59,7 @@ export default async function SettingsPage() {
           </p>
         </div>
         <div className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm text-gray-400">Nome</label>
-            <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-white">
-              {user.name || "Usuário"}
-            </div>
-          </div>
+          <ProfileNameForm initialName={user.name || "Usuário"} />
           <div>
             <label className="mb-1 block text-sm text-gray-400">E-mail</label>
             <div className="rounded-xl border border-white/10 bg-white/5 p-3 text-white">
