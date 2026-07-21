@@ -6,99 +6,63 @@ import {
   BarChart3,
   Bell,
   BrainCircuit,
-  Camera,
   Check,
-  Database,
-  EyeOff,
-  KeyRound,
   MessageCircle,
-  Mic,
   PieChart,
-  Send,
   ShieldCheck,
   Sparkles,
   Target,
-  UserCheck,
   Wallet,
 } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
-import { getTelegramBotUsername } from "@/lib/telegram";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
   title: "Pila — Sua IA financeira no WhatsApp",
   description:
-    "Converse com uma IA financeira pelo WhatsApp e continue pelo Telegram quando precisar. Envie texto, áudio ou foto para registrar gastos, consultar relatórios e organizar seu dinheiro.",
+    "Registre gastos por texto, áudio ou foto, acompanhe seus números e organize sua vida financeira com o Pila.",
 };
 
 const benefits = [
   {
     icon: MessageCircle,
-    title: "Converse, não preencha",
-    text: "Fale com a IA pelo WhatsApp como você já fala com qualquer pessoa. Ela entende e organiza para você.",
+    title: "Registre sem preencher planilhas",
+    text: "Envie uma mensagem pelo WhatsApp e deixe o Pila organizar a movimentação para você.",
+  },
+  {
+    icon: BrainCircuit,
+    title: "IA que entende sua rotina",
+    text: "Texto, áudio e foto de comprovante viram registros, categorias e respostas úteis.",
   },
   {
     icon: BarChart3,
-    title: "Enxergue para onde vai",
-    text: "Tenha saldos, categorias e evolução do mês reunidos em um dashboard simples.",
-  },
-  {
-    icon: Sparkles,
-    title: "IA que entende o contexto",
-    text: "Texto, áudio, foto de comprovante e perguntas naturais viram registros, categorias e respostas úteis.",
-  },
-  {
-    icon: Target,
-    title: "Metas que saem do papel",
-    text: "Defina objetivos, acompanhe o progresso e saiba quanto falta para chegar lá.",
+    title: "Veja tudo com clareza",
+    text: "Acompanhe saldos, categorias, metas e evolução do mês em um painel simples.",
   },
   {
     icon: Bell,
-    title: "Contas sob controle",
-    text: "Cadastre despesas recorrentes e receba lembretes antes de perder o prazo.",
+    title: "Não esqueça suas contas",
+    text: "Organize despesas recorrentes e receba lembretes antes do vencimento.",
+  },
+  {
+    icon: Target,
+    title: "Acompanhe suas metas",
+    text: "Defina objetivos e saiba quanto falta para chegar onde você quer.",
   },
   {
     icon: PieChart,
-    title: "Relatórios que fazem sentido",
-    text: "Compare períodos e descubra padrões para tomar decisões melhores com o seu dinheiro.",
-  },
-];
-
-const securityPoints = [
-  {
-    icon: EyeOff,
-    title: "Menos dados enviados à IA",
-    text: "O Pila mascara identificadores sensíveis, como CPF, telefone, chave Pix e número de cartão, e envia somente o contexto necessário para interpretar cada pedido.",
-  },
-  {
-    icon: Database,
-    title: "Fila de mensagens criptografada",
-    text: "Quando uma resposta do WhatsApp precisa aguardar uma nova tentativa, número e conteúdo ficam protegidos com AES-256-GCM. Mídias em base64 não são persistidas nessa fila.",
-  },
-  {
-    icon: KeyRound,
-    title: "Acessos e vínculos protegidos",
-    text: "Verificação de e-mail, códigos temporários de uso único, segredos nos webhooks e revogação de sessões ajudam a impedir acessos e conexões indevidas.",
-  },
-  {
-    icon: UserCheck,
-    title: "Você controla seus dados",
-    text: "O texto bruto das mensagens não é salvo por padrão. Pela área de privacidade, você pode exportar seus dados ou solicitar a exclusão da conta.",
+    title: "Tome decisões melhores",
+    text: "Use relatórios e comparações para entender seus hábitos financeiros.",
   },
 ];
 
 const steps = [
-  ["01", "Crie sua conta", "Leva menos de dois minutos e você não precisa informar cartão."],
-  ["02", "Conecte seu canal", "Use o WhatsApp como canal principal e deixe o Telegram disponível como alternativa."],
-  ["03", "Acompanhe e decida", "Veja tudo no dashboard e use seus dados para planejar o próximo passo."],
+  ["01", "Crie sua conta", "Comece em poucos minutos e sem informar cartão."],
+  ["02", "Conecte seu WhatsApp", "Registre gastos, receitas e dúvidas em uma conversa natural."],
+  ["03", "Acompanhe no painel", "Veja seus dados organizados e planeje seus próximos passos."],
 ];
 
 export default function LandingPage() {
-  const telegramBotUsername = getTelegramBotUsername();
-  const telegramUrl = telegramBotUsername
-    ? `https://t.me/${telegramBotUsername}`
-    : null;
-
   return (
     <main className={styles.page} data-landing-root>
       <header className={styles.header}>
@@ -108,13 +72,10 @@ export default function LandingPage() {
             <span>Pila</span>
           </Link>
           <nav className={styles.nav} aria-label="Navegação principal">
-            <a href="#ia">IA do Pila</a>
-            <a href="#canais">Canais</a>
-            <a href="#seguranca">Segurança</a>
-            <a href="#como-funciona">Como funciona</a>
-            <a href="#recursos">Recursos</a>
+            <Link href="/features">Recursos</Link>
+            <Link href="/how-it-works">Como funciona</Link>
+            <Link href="/security">Segurança</Link>
             <a href="#preco">Preço</a>
-            <a href="#duvidas">Dúvidas</a>
           </nav>
           <div className={styles.headerActions}>
             <Link className={styles.loginLink} href="/login">Entrar</Link>
@@ -132,20 +93,20 @@ export default function LandingPage() {
             <div className={styles.eyebrow}>
               <Sparkles size={15} /> IA FINANCEIRA DIRETO NO WHATSAPP
             </div>
-            <h1>Sua IA financeira. No WhatsApp, do jeito que você já conversa.</h1>
+            <h1>Organize seu dinheiro em uma conversa.</h1>
             <p>
-              Envie texto, áudio ou foto. A IA do Pila registra movimentações, responde perguntas e transforma sua rotina em relatórios claros — com Telegram como canal alternativo quando você precisar.
+              Envie texto, áudio ou foto. O Pila registra suas movimentações, organiza seus dados e mostra com clareza para onde seu dinheiro está indo.
             </p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryCta} href="/register">
                 Testar grátis por 7 dias <ArrowRight size={19} />
               </Link>
-              <a className={styles.secondaryCta} href="#como-funciona">Ver como funciona</a>
+              <Link className={styles.secondaryCta} href="/how-it-works">Ver como funciona</Link>
             </div>
             <div className={styles.heroNotes}>
               <span><Check size={15} /> Sem cartão</span>
-              <span><Check size={15} /> WhatsApp como canal principal</span>
-              <span><Check size={15} /> Telegram como alternativa</span>
+              <span><Check size={15} /> Configuração rápida</span>
+              <span><Check size={15} /> Cancele quando quiser</span>
             </div>
           </div>
 
@@ -184,130 +145,16 @@ export default function LandingPage() {
       </section>
 
       <section className={styles.proofStrip} aria-label="Benefícios resumidos">
-        <span><MessageCircle size={18} /> Converse pelo WhatsApp</span>
-        <span><BrainCircuit size={18} /> IA que entende texto, áudio e imagem</span>
-        <span><ShieldCheck size={18} /> Seus dados sob seu controle</span>
-      </section>
-
-      <section className={styles.section} id="canais">
-        <div className={styles.sectionHeading}>
-          <span>DOIS CANAIS, UMA ÚNICA CONTA</span>
-          <h2>WhatsApp como principal. Telegram para você continuar.</h2>
-          <p>
-            O Pila nasceu para simplificar sua vida financeira pelo WhatsApp. E, quando houver instabilidade ou você preferir outra opção, o Telegram mantém as funções essenciais disponíveis.
-          </p>
-        </div>
-        <div className={styles.featureGrid}>
-          <article className={styles.featureCard}>
-            <div className={styles.featureIcon}><MessageCircle size={22} /></div>
-            <h3>Principalmente no WhatsApp</h3>
-            <p>Registre gastos, receitas, áudios e fotos no canal que já faz parte da sua rotina.</p>
-            <Link className={`${styles.primaryCta} mt-6 w-fit`} href="/register">
-              Começar pelo WhatsApp <ArrowRight size={17} />
-            </Link>
-          </article>
-          <article className={styles.featureCard}>
-            <div className={styles.featureIcon}><Send size={22} /></div>
-            <h3>Também disponível no Telegram</h3>
-            <p>Use o Telegram como canal alternativo para lançar movimentações, consultar dados e pedir relatórios.</p>
-            {telegramUrl ? (
-              <a
-                className={`${styles.secondaryCta} mt-6 w-fit`}
-                href={telegramUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                Conhecer o Telegram <Send size={17} />
-              </a>
-            ) : (
-              <Link className={`${styles.secondaryCta} mt-6 w-fit`} href="/register">
-                Criar minha conta <ArrowRight size={17} />
-              </Link>
-            )}
-          </article>
-          <article className={styles.featureCard}>
-            <div className={styles.featureIcon}><BarChart3 size={22} /></div>
-            <h3>Dashboard sempre disponível</h3>
-            <p>Independentemente do canal, seus registros continuam organizados e visíveis no painel do Pila.</p>
-            <Link className={`${styles.secondaryCta} mt-6 w-fit`} href="/login">
-              Acessar o painel <ArrowRight size={17} />
-            </Link>
-          </article>
-        </div>
-      </section>
-
-      <section className={styles.aiSection} id="ia">
-        <div className={styles.aiSectionHeading}>
-          <span>O PILA ENTENDE VOCÊ</span>
-          <h2>Uma conversa vira organização financeira.</h2>
-          <p>Não adapte sua rotina a mais um aplicativo. A IA interpreta o que você envia e mantém tudo organizado enquanto você segue o seu dia.</p>
-        </div>
-        <div className={styles.aiCapabilities}>
-          <article>
-            <div><MessageCircle size={21} /></div>
-            <span>01</span>
-            <h3>Escreva naturalmente</h3>
-            <p>“Gastei 42 no mercado” já é suficiente para a IA registrar e categorizar.</p>
-          </article>
-          <article>
-            <div><Mic size={21} /></div>
-            <span>02</span>
-            <h3>Mande um áudio</h3>
-            <p>Conte seus gastos por voz. A IA entende a mensagem e transforma em informação organizada.</p>
-          </article>
-          <article>
-            <div><Camera size={21} /></div>
-            <span>03</span>
-            <h3>Fotografe o comprovante</h3>
-            <p>Envie a imagem pelo WhatsApp para a IA identificar os dados importantes da compra.</p>
-          </article>
-          <article>
-            <div><BrainCircuit size={21} /></div>
-            <span>04</span>
-            <h3>Pergunte e receba clareza</h3>
-            <p>Peça resumos, gráficos e comparações em uma conversa, usando seus dados reais.</p>
-          </article>
-        </div>
-        <div className={styles.aiPrompt}>
-          <Sparkles size={18} />
-          <div><strong>Experimente agora</strong><span>Abra o chat no canto da tela e converse com a IA do Pila sem sair da página.</span></div>
-        </div>
-      </section>
-
-      <section className={`${styles.section} ${styles.featuresSection}`} id="seguranca">
-        <div className={styles.sectionHeading}>
-          <span>PRIVACIDADE DESDE O PRIMEIRO LANÇAMENTO</span>
-          <h2>Segurança explicada com controles que o Pila realmente usa.</h2>
-          <p>
-            Dados financeiros exigem cuidado. Por isso, o Pila reduz o que envia à IA, protege fluxos de integração e oferece controles para você administrar suas informações.
-          </p>
-        </div>
-        <div className={styles.featureGrid}>
-          {securityPoints.map(({ icon: Icon, title, text }) => (
-            <article className={styles.featureCard} key={title}>
-              <div className={styles.featureIcon}><Icon size={22} /></div>
-              <h3>{title}</h3>
-              <p>{text}</p>
-            </article>
-          ))}
-        </div>
-        <div className={styles.aiPrompt}>
-          <ShieldCheck size={18} />
-          <div>
-            <strong>Transparência em vez de promessas vagas</strong>
-            <span>Consulte como o Pila trata suas informações na Política de Privacidade.</span>
-          </div>
-          <Link className={`${styles.secondaryCta} w-fit`} href="/privacy">
-            Ver Política de Privacidade <ArrowRight size={17} />
-          </Link>
-        </div>
+        <span><MessageCircle size={18} /> Registre pelo WhatsApp</span>
+        <span><BrainCircuit size={18} /> IA para texto, áudio e imagem</span>
+        <span><ShieldCheck size={18} /> Controle sobre seus dados</span>
       </section>
 
       <section className={styles.section} id="como-funciona">
         <div className={styles.sectionHeading}>
-          <span>COMECE SEM COMPLICAÇÃO</span>
+          <span>SIMPLES DESDE O PRIMEIRO DIA</span>
           <h2>Três passos para entender melhor seu dinheiro</h2>
-          <p>O Pila cuida da parte chata da organização. Você fica com a clareza.</p>
+          <p>O Pila cuida da organização para você focar nas decisões.</p>
         </div>
         <div className={styles.steps}>
           {steps.map(([number, title, text]) => (
@@ -322,8 +169,8 @@ export default function LandingPage() {
 
       <section className={`${styles.section} ${styles.featuresSection}`} id="recursos">
         <div className={styles.sectionHeading}>
-          <span>TUDO NO LUGAR CERTO</span>
-          <h2>Menos tempo controlando. Mais confiança para decidir.</h2>
+          <span>O ESSENCIAL PARA SUA ROTINA</span>
+          <h2>Menos esforço para registrar. Mais clareza para decidir.</h2>
         </div>
         <div className={styles.featureGrid}>
           {benefits.map(({ icon: Icon, title, text }) => (
@@ -334,36 +181,10 @@ export default function LandingPage() {
             </article>
           ))}
         </div>
-      </section>
-
-      <section className={styles.claritySection}>
-        <div className={styles.clarityCopy}>
-          <span>CLAREZA TODOS OS DIAS</span>
-          <h2>O panorama que faltava para o seu mês.</h2>
-          <p>Veja seus números importantes sem procurar em várias telas. O Pila transforma seus registros em uma visão prática da sua vida financeira.</p>
-          <ul>
-            <li><Check size={18} /> Receitas e despesas atualizadas</li>
-            <li><Check size={18} /> Orçamentos por categoria</li>
-            <li><Check size={18} /> Metas e despesas recorrentes</li>
-          </ul>
-        </div>
-        <div className={styles.dashboardMock}>
-          <div className={styles.mockTop}><i /><i /><i /><span>Visão geral</span></div>
-          <div className={styles.mockStats}>
-            <div><small>Receitas</small><strong>R$ 5.800</strong><span className={styles.positive}>+12%</span></div>
-            <div><small>Despesas</small><strong>R$ 2.952</strong><span>51% da renda</span></div>
-          </div>
-          <div className={styles.mockChart}>
-            <div><small>Fluxo do mês</small><strong>R$ 2.848 livres</strong></div>
-            <div className={styles.bars}>
-              {[48, 66, 52, 82, 71, 92, 78].map((height, index) => <i key={index} style={{ height: `${height}%` }} />)}
-            </div>
-          </div>
-          <div className={styles.mockCategories}>
-            <div><span><i className={styles.dotGreen} /> Moradia</span><strong>R$ 1.200</strong></div>
-            <div><span><i className={styles.dotPurple} /> Alimentação</span><strong>R$ 684</strong></div>
-            <div><span><i className={styles.dotBlue} /> Transporte</span><strong>R$ 392</strong></div>
-          </div>
+        <div className={styles.aiPrompt}>
+          <Sparkles size={18} />
+          <div><strong>Quer conhecer todos os recursos?</strong><span>Veja integrações, relatórios, metas, lembretes e outras possibilidades do Pila.</span></div>
+          <Link className={`${styles.secondaryCta} w-fit`} href="/features">Ver todos os recursos <ArrowRight size={17} /></Link>
         </div>
       </section>
 
@@ -380,14 +201,7 @@ export default function LandingPage() {
             <small>Cobrança mensal após o período de teste.</small>
           </div>
           <div className={styles.priceFeatures}>
-            {[
-              "Registro financeiro pelo WhatsApp e Telegram",
-              "Dashboard completo",
-              "Metas e orçamentos",
-              "Despesas recorrentes e lembretes",
-              "Relatórios e categorias inteligentes",
-              "Cancele quando quiser",
-            ].map((item) => <span key={item}><Check size={17} /> {item}</span>)}
+            {["Registros pelo WhatsApp e Telegram", "Dashboard completo", "Metas e orçamentos", "Lembretes e despesas recorrentes", "Relatórios inteligentes", "Cancele quando quiser"].map((item) => <span key={item}><Check size={17} /> {item}</span>)}
           </div>
           <Link className={styles.primaryCta} href="/register">Começar meu teste grátis <ArrowRight size={19} /></Link>
           <p className={styles.secureNote}><ShieldCheck size={16} /> Pagamento seguro processado pela Stripe</p>
@@ -400,12 +214,10 @@ export default function LandingPage() {
           <h2>Antes de começar</h2>
         </div>
         <div className={styles.faqList}>
-          <details><summary>Preciso colocar cartão para testar?</summary><p>Não. Você cria a conta e usa todos os recursos do Pila Pro por 7 dias sem informar cartão.</p></details>
-          <details><summary>O que acontece quando o teste termina?</summary><p>Você verá a opção para assinar o Pila Pro. O acesso aos recursos pagos é liberado assim que o pagamento for confirmado.</p></details>
-          <details><summary>Preciso instalar algum aplicativo?</summary><p>Não. O WhatsApp continua sendo o canal principal, o Telegram fica disponível como alternativa e o dashboard do Pila funciona pelo navegador.</p></details>
-          <details><summary>Como o Pila protege meus dados?</summary><p>O Pila reduz os dados enviados à IA, mascara identificadores sensíveis, protege mensagens que aguardam reenvio e usa códigos temporários e segredos para validar acessos e integrações.</p></details>
-          <details><summary>Posso cancelar a assinatura?</summary><p>Sim. A assinatura pode ser gerenciada pelo portal seguro da Stripe e você pode cancelar quando quiser.</p></details>
-          <details><summary>Meus dados ficam presos no Pila?</summary><p>Não. Nas configurações, você pode exportar seus dados ou solicitar a exclusão da conta.</p></details>
+          <details><summary>Preciso colocar cartão para testar?</summary><p>Não. Você pode usar o Pila Pro por 7 dias sem informar cartão.</p></details>
+          <details><summary>Preciso instalar algum aplicativo?</summary><p>Não. Você usa o WhatsApp ou Telegram e acessa o painel pelo navegador.</p></details>
+          <details><summary>Posso cancelar a assinatura?</summary><p>Sim. A assinatura pode ser cancelada quando você quiser.</p></details>
+          <details><summary>Como meus dados são protegidos?</summary><p>Conheça os controles de privacidade, acesso e tratamento de dados na página de Segurança.</p></details>
         </div>
       </section>
 
@@ -417,7 +229,14 @@ export default function LandingPage() {
       <footer className={styles.footer}>
         <Link className={styles.brand} href="/"><Image src="/logo-icon.png" alt="" width={34} height={34} /><span>Pila</span></Link>
         <p>Organização financeira simples, todos os dias.</p>
-        <div><Link href="/privacy">Privacidade</Link><Link href="/terms">Termos</Link><Link href="/login">Entrar</Link></div>
+        <div>
+          <Link href="/features">Recursos</Link>
+          <Link href="/how-it-works">Como funciona</Link>
+          <Link href="/security">Segurança</Link>
+          <Link href="/privacy">Privacidade</Link>
+          <Link href="/terms">Termos</Link>
+          <Link href="/login">Entrar</Link>
+        </div>
       </footer>
 
       <LandingMotion />
