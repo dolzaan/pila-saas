@@ -7,6 +7,7 @@ import {
   sendTelegramMessage,
   telegramWebhookSecretMatches,
 } from "@/lib/telegram";
+import { runWithTelegramUserRouting } from "@/lib/telegram-user-routing";
 import { POST as handleWhatsappWebhook } from "@/app/api/webhooks/whatsapp/route";
 
 const TELEGRAM_PROVIDER = "telegram";
@@ -35,6 +36,11 @@ type TelegramUpdate = {
 
 function telegramMessageId(update: TelegramUpdate, message: TelegramMessage) {
   return `telegram:${update.update_id}:${message.message_id}`;
+}
+
+function telegramRoutingPhone(telegramUserId: string) {
+  const digits = telegramUserId.replace(/\D/g, "");
+  return digits.padStart(15, "0").slice(-15);
 }
 
 async function markMessageSourceAsTelegram(externalMessageId: string) {
@@ -85,14 +91,14 @@ async function linkTelegramAccount(
   const userId = linkToken.identifier.slice(TELEGRAM_LINK_PREFIX.length);
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { id: true, whatsappNumber: true },
+    select: { id: true },
   });
 
-  if (!user?.whatsappNumber) {
+  if (!user) {
     await prisma.verificationToken.deleteMany({ where: { token } });
     return {
       success: false as const,
-      error: "Vincule seu WhatsApp no Pila antes de ativar o canal de contingência.",
+      error: "Não encontrei sua conta do Pila. Entre novamente no painel e gere outro link.",
     };
   }
 
@@ -175,7 +181,7 @@ export async function POST(req: Request) {
     await sendTelegramMessage(
       chatId,
       result.success
-        ? "✅ Telegram conectado ao Pila! Você já pode registrar gastos, ganhos, lembretes e consultar suas finanças por aqui."
+        ? "✅ Telegram conectado ao Pila! Você já pode registrar gastos, ganhos, lembretes e consultar suas finanças por aqui, mesmo sem conectar o WhatsApp."
         : result.error,
     );
     return NextResponse.json({ ok: true, linked: result.success });
@@ -191,14 +197,14 @@ export async function POST(req: Request) {
     select: {
       user: {
         select: {
-          whatsappNumber: true,
+          id: true,
         },
       },
     },
   });
 
-  const whatsappNumber = telegramAccount?.user.whatsappNumber;
-  if (!whatsappNumber) {
+  const userId = telegramAccount?.user.id;
+  if (!userId) {
     await sendTelegramMessage(
       chatId,
       "Este Telegram ainda não está conectado a uma conta do Pila. Entre no painel e acesse Configurações > Telegram.",
@@ -213,6 +219,7 @@ export async function POST(req: Request) {
   }
 
   const externalMessageId = telegramMessageId(update, message);
+  const routingPhone = telegramRoutingPhone(telegramUserId);
   const internalRequest = new Request(
     new URL(
       "/api/webhooks/whatsapp",
@@ -228,7 +235,7 @@ export async function POST(req: Request) {
         event: "messages.upsert",
         data: {
           key: {
-            remoteJid: `${whatsappNumber}@s.whatsapp.net`,
+            remoteJid: `${routingPhone}@s.whatsapp.net`,
             fromMe: false,
             id: externalMessageId,
           },
@@ -240,7 +247,11 @@ export async function POST(req: Request) {
     },
   );
 
-  const response = await runWithTelegramDelivery(chatId, () => handleWhatsappWebhook(internalRequest));
+  const response = await runWithTelegramUserRouting(
+    userId,
+    routingPhone,
+    () => runWithTelegramDelivery(chatId, () => handleWhatsappWebhook(internalRequest)),
+  );
   if (response.ok) {
     await markMessageSourceAsTelegram(externalMessageId);
     return NextResponse.json({ ok: true });

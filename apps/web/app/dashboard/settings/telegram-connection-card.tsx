@@ -62,7 +62,7 @@ export function TelegramConnectionCard({
       <div className="flex flex-col gap-5 sm:flex-row sm:items-center sm:justify-between">
         <div className="max-w-2xl">
           <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
-            Canal de contingência
+            Canal financeiro
           </span>
           <div className="mt-2 flex items-center gap-3">
             <div className="rounded-xl border border-sky-400/20 bg-sky-400/10 p-2.5">
@@ -71,7 +71,7 @@ export function TelegramConnectionCard({
             <div>
               <h2 className="text-xl font-semibold text-white">Telegram</h2>
               <p className="text-sm text-slate-400">
-                Continue usando o Pila quando o WhatsApp estiver indisponível.
+                Use o Pila pelo Telegram com ou sem o WhatsApp conectado.
               </p>
             </div>
           </div>
@@ -105,8 +105,8 @@ export function TelegramConnectionCard({
       </div>
 
       <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] p-4 text-sm text-slate-400">
-        O vínculo é feito por um link temporário e só funciona em conversa privada com o bot.
-        As mesmas regras de assinatura, segurança e idempotência do WhatsApp continuam valendo.
+        O vínculo é feito por um link temporário em conversa privada com o bot.
+        Telegram e WhatsApp são independentes, mas usam as mesmas regras de assinatura, segurança e idempotência.
       </div>
 
       {error ? (
