@@ -1,6 +1,6 @@
-# Telegram como canal de contingência
+# Telegram como canal independente e de contingência
 
-O Telegram reutiliza o mesmo processador financeiro do webhook do WhatsApp. O usuário precisa vincular o Telegram previamente em **Configurações > Telegram**.
+O Telegram reutiliza o mesmo processador financeiro do webhook do WhatsApp, mas não exige que o usuário tenha um número de WhatsApp conectado. O vínculo é feito previamente em **Configurações > Telegram**.
 
 ## 1. Criar o bot
 
@@ -18,7 +18,7 @@ TELEGRAM_WEBHOOK_SECRET="segredo-aleatorio-independente"
 TELEGRAM_TIMEOUT_MS="15000"
 ```
 
-O `WHATSAPP_WEBHOOK_SECRET` também precisa estar configurado, pois o Telegram chama o processador interno já usado pela Evolution API.
+O `WHATSAPP_WEBHOOK_SECRET` também precisa estar configurado, pois protege a chamada interna ao processador financeiro compartilhado. Isso não vincula nem exige uma conta de WhatsApp do usuário.
 
 ## 3. Registrar o webhook
 
@@ -39,16 +39,17 @@ sudo curl "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/getWebhookInfo"
 
 ## 4. Fluxo do usuário
 
-1. O usuário precisa já ter o WhatsApp vinculado ao Pila.
+1. O usuário entra normalmente na conta do Pila.
 2. Acessa **Configurações > Telegram**.
 3. Toca em **Conectar Telegram**.
 4. Abre o link temporário e toca em **Iniciar** no bot.
-5. O Telegram passa a executar lançamentos, consultas, lembretes e relatórios pelo mesmo processador do WhatsApp.
+5. O Telegram passa a executar lançamentos, consultas, lembretes e relatórios, independentemente de o WhatsApp estar conectado.
 
 ## Segurança
 
 - O webhook exige o header `X-Telegram-Bot-Api-Secret-Token`.
 - O vínculo usa token aleatório de uso único, válido por 10 minutos.
 - Apenas conversas privadas são aceitas.
+- O usuário é resolvido por um contexto interno isolado durante cada mensagem, sem gravar número fictício de WhatsApp.
 - Mensagens mantêm a idempotência pelo ID do update do Telegram.
 - Respostas originadas no Telegram não são enviadas nem enfileiradas no WhatsApp.
