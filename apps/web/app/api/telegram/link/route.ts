@@ -22,16 +22,10 @@ export async function POST() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { whatsappNumber: true },
+    select: { id: true },
   });
   if (!user) {
     return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 });
-  }
-  if (!user.whatsappNumber) {
-    return NextResponse.json(
-      { error: "Vincule seu WhatsApp antes de ativar o canal de contingência" },
-      { status: 409 },
-    );
   }
 
   const identifier = `telegram-link:${session.user.id}`;
