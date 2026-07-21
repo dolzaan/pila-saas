@@ -269,7 +269,11 @@ export async function sendWhatsAppMessageDirect(
 export async function sendWhatsAppMessage(phone: string, text: string) {
   const telegramChatId = activeTelegramChatId();
   if (telegramChatId) {
-    return sendTelegramMessage(telegramChatId, text);
+    const sent = await sendTelegramMessage(telegramChatId, text);
+    if (!sent) {
+      throw new Error("Telegram não confirmou o envio da resposta");
+    }
+    return true;
   }
 
   const result = await sendWhatsAppMessageDirect(phone, text);
@@ -304,7 +308,16 @@ export async function sendWhatsAppMedia(
 ) {
   const telegramChatId = activeTelegramChatId();
   if (telegramChatId) {
-    return sendTelegramMedia(telegramChatId, mediaUrlOrBase64, mediatype, caption);
+    const sent = await sendTelegramMedia(
+      telegramChatId,
+      mediaUrlOrBase64,
+      mediatype,
+      caption,
+    );
+    if (!sent) {
+      throw new Error("Telegram não confirmou o envio da mídia");
+    }
+    return true;
   }
 
   const requestId = createRequestId();
