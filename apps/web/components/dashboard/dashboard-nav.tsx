@@ -50,9 +50,9 @@ export const dashboardNavigationGroups: NavigationGroup[] = [
     id: "main",
     label: "Principal",
     items: [
-      { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-      { href: "/dashboard/transactions", label: "Transações", icon: CreditCard },
-      { href: "/dashboard/accounts", label: "Contas e cartões", icon: Landmark },
+      { href: "/painel", label: "Painel", icon: LayoutDashboard },
+      { href: "/painel/movimentacoes", label: "Movimentações", icon: CreditCard },
+      { href: "/painel/contas", label: "Contas e cartões", icon: Landmark },
     ],
   },
   {
@@ -60,21 +60,21 @@ export const dashboardNavigationGroups: NavigationGroup[] = [
     label: "Planejamento",
     items: [
       {
-        href: "/dashboard/agenda",
+        href: "/painel/agenda",
         label: "Agenda financeira",
         icon: CalendarRange,
         description: "Contas fixas e lembretes",
       },
-      { href: "/dashboard/planning", label: "Planejamento", icon: ChartNoAxesCombined },
-      { href: "/dashboard/budgets", label: "Orçamentos", icon: Target },
+      { href: "/painel/planejamento", label: "Planejamento", icon: ChartNoAxesCombined },
+      { href: "/painel/orcamentos", label: "Orçamentos", icon: Target },
     ],
   },
   {
     id: "analysis",
     label: "Análise",
     items: [
-      { href: "/dashboard/reconciliation", label: "Conciliação", icon: RefreshCcw },
-      { href: "/dashboard/reports", label: "Relatórios", icon: LineChart },
+      { href: "/painel/conciliacao", label: "Conciliação", icon: RefreshCcw },
+      { href: "/painel/relatorios", label: "Relatórios", icon: LineChart },
     ],
   },
   {
@@ -82,9 +82,9 @@ export const dashboardNavigationGroups: NavigationGroup[] = [
     label: "Mais",
     collapsible: true,
     items: [
-      { href: "/dashboard/categories", label: "Categorias", icon: Tags },
-      { href: "/dashboard/whatsapp", label: "WhatsApp", icon: MessageSquare },
-      { href: "/dashboard/settings", label: "Configurações", icon: Settings },
+      { href: "/painel/categorias", label: "Categorias", icon: Tags },
+      { href: "/painel/whatsapp", label: "WhatsApp", icon: MessageSquare },
+      { href: "/painel/configuracoes", label: "Configurações", icon: Settings },
     ],
   },
 ];
@@ -142,7 +142,7 @@ function NavigationItem({
 export function DashboardNav({ isAdmin, collapsed = false }: DashboardNavProps) {
   const pathname = usePathname();
   const isActiveRoute = (href: string) =>
-    href === "/dashboard"
+    href === "/painel"
       ? pathname === href
       : pathname === href || pathname.startsWith(`${href}/`);
   const [openGroups, setOpenGroups] = useState<Set<string>>(
@@ -217,7 +217,7 @@ export function DashboardNav({ isAdmin, collapsed = false }: DashboardNavProps) 
         <div className="mt-auto border-t border-white/5 pt-3">
           <NavigationItem
             href="/admin"
-            label="Admin Panel"
+            label="Painel administrativo"
             icon={Shield}
             collapsed={collapsed}
             isActive={isActiveRoute("/admin")}
