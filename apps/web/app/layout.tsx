@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   applicationName: "Pila",
   manifest: "/manifest.webmanifest",
   verification: {
-    google: "0biihb-npAIgtOy5GoqNScEF5f-39aAipA8vdw8brcY",
+    google: "8e2R1V8ja6tag0EtEV8sv21nJ8lXnWRdMzfHS-RSioc",
   },
   appleWebApp: {
     capable: true,
