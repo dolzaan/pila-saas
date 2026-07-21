@@ -4,8 +4,9 @@ import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
 import Link from "next/link";
-import { Wallet, TrendingDown, TrendingUp, Activity, Search, MessageCircle, CheckCircle2, ArrowRight, AlertTriangle } from "lucide-react";
+import { Wallet, TrendingDown, TrendingUp, Activity, Search, MessageCircle, CheckCircle2, ArrowRight, AlertTriangle, Send } from "lucide-react";
 import { getPilaWhatsappUrl, PILA_WHATSAPP_DISPLAY, PILA_WHATSAPP_NUMBER } from "@/lib/whatsapp-contact";
+import { getTelegramBotUsername } from "@/lib/telegram";
 
 export const metadata: Metadata = {
   title: "Dashboard — Pila",
@@ -47,13 +48,26 @@ export default async function DashboardPage() {
   const [user, whatsappBotConnected] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
-      select: { whatsappVerifiedAt: true, whatsappNumber: true },
+      select: {
+        whatsappVerifiedAt: true,
+        whatsappNumber: true,
+        accounts: {
+          where: { provider: "telegram" },
+          select: { id: true },
+          take: 1,
+        },
+      },
     }),
     isWhatsappBotConnected(),
   ]);
 
   const userWhatsappLinked = Boolean(user?.whatsappVerifiedAt && user?.whatsappNumber);
+  const userTelegramLinked = Boolean(user?.accounts[0]);
   const whatsappUrl = getPilaWhatsappUrl("Olá, Pila! Quero conectar minha conta e começar a registrar minhas finanças por aqui.");
+  const telegramBotUsername = getTelegramBotUsername();
+  const telegramBotUrl = telegramBotUsername
+    ? `https://t.me/${telegramBotUsername}`
+    : null;
 
   const now = new Date();
   const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -124,11 +138,38 @@ export default async function DashboardPage() {
                 id="whatsapp-unavailable-title"
                 className="section-title !m-0 leading-snug"
               >
-                As funções pelo WhatsApp ainda não estão funcionando
+                Continue usando o Pila pelo Telegram
               </h2>
               <p className="!m-0 max-w-3xl text-sm leading-6 text-gray-400 sm:text-base">
-                Estamos finalizando a conexão do WhatsApp do Pila e ela estará disponível o mais breve possível. Enquanto isso, você pode continuar usando normalmente todos os demais recursos do site para registrar e acompanhar suas finanças.
+                Estamos trabalhando para normalizar o WhatsApp. Enquanto isso, você pode registrar movimentações, consultar suas finanças e pedir relatórios pelo Telegram, ou continuar usando normalmente os recursos do site.
               </p>
+              <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                {userTelegramLinked && telegramBotUrl ? (
+                  <a
+                    href={telegramBotUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="app-button app-button--primary inline-flex items-center justify-center gap-2"
+                  >
+                    Abrir Telegram
+                    <Send className="h-4 w-4" />
+                  </a>
+                ) : (
+                  <Link
+                    href="/dashboard/settings#telegram"
+                    className="app-button app-button--primary inline-flex items-center justify-center gap-2"
+                  >
+                    Conectar Telegram
+                    <Send className="h-4 w-4" />
+                  </Link>
+                )}
+                <Link
+                  href="/dashboard/settings#telegram"
+                  className="app-button app-button--secondary inline-flex items-center justify-center"
+                >
+                  Gerenciar canais
+                </Link>
+              </div>
             </div>
           </div>
         </section>
