@@ -11,18 +11,20 @@ import {
   MessageCircle,
   Mic,
   PieChart,
+  Send,
   ShieldCheck,
   Sparkles,
   Target,
   Wallet,
 } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { getTelegramBotUsername } from "@/lib/telegram";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
   title: "Pila — Sua IA financeira no WhatsApp",
   description:
-    "Converse com uma IA financeira pelo WhatsApp. Envie texto, áudio ou foto para registrar gastos, consultar relatórios e organizar seu dinheiro.",
+    "Converse com uma IA financeira pelo WhatsApp e continue pelo Telegram quando precisar. Envie texto, áudio ou foto para registrar gastos, consultar relatórios e organizar seu dinheiro.",
 };
 
 const benefits = [
@@ -60,11 +62,16 @@ const benefits = [
 
 const steps = [
   ["01", "Crie sua conta", "Leva menos de dois minutos e você não precisa informar cartão."],
-  ["02", "Conecte o WhatsApp", "Vincule seu número e comece a registrar receitas e despesas por mensagem."],
+  ["02", "Conecte seu canal", "Use o WhatsApp como canal principal e deixe o Telegram disponível como alternativa."],
   ["03", "Acompanhe e decida", "Veja tudo no dashboard e use seus dados para planejar o próximo passo."],
 ];
 
 export default function LandingPage() {
+  const telegramBotUsername = getTelegramBotUsername();
+  const telegramUrl = telegramBotUsername
+    ? `https://t.me/${telegramBotUsername}`
+    : null;
+
   return (
     <main className={styles.page} data-landing-root>
       <header className={styles.header}>
@@ -75,6 +82,7 @@ export default function LandingPage() {
           </Link>
           <nav className={styles.nav} aria-label="Navegação principal">
             <a href="#ia">IA do Pila</a>
+            <a href="#canais">Canais</a>
             <a href="#como-funciona">Como funciona</a>
             <a href="#recursos">Recursos</a>
             <a href="#preco">Preço</a>
@@ -98,7 +106,7 @@ export default function LandingPage() {
             </div>
             <h1>Sua IA financeira. No WhatsApp, do jeito que você já conversa.</h1>
             <p>
-              Envie texto, áudio ou foto. A IA do Pila registra movimentações, responde perguntas e transforma sua rotina em relatórios claros — sem planilhas e sem complicação.
+              Envie texto, áudio ou foto. A IA do Pila registra movimentações, responde perguntas e transforma sua rotina em relatórios claros — com Telegram como canal alternativo quando você precisar.
             </p>
             <div className={styles.heroActions}>
               <Link className={styles.primaryCta} href="/register">
@@ -108,8 +116,8 @@ export default function LandingPage() {
             </div>
             <div className={styles.heroNotes}>
               <span><Check size={15} /> Sem cartão</span>
-              <span><Check size={15} /> IA disponível 24 horas</span>
-              <span><Check size={15} /> Cancele quando quiser</span>
+              <span><Check size={15} /> WhatsApp como canal principal</span>
+              <span><Check size={15} /> Telegram como alternativa</span>
             </div>
           </div>
 
@@ -151,6 +159,53 @@ export default function LandingPage() {
         <span><MessageCircle size={18} /> Converse pelo WhatsApp</span>
         <span><BrainCircuit size={18} /> IA que entende texto, áudio e imagem</span>
         <span><ShieldCheck size={18} /> Seus dados sob seu controle</span>
+      </section>
+
+      <section className={styles.section} id="canais">
+        <div className={styles.sectionHeading}>
+          <span>DOIS CANAIS, UMA ÚNICA CONTA</span>
+          <h2>WhatsApp como principal. Telegram para você continuar.</h2>
+          <p>
+            O Pila nasceu para simplificar sua vida financeira pelo WhatsApp. E, quando houver instabilidade ou você preferir outra opção, o Telegram mantém as funções essenciais disponíveis.
+          </p>
+        </div>
+        <div className={styles.featureGrid}>
+          <article className={styles.featureCard}>
+            <div className={styles.featureIcon}><MessageCircle size={22} /></div>
+            <h3>Principalmente no WhatsApp</h3>
+            <p>Registre gastos, receitas, áudios e fotos no canal que já faz parte da sua rotina.</p>
+            <Link className={`${styles.primaryCta} mt-6 w-fit`} href="/register">
+              Começar pelo WhatsApp <ArrowRight size={17} />
+            </Link>
+          </article>
+          <article className={styles.featureCard}>
+            <div className={styles.featureIcon}><Send size={22} /></div>
+            <h3>Também disponível no Telegram</h3>
+            <p>Use o Telegram como canal alternativo para lançar movimentações, consultar dados e pedir relatórios.</p>
+            {telegramUrl ? (
+              <a
+                className={`${styles.secondaryCta} mt-6 w-fit`}
+                href={telegramUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Conhecer o Telegram <Send size={17} />
+              </a>
+            ) : (
+              <Link className={`${styles.secondaryCta} mt-6 w-fit`} href="/register">
+                Criar minha conta <ArrowRight size={17} />
+              </Link>
+            )}
+          </article>
+          <article className={styles.featureCard}>
+            <div className={styles.featureIcon}><BarChart3 size={22} /></div>
+            <h3>Dashboard sempre disponível</h3>
+            <p>Independentemente do canal, seus registros continuam organizados e visíveis no painel do Pila.</p>
+            <Link className={`${styles.secondaryCta} mt-6 w-fit`} href="/login">
+              Acessar o painel <ArrowRight size={17} />
+            </Link>
+          </article>
+        </div>
       </section>
 
       <section className={styles.aiSection} id="ia">
@@ -269,7 +324,7 @@ export default function LandingPage() {
           </div>
           <div className={styles.priceFeatures}>
             {[
-              "Registro financeiro pelo WhatsApp",
+              "Registro financeiro pelo WhatsApp e Telegram",
               "Dashboard completo",
               "Metas e orçamentos",
               "Despesas recorrentes e lembretes",
@@ -290,7 +345,7 @@ export default function LandingPage() {
         <div className={styles.faqList}>
           <details><summary>Preciso colocar cartão para testar?</summary><p>Não. Você cria a conta e usa todos os recursos do Pila Pro por 7 dias sem informar cartão.</p></details>
           <details><summary>O que acontece quando o teste termina?</summary><p>Você verá a opção para assinar o Pila Pro. O acesso aos recursos pagos é liberado assim que o pagamento for confirmado.</p></details>
-          <details><summary>Preciso instalar algum aplicativo?</summary><p>Não. Você usa o WhatsApp para registrar movimentações e acessa o dashboard do Pila pelo navegador.</p></details>
+          <details><summary>Preciso instalar algum aplicativo?</summary><p>Não. O WhatsApp continua sendo o canal principal, o Telegram fica disponível como alternativa e o dashboard do Pila funciona pelo navegador.</p></details>
           <details><summary>Posso cancelar a assinatura?</summary><p>Sim. A assinatura pode ser gerenciada pelo portal seguro da Stripe e você pode cancelar quando quiser.</p></details>
           <details><summary>Meus dados ficam presos no Pila?</summary><p>Não. Nas configurações, você pode exportar seus dados ou solicitar a exclusão da conta.</p></details>
         </div>
