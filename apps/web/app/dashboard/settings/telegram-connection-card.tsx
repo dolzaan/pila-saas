@@ -19,7 +19,16 @@ export function TelegramConnectionCard({
 
   function handleConnect() {
     setError(null);
-    const popup = window.open("about:blank", "_blank", "noopener,noreferrer");
+    const popup = window.open("", "_blank");
+
+    if (!popup) {
+      setError("Permita pop-ups para abrir o bot do Telegram em uma nova aba.");
+      return;
+    }
+
+    popup.opener = null;
+    popup.document.title = "Abrindo Telegram...";
+    popup.document.body.innerHTML = "<p style='font-family: sans-serif; padding: 24px;'>Abrindo Telegram...</p>";
 
     startTransition(async () => {
       try {
@@ -29,13 +38,9 @@ export function TelegramConnectionCard({
           throw new Error(payload.error || "Não foi possível gerar o link do Telegram");
         }
 
-        if (popup) {
-          popup.location.href = payload.telegramUrl;
-        } else {
-          window.location.href = payload.telegramUrl;
-        }
+        popup.location.replace(payload.telegramUrl);
       } catch (cause) {
-        popup?.close();
+        popup.close();
         setError(cause instanceof Error ? cause.message : "Não foi possível conectar o Telegram");
       }
     });
