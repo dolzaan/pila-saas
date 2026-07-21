@@ -12,35 +12,35 @@ import {
 
 const items = [
   {
-    href: "/dashboard/settings#profile",
+    href: "/painel/configuracoes#profile",
     label: "Perfil",
     icon: UserRound,
-    active: (pathname: string) => pathname === "/dashboard/settings",
+    active: (pathname: string) => pathname === "/painel/configuracoes",
   },
   {
-    href: "/dashboard/settings#subscription",
+    href: "/painel/configuracoes#subscription",
     label: "Assinatura",
     icon: CreditCard,
     active: () => false,
   },
   {
-    href: "/dashboard/settings#privacy",
+    href: "/painel/configuracoes#privacy",
     label: "Privacidade",
     icon: LockKeyhole,
     active: () => false,
   },
   {
-    href: "/dashboard/settings/security",
+    href: "/painel/configuracoes/seguranca",
     label: "Segurança",
     icon: ShieldCheck,
     active: (pathname: string) =>
-      pathname.startsWith("/dashboard/settings/security"),
+      pathname.startsWith("/painel/configuracoes/seguranca"),
   },
   {
-    href: "/dashboard/whatsapp",
+    href: "/painel/whatsapp",
     label: "Integrações",
     icon: Link2,
-    active: (pathname: string) => pathname.startsWith("/dashboard/whatsapp"),
+    active: (pathname: string) => pathname.startsWith("/painel/whatsapp"),
   },
 ];
 
