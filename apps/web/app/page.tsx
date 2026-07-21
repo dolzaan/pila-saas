@@ -8,6 +8,9 @@ import {
   BrainCircuit,
   Camera,
   Check,
+  Database,
+  EyeOff,
+  KeyRound,
   MessageCircle,
   Mic,
   PieChart,
@@ -15,6 +18,7 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
+  UserCheck,
   Wallet,
 } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
@@ -60,6 +64,29 @@ const benefits = [
   },
 ];
 
+const securityPoints = [
+  {
+    icon: EyeOff,
+    title: "Menos dados enviados à IA",
+    text: "O Pila mascara identificadores sensíveis, como CPF, telefone, chave Pix e número de cartão, e envia somente o contexto necessário para interpretar cada pedido.",
+  },
+  {
+    icon: Database,
+    title: "Fila de mensagens criptografada",
+    text: "Quando uma resposta do WhatsApp precisa aguardar uma nova tentativa, número e conteúdo ficam protegidos com AES-256-GCM. Mídias em base64 não são persistidas nessa fila.",
+  },
+  {
+    icon: KeyRound,
+    title: "Acessos e vínculos protegidos",
+    text: "Verificação de e-mail, códigos temporários de uso único, segredos nos webhooks e revogação de sessões ajudam a impedir acessos e conexões indevidas.",
+  },
+  {
+    icon: UserCheck,
+    title: "Você controla seus dados",
+    text: "O texto bruto das mensagens não é salvo por padrão. Pela área de privacidade, você pode exportar seus dados ou solicitar a exclusão da conta.",
+  },
+];
+
 const steps = [
   ["01", "Crie sua conta", "Leva menos de dois minutos e você não precisa informar cartão."],
   ["02", "Conecte seu canal", "Use o WhatsApp como canal principal e deixe o Telegram disponível como alternativa."],
@@ -83,6 +110,7 @@ export default function LandingPage() {
           <nav className={styles.nav} aria-label="Navegação principal">
             <a href="#ia">IA do Pila</a>
             <a href="#canais">Canais</a>
+            <a href="#seguranca">Segurança</a>
             <a href="#como-funciona">Como funciona</a>
             <a href="#recursos">Recursos</a>
             <a href="#preco">Preço</a>
@@ -246,6 +274,35 @@ export default function LandingPage() {
         </div>
       </section>
 
+      <section className={`${styles.section} ${styles.featuresSection}`} id="seguranca">
+        <div className={styles.sectionHeading}>
+          <span>PRIVACIDADE DESDE O PRIMEIRO LANÇAMENTO</span>
+          <h2>Segurança explicada com controles que o Pila realmente usa.</h2>
+          <p>
+            Dados financeiros exigem cuidado. Por isso, o Pila reduz o que envia à IA, protege fluxos de integração e oferece controles para você administrar suas informações.
+          </p>
+        </div>
+        <div className={styles.featureGrid}>
+          {securityPoints.map(({ icon: Icon, title, text }) => (
+            <article className={styles.featureCard} key={title}>
+              <div className={styles.featureIcon}><Icon size={22} /></div>
+              <h3>{title}</h3>
+              <p>{text}</p>
+            </article>
+          ))}
+        </div>
+        <div className={styles.aiPrompt}>
+          <ShieldCheck size={18} />
+          <div>
+            <strong>Transparência em vez de promessas vagas</strong>
+            <span>Consulte como o Pila trata suas informações na Política de Privacidade.</span>
+          </div>
+          <Link className={`${styles.secondaryCta} w-fit`} href="/privacy">
+            Ver Política de Privacidade <ArrowRight size={17} />
+          </Link>
+        </div>
+      </section>
+
       <section className={styles.section} id="como-funciona">
         <div className={styles.sectionHeading}>
           <span>COMECE SEM COMPLICAÇÃO</span>
@@ -346,6 +403,7 @@ export default function LandingPage() {
           <details><summary>Preciso colocar cartão para testar?</summary><p>Não. Você cria a conta e usa todos os recursos do Pila Pro por 7 dias sem informar cartão.</p></details>
           <details><summary>O que acontece quando o teste termina?</summary><p>Você verá a opção para assinar o Pila Pro. O acesso aos recursos pagos é liberado assim que o pagamento for confirmado.</p></details>
           <details><summary>Preciso instalar algum aplicativo?</summary><p>Não. O WhatsApp continua sendo o canal principal, o Telegram fica disponível como alternativa e o dashboard do Pila funciona pelo navegador.</p></details>
+          <details><summary>Como o Pila protege meus dados?</summary><p>O Pila reduz os dados enviados à IA, mascara identificadores sensíveis, protege mensagens que aguardam reenvio e usa códigos temporários e segredos para validar acessos e integrações.</p></details>
           <details><summary>Posso cancelar a assinatura?</summary><p>Sim. A assinatura pode ser gerenciada pelo portal seguro da Stripe e você pode cancelar quando quiser.</p></details>
           <details><summary>Meus dados ficam presos no Pila?</summary><p>Não. Nas configurações, você pode exportar seus dados ou solicitar a exclusão da conta.</p></details>
         </div>
