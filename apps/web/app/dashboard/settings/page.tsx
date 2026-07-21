@@ -4,7 +4,6 @@ import { redirect } from "next/navigation";
 import { UpgradeCard } from "@/components/dashboard/upgrade-card";
 import { SubscriptionManager } from "./subscription-manager";
 import { GdprClient } from "./gdpr-client";
-import { TelegramConnectionCard } from "./telegram-connection-card";
 import { Star } from "lucide-react";
 import type { Metadata } from "next";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
@@ -30,11 +29,6 @@ export default async function SettingsPage() {
     where: { id: session.user.id },
     include: {
       subscription: true,
-      accounts: {
-        where: { provider: "telegram" },
-        select: { token_type: true },
-        take: 1,
-      },
     },
   });
 
@@ -50,7 +44,6 @@ export default async function SettingsPage() {
     !isTrial && hasStripeSubscription && user.subscription?.currentPeriodEnd
       ? user.subscription.currentPeriodEnd
       : null;
-  const telegramAccount = user.accounts[0] || null;
 
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -132,11 +125,6 @@ export default async function SettingsPage() {
           />
         )}
       </section>
-
-      <TelegramConnectionCard
-        connected={Boolean(telegramAccount)}
-        connectedUsername={telegramAccount?.token_type}
-      />
 
       <section id="privacy" className="section-card scroll-mt-28 md:col-span-2">
         <div className="mb-6 max-w-2xl">
