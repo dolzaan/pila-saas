@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import {
-  runWithTelegramDelivery,
-} from "@/lib/evolution";
+import { runWithTelegramDelivery } from "@/lib/evolution";
 import {
   sendTelegramMessage,
   telegramWebhookSecretMatches,
 } from "@/lib/telegram";
 import {
   downloadTelegramAudio,
+  downloadTelegramImage,
   MAX_TELEGRAM_AUDIO_BYTES,
+  MAX_TELEGRAM_IMAGE_BYTES,
+  selectLargestTelegramPhoto,
+  type TelegramPhotoSize,
 } from "@/lib/telegram-inbound-media";
 import { runWithTelegramUserRouting } from "@/lib/telegram-user-routing";
 import { POST as handleWhatsappWebhook } from "@/app/api/webhooks/whatsapp/route";
@@ -30,6 +32,7 @@ type TelegramMessage = {
   caption?: string;
   voice?: TelegramAudio;
   audio?: TelegramAudio;
+  photo?: TelegramPhotoSize[];
   chat: {
     id: number;
     type: string;
@@ -45,6 +48,12 @@ type TelegramMessage = {
 type TelegramUpdate = {
   update_id: number;
   message?: TelegramMessage;
+};
+
+type DownloadedMedia = {
+  base64: string;
+  mimeType: string;
+  kind: "audio" | "image";
 };
 
 function telegramMessageId(update: TelegramUpdate, message: TelegramMessage) {
@@ -98,7 +107,10 @@ async function linkTelegramAccount(
     if (linkToken) {
       await prisma.verificationToken.deleteMany({ where: { token } });
     }
-    return { success: false as const, error: "Esse link expirou. Gere um novo nas configurações do Pila." };
+    return {
+      success: false as const,
+      error: "Esse link expirou. Gere um novo nas configurações do Pila.",
+    };
   }
 
   const userId = linkToken.identifier.slice(TELEGRAM_LINK_PREFIX.length);
@@ -143,6 +155,74 @@ async function linkTelegramAccount(
   return { success: true as const };
 }
 
+async function downloadInboundMedia(
+  chatId: string,
+  message: TelegramMessage,
+): Promise<DownloadedMedia | null | "handled"> {
+  const audio = message.voice || message.audio;
+  if (audio) {
+    if (audio.file_size && audio.file_size > MAX_TELEGRAM_AUDIO_BYTES) {
+      await sendTelegramMessage(chatId, "Esse áudio é muito grande. Envie um arquivo de até 10 MB.");
+      return "handled";
+    }
+
+    const downloaded = await downloadTelegramAudio({
+      fileId: audio.file_id,
+      declaredSize: audio.file_size,
+      mimeType: audio.mime_type || (message.voice ? "audio/ogg" : "audio/mpeg"),
+    });
+
+    if (!downloaded.success) {
+      await sendTelegramMessage(
+        chatId,
+        downloaded.reason === "TOO_LARGE"
+          ? "Esse áudio é muito grande. Envie um arquivo de até 10 MB."
+          : downloaded.reason === "UNSUPPORTED_TYPE"
+            ? "Esse formato de áudio não é compatível. Tente enviar como mensagem de voz ou MP3."
+            : "Não consegui baixar esse áudio agora. Tente enviá-lo novamente em alguns instantes.",
+      );
+      return "handled";
+    }
+
+    return {
+      base64: downloaded.base64,
+      mimeType: downloaded.mimeType,
+      kind: "audio",
+    };
+  }
+
+  const photo = selectLargestTelegramPhoto(message.photo);
+  if (!photo) return null;
+
+  if (photo.file_size && photo.file_size > MAX_TELEGRAM_IMAGE_BYTES) {
+    await sendTelegramMessage(chatId, "Essa imagem é muito grande. Envie uma foto de até 8 MB.");
+    return "handled";
+  }
+
+  const downloaded = await downloadTelegramImage({
+    fileId: photo.file_id,
+    declaredSize: photo.file_size,
+  });
+
+  if (!downloaded.success) {
+    await sendTelegramMessage(
+      chatId,
+      downloaded.reason === "TOO_LARGE"
+        ? "Essa imagem é muito grande. Envie uma foto de até 8 MB."
+        : downloaded.reason === "UNSUPPORTED_TYPE"
+          ? "Esse formato de imagem não é compatível. Envie a nota fiscal como foto JPG, PNG ou WebP."
+          : "Não consegui baixar essa imagem agora. Tente enviá-la novamente em alguns instantes.",
+    );
+    return "handled";
+  }
+
+  return {
+    base64: downloaded.base64,
+    mimeType: downloaded.mimeType,
+    kind: "image",
+  };
+}
+
 export async function POST(req: Request) {
   if (!telegramWebhookSecretMatches(req.headers.get("x-telegram-bot-api-secret-token"))) {
     return NextResponse.json({ ok: false, error: "Não autorizado" }, { status: 401 });
@@ -163,12 +243,13 @@ export async function POST(req: Request) {
   const chatId = String(message.chat.id);
   const telegramUserId = String(message.from.id);
   const text = (message.text || message.caption || "").trim();
-  const audio = message.voice || message.audio;
+  const hasAudio = Boolean(message.voice || message.audio);
+  const hasPhoto = Boolean(message.photo?.length);
 
-  if (!text && !audio) {
+  if (!text && !hasAudio && !hasPhoto) {
     await sendTelegramMessage(
       chatId,
-      "Envie uma mensagem em texto ou um áudio para usar o Pila pelo Telegram.",
+      "Envie uma mensagem em texto, um áudio ou uma foto de comprovante/nota fiscal para usar o Pila pelo Telegram.",
     );
     return NextResponse.json({ ok: true, ignored: true });
   }
@@ -179,7 +260,7 @@ export async function POST(req: Request) {
   }
 
   const startMatch = text.match(/^\/start(?:@\w+)?(?:\s+([A-Za-z0-9_-]{8,64}))?$/i);
-  if (startMatch && !audio) {
+  if (startMatch && !hasAudio && !hasPhoto) {
     const token = startMatch[1];
     if (!token) {
       await sendTelegramMessage(
@@ -198,7 +279,7 @@ export async function POST(req: Request) {
     await sendTelegramMessage(
       chatId,
       result.success
-        ? "✅ Telegram conectado ao Pila! Você já pode registrar gastos, ganhos, lembretes e consultar suas finanças por aqui, mesmo sem conectar o WhatsApp."
+        ? "✅ Telegram conectado ao Pila! Você pode registrar gastos, ganhos e lembretes por texto, áudio ou foto de comprovante."
         : result.error,
     );
     return NextResponse.json({ ok: true, linked: result.success });
@@ -224,7 +305,7 @@ export async function POST(req: Request) {
   if (!userId) {
     await sendTelegramMessage(
       chatId,
-      "Este Telegram ainda não está conectado a uma conta do Pila. Entre no painel e acesse Configurações > Telegram.",
+      "Este Telegram ainda não está conectado a uma conta do Pila. Entre no painel e acesse Configurações > Integrações.",
     );
     return NextResponse.json({ ok: true, unlinked: true });
   }
@@ -235,51 +316,32 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Canal interno não configurado" }, { status: 503 });
   }
 
-  let audioPayload: { base64: string; mimeType: string } | null = null;
-  if (audio) {
-    if (audio.file_size && audio.file_size > MAX_TELEGRAM_AUDIO_BYTES) {
-      await sendTelegramMessage(
-        chatId,
-        "Esse áudio é muito grande. Envie um arquivo de até 10 MB.",
-      );
-      return NextResponse.json({ ok: true, ignored: true, reason: "audio_too_large" });
-    }
-
-    const downloaded = await downloadTelegramAudio({
-      fileId: audio.file_id,
-      declaredSize: audio.file_size,
-      mimeType: audio.mime_type || (message.voice ? "audio/ogg" : "audio/mpeg"),
-    });
-
-    if (!downloaded.success) {
-      await sendTelegramMessage(
-        chatId,
-        downloaded.reason === "TOO_LARGE"
-          ? "Esse áudio é muito grande. Envie um arquivo de até 10 MB."
-          : "Não consegui baixar esse áudio agora. Tente enviá-lo novamente em alguns instantes.",
-      );
-      return NextResponse.json({ ok: true, ignored: true, reason: downloaded.reason });
-    }
-
-    audioPayload = {
-      base64: downloaded.base64,
-      mimeType: downloaded.mimeType,
-    };
+  const media = await downloadInboundMedia(chatId, message);
+  if (media === "handled") {
+    return NextResponse.json({ ok: true, ignored: true, reason: "media_rejected" });
   }
 
   const externalMessageId = telegramMessageId(update, message);
   const routingPhone = telegramRoutingPhone(telegramUserId);
-  const internalMessage = audioPayload
-    ? {
-        conversation: text,
-        audioMessage: {
-          mimetype: audioPayload.mimeType,
-        },
-        base64: audioPayload.base64,
-      }
+  const internalMessage = media
+    ? media.kind === "audio"
+      ? {
+          conversation: text,
+          audioMessage: { mimetype: media.mimeType },
+          base64: media.base64,
+        }
+      : {
+          conversation: text,
+          imageMessage: {
+            mimetype: media.mimeType,
+            caption: text,
+          },
+          base64: media.base64,
+        }
     : {
         conversation: text,
       };
+
   const internalRequest = new Request(
     new URL(
       "/api/webhooks/whatsapp",
