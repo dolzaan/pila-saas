@@ -7,6 +7,10 @@ import {
   sendTelegramMessage,
   telegramWebhookSecretMatches,
 } from "@/lib/telegram";
+import {
+  downloadTelegramAudio,
+  MAX_TELEGRAM_AUDIO_BYTES,
+} from "@/lib/telegram-inbound-media";
 import { runWithTelegramUserRouting } from "@/lib/telegram-user-routing";
 import { POST as handleWhatsappWebhook } from "@/app/api/webhooks/whatsapp/route";
 
@@ -14,9 +18,18 @@ const TELEGRAM_PROVIDER = "telegram";
 const TELEGRAM_LINK_PREFIX = "telegram-link:";
 const MAX_TEXT_LENGTH = 4_000;
 
+type TelegramAudio = {
+  file_id: string;
+  file_size?: number;
+  mime_type?: string;
+};
+
 type TelegramMessage = {
   message_id: number;
   text?: string;
+  caption?: string;
+  voice?: TelegramAudio;
+  audio?: TelegramAudio;
   chat: {
     id: number;
     type: string;
@@ -149,10 +162,14 @@ export async function POST(req: Request) {
 
   const chatId = String(message.chat.id);
   const telegramUserId = String(message.from.id);
-  const text = message.text?.trim() || "";
+  const text = (message.text || message.caption || "").trim();
+  const audio = message.voice || message.audio;
 
-  if (!text) {
-    await sendTelegramMessage(chatId, "Por enquanto, envie sua mensagem em texto para usar o Pila pelo Telegram.");
+  if (!text && !audio) {
+    await sendTelegramMessage(
+      chatId,
+      "Envie uma mensagem em texto ou um áudio para usar o Pila pelo Telegram.",
+    );
     return NextResponse.json({ ok: true, ignored: true });
   }
 
@@ -162,7 +179,7 @@ export async function POST(req: Request) {
   }
 
   const startMatch = text.match(/^\/start(?:@\w+)?(?:\s+([A-Za-z0-9_-]{8,64}))?$/i);
-  if (startMatch) {
+  if (startMatch && !audio) {
     const token = startMatch[1];
     if (!token) {
       await sendTelegramMessage(
@@ -218,8 +235,51 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: "Canal interno não configurado" }, { status: 503 });
   }
 
+  let audioPayload: { base64: string; mimeType: string } | null = null;
+  if (audio) {
+    if (audio.file_size && audio.file_size > MAX_TELEGRAM_AUDIO_BYTES) {
+      await sendTelegramMessage(
+        chatId,
+        "Esse áudio é muito grande. Envie um arquivo de até 10 MB.",
+      );
+      return NextResponse.json({ ok: true, ignored: true, reason: "audio_too_large" });
+    }
+
+    const downloaded = await downloadTelegramAudio({
+      fileId: audio.file_id,
+      declaredSize: audio.file_size,
+      mimeType: audio.mime_type || (message.voice ? "audio/ogg" : "audio/mpeg"),
+    });
+
+    if (!downloaded.success) {
+      await sendTelegramMessage(
+        chatId,
+        downloaded.reason === "TOO_LARGE"
+          ? "Esse áudio é muito grande. Envie um arquivo de até 10 MB."
+          : "Não consegui baixar esse áudio agora. Tente enviá-lo novamente em alguns instantes.",
+      );
+      return NextResponse.json({ ok: true, ignored: true, reason: downloaded.reason });
+    }
+
+    audioPayload = {
+      base64: downloaded.base64,
+      mimeType: downloaded.mimeType,
+    };
+  }
+
   const externalMessageId = telegramMessageId(update, message);
   const routingPhone = telegramRoutingPhone(telegramUserId);
+  const internalMessage = audioPayload
+    ? {
+        conversation: text,
+        audioMessage: {
+          mimetype: audioPayload.mimeType,
+        },
+        base64: audioPayload.base64,
+      }
+    : {
+        conversation: text,
+      };
   const internalRequest = new Request(
     new URL(
       "/api/webhooks/whatsapp",
@@ -239,9 +299,7 @@ export async function POST(req: Request) {
             fromMe: false,
             id: externalMessageId,
           },
-          message: {
-            conversation: text,
-          },
+          message: internalMessage,
         },
       }),
     },
