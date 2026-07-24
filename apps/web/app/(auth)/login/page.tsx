@@ -58,10 +58,14 @@ export default function LoginPage() {
 
       <div className="auth-card">
         {/* Logo */}
-        <div className="flex flex-col items-center justify-center gap-2 mb-6">
-          <Image src="/logo-icon.png" alt="Pila Icon" width={64} height={64} className="drop-shadow-xl" />
+        <Link
+          href="/"
+          aria-label="Voltar para a página inicial do Pila"
+          className="flex flex-col items-center justify-center gap-2 mb-6 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+        >
+          <Image src="/logo-icon.png" alt="" width={64} height={64} className="drop-shadow-xl" />
           <Image src="/logo-text.png" alt="Pila" width={100} height={40} className="drop-shadow-xl" />
-        </div>
+        </Link>
 
         <h1 className="auth-title">Bem-vindo de volta</h1>
         <p className="auth-subtitle">
