@@ -6,6 +6,7 @@ import type {
   PaymentGateway,
   SubscriptionPaymentResult,
   SubscriptionResult,
+  UpdatePaymentCustomerInput,
 } from "./types";
 
 const DEFAULT_TIMEOUT_MS = 12_000;
@@ -91,6 +92,19 @@ export class AsaasGateway implements PaymentGateway {
       method: "POST",
       body: JSON.stringify(input),
     });
+  }
+
+  async updateCustomer(
+    customerId: string,
+    input: UpdatePaymentCustomerInput,
+  ): Promise<PaymentCustomerResult> {
+    return asaasRequest<AsaasCustomerResponse>(
+      `/customers/${encodeURIComponent(customerId)}`,
+      {
+        method: "PUT",
+        body: JSON.stringify(input),
+      },
+    );
   }
 
   async createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult> {
