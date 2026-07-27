@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 
-type BillingType = "PIX" | "BOLETO";
+type BillingType = "PIX" | "BOLETO" | "CREDIT_CARD";
 
 function onlyDigits(value: string): string {
   return value.replace(/\D/g, "").slice(0, 14);
@@ -35,15 +35,27 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
     setError(null);
     startTransition(async () => {
       try {
-        const response = await fetch("/api/billing/asaas/subscription", {
+        const endpoint =
+          billingType === "CREDIT_CARD"
+            ? "/api/billing/asaas/checkout"
+            : "/api/billing/asaas/subscription";
+        const response = await fetch(endpoint, {
           method: "POST",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ billingType, cpfCnpj: onlyDigits(cpfCnpj) }),
+          body: JSON.stringify({
+            ...(billingType === "CREDIT_CARD" ? {} : { billingType }),
+            cpfCnpj: onlyDigits(cpfCnpj),
+          }),
         });
-        const payload = (await response.json()) as { paymentUrl?: string | null; error?: string };
+        const payload = (await response.json()) as {
+          paymentUrl?: string | null;
+          checkoutUrl?: string | null;
+          error?: string;
+        };
         if (!response.ok) throw new Error(payload.error || "Não foi possível iniciar o pagamento");
-        if (!payload.paymentUrl) throw new Error("A cobrança foi criada, mas o link ainda não está disponível");
-        window.location.href = payload.paymentUrl;
+        const destination = payload.checkoutUrl ?? payload.paymentUrl;
+        if (!destination) throw new Error("O link de pagamento ainda não está disponível");
+        window.location.href = destination;
       } catch (caught) {
         setError(caught instanceof Error ? caught.message : "Não foi possível iniciar o pagamento");
       }
@@ -79,7 +91,7 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
           className="w-full rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-white outline-none transition focus:border-emerald-400/60 focus:ring-2 focus:ring-emerald-400/20"
         />
         <p className="mt-1 text-xs text-gray-500">
-          O Asaas exige o documento para gerar cobranças por Pix ou boleto.
+          O documento é enviado com segurança ao Asaas para identificar o pagador.
         </p>
       </div>
 
@@ -87,11 +99,19 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
       <div className="flex flex-wrap gap-3">
         <button
           type="button"
-          onClick={() => handleSubscribe("PIX")}
+          onClick={() => handleSubscribe("CREDIT_CARD")}
           disabled={isPending || !canSubmit}
           className="app-button app-button--primary"
         >
-          {isPending ? "Criando cobrança..." : "Pagar com Pix"}
+          {isPending ? "Abrindo pagamento..." : "Cartão recorrente"}
+        </button>
+        <button
+          type="button"
+          onClick={() => handleSubscribe("PIX")}
+          disabled={isPending || !canSubmit}
+          className="app-button"
+        >
+          Pagar com Pix
         </button>
         <button
           type="button"
@@ -110,7 +130,9 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
           Voltar
         </button>
       </div>
-      <p className="text-xs text-gray-500">Cartão recorrente será habilitado após a tokenização segura no checkout.</p>
+      <p className="text-xs text-gray-500">
+        No cartão, os dados são preenchidos diretamente no checkout hospedado pelo Asaas.
+      </p>
       {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
     </div>
   );
