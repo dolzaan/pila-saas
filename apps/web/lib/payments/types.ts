@@ -15,6 +15,14 @@ export interface CreatePaymentCustomerInput {
   externalReference: string;
 }
 
+export interface UpdatePaymentCustomerInput {
+  name?: string;
+  email?: string;
+  mobilePhone?: string;
+  cpfCnpj?: string;
+  externalReference?: string;
+}
+
 export interface PaymentCustomerResult {
   id: string;
 }
@@ -44,6 +52,7 @@ export interface SubscriptionPaymentResult {
 
 export interface PaymentGateway {
   createCustomer(input: CreatePaymentCustomerInput): Promise<PaymentCustomerResult>;
+  updateCustomer(customerId: string, input: UpdatePaymentCustomerInput): Promise<PaymentCustomerResult>;
   createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult>;
   getFirstSubscriptionPayment(subscriptionId: string): Promise<SubscriptionPaymentResult | null>;
   cancelSubscription(subscriptionId: string): Promise<void>;
