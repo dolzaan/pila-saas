@@ -58,7 +58,7 @@ export interface CreateRecurringCheckoutInput {
     name: string;
     email: string;
     cpfCnpj: string;
-    phoneNumber: string;
+    phone: string;
     address: string;
     addressNumber: string;
     complement?: string;
