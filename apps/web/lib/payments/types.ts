@@ -58,7 +58,12 @@ export interface CreateRecurringCheckoutInput {
     name: string;
     email: string;
     cpfCnpj: string;
-    phone?: string;
+    phoneNumber: string;
+    address: string;
+    addressNumber: string;
+    complement?: string;
+    postalCode: string;
+    province: string;
   };
   callback: {
     successUrl: string;
