@@ -20,7 +20,6 @@ export interface UpdatePaymentCustomerInput {
   email?: string;
   mobilePhone?: string;
   cpfCnpj?: string;
-  externalReference?: string;
 }
 
 export interface PaymentCustomerResult {
@@ -48,12 +47,37 @@ export interface SubscriptionPaymentResult {
   invoiceUrl?: string;
   bankSlipUrl?: string;
   dueDate?: string;
+  status?: string;
+}
+
+export interface CreateRecurringCheckoutInput {
+  value: number;
+  nextDueDate: string;
+  externalReference: string;
+  customerData: {
+    name: string;
+    email: string;
+    cpfCnpj: string;
+    phone?: string;
+  };
+  callback: {
+    successUrl: string;
+    cancelUrl: string;
+    expiredUrl: string;
+  };
+}
+
+export interface CheckoutResult {
+  id: string;
+  link: string;
+  status: string;
 }
 
 export interface PaymentGateway {
   createCustomer(input: CreatePaymentCustomerInput): Promise<PaymentCustomerResult>;
   updateCustomer(customerId: string, input: UpdatePaymentCustomerInput): Promise<PaymentCustomerResult>;
   createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult>;
+  createRecurringCheckout(input: CreateRecurringCheckoutInput): Promise<CheckoutResult>;
   getFirstSubscriptionPayment(subscriptionId: string): Promise<SubscriptionPaymentResult | null>;
   cancelSubscription(subscriptionId: string): Promise<void>;
 }
