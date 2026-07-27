@@ -6,8 +6,52 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { asaasGateway } from "@/lib/payments/asaas";
 
+function onlyDigits(value: string): string {
+  return value.replace(/\D/g, "");
+}
+
+function hasRepeatedDigits(value: string): boolean {
+  return /^(\d)\1+$/.test(value);
+}
+
+function isValidCpf(value: string): boolean {
+  const cpf = onlyDigits(value);
+  if (cpf.length !== 11 || hasRepeatedDigits(cpf)) return false;
+
+  const calculateDigit = (length: number) => {
+    let sum = 0;
+    for (let index = 0; index < length; index += 1) {
+      sum += Number(cpf[index]) * (length + 1 - index);
+    }
+    const remainder = (sum * 10) % 11;
+    return remainder === 10 ? 0 : remainder;
+  };
+
+  return calculateDigit(9) === Number(cpf[9]) && calculateDigit(10) === Number(cpf[10]);
+}
+
+function isValidCnpj(value: string): boolean {
+  const cnpj = onlyDigits(value);
+  if (cnpj.length !== 14 || hasRepeatedDigits(cnpj)) return false;
+
+  const calculateDigit = (baseLength: number) => {
+    const weights = baseLength === 12
+      ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]
+      : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    const sum = weights.reduce((total, weight, index) => total + Number(cnpj[index]) * weight, 0);
+    const remainder = sum % 11;
+    return remainder < 2 ? 0 : 11 - remainder;
+  };
+
+  return calculateDigit(12) === Number(cnpj[12]) && calculateDigit(13) === Number(cnpj[13]);
+}
+
 const RequestSchema = z.object({
   billingType: z.enum(["PIX", "BOLETO"]),
+  cpfCnpj: z.string().transform(onlyDigits).refine(
+    (value) => isValidCpf(value) || isValidCnpj(value),
+    "Informe um CPF ou CNPJ válido",
+  ),
 });
 
 type PaymentCustomerRow = { providerCustomerId: string };
@@ -32,7 +76,10 @@ export async function POST(request: Request) {
 
   const parsed = RequestSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Escolha Pix ou boleto" }, { status: 400 });
+    return NextResponse.json(
+      { error: parsed.error.issues[0]?.message || "Confira os dados de pagamento" },
+      { status: 400 },
+    );
   }
 
   const user = await prisma.user.findUnique({
@@ -59,13 +106,16 @@ export async function POST(request: Request) {
     `);
 
     let customerId = existingCustomers[0]?.providerCustomerId;
+    const customerData = {
+      name: user.name || user.email,
+      email: user.email,
+      mobilePhone: user.whatsappNumber || undefined,
+      cpfCnpj: parsed.data.cpfCnpj,
+      externalReference: user.id,
+    };
+
     if (!customerId) {
-      const customer = await asaasGateway.createCustomer({
-        name: user.name || user.email,
-        email: user.email,
-        mobilePhone: user.whatsappNumber || undefined,
-        externalReference: user.id,
-      });
+      const customer = await asaasGateway.createCustomer(customerData);
       customerId = customer.id;
 
       await prisma.$executeRaw(Prisma.sql`
@@ -76,6 +126,8 @@ export async function POST(request: Request) {
         ON CONFLICT ("userId", "provider")
         DO UPDATE SET "providerCustomerId" = EXCLUDED."providerCustomerId", "updatedAt" = NOW()
       `);
+    } else {
+      await asaasGateway.updateCustomer(customerId, customerData);
     }
 
     const now = new Date();
