@@ -6,6 +6,12 @@ import { asaasGateway } from "@/lib/payments/asaas";
 
 const RequestSchema = z.object({
   cpfCnpj: z.string().regex(/^\d{11}$|^\d{14}$/),
+  phoneNumber: z.string().regex(/^\d{10,11}$/),
+  address: z.string().trim().min(2).max(120),
+  addressNumber: z.string().trim().min(1).max(20),
+  complement: z.string().trim().max(60).optional(),
+  postalCode: z.string().regex(/^\d{8}$/),
+  province: z.string().trim().min(2).max(80),
 });
 
 function getMonthlyValue(): number {
@@ -34,7 +40,10 @@ export async function POST(request: Request) {
 
   const parsed = RequestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Informe um CPF ou CNPJ válido" }, { status: 400 });
+    return NextResponse.json(
+      { error: "Preencha CPF/CNPJ, telefone, endereço, número, CEP e bairro corretamente" },
+      { status: 400 },
+    );
   }
 
   const user = await prisma.user.findUnique({
@@ -43,7 +52,6 @@ export async function POST(request: Request) {
       id: true,
       name: true,
       email: true,
-      whatsappNumber: true,
       subscription: { select: { currentPeriodEnd: true } },
     },
   });
@@ -68,7 +76,12 @@ export async function POST(request: Request) {
         name: user.name || user.email,
         email: user.email,
         cpfCnpj: parsed.data.cpfCnpj,
-        phone: user.whatsappNumber || undefined,
+        phoneNumber: parsed.data.phoneNumber,
+        address: parsed.data.address,
+        addressNumber: parsed.data.addressNumber,
+        complement: parsed.data.complement || undefined,
+        postalCode: parsed.data.postalCode,
+        province: parsed.data.province,
       },
       callback: {
         successUrl: `${appUrl}/dashboard/settings?payment=success#subscription`,
