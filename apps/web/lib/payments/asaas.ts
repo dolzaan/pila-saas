@@ -1,5 +1,7 @@
 import type {
+  CheckoutResult,
   CreatePaymentCustomerInput,
+  CreateRecurringCheckoutInput,
   CreateSubscriptionInput,
   LocalSubscriptionStatus,
   PaymentCustomerResult,
@@ -10,6 +12,7 @@ import type {
 } from "./types";
 
 const DEFAULT_TIMEOUT_MS = 12_000;
+const CARD_TIMEOUT_MS = 65_000;
 
 interface AsaasErrorPayload {
   errors?: Array<{ code?: string; description?: string }>;
@@ -25,12 +28,19 @@ interface AsaasSubscriptionResponse {
   nextDueDate?: string;
 }
 
+interface AsaasCheckoutResponse {
+  id: string;
+  link: string;
+  status: string;
+}
+
 interface AsaasPaymentsResponse {
   data?: Array<{
     id: string;
     invoiceUrl?: string;
     bankSlipUrl?: string;
     dueDate?: string;
+    status?: string;
   }>;
 }
 
@@ -55,10 +65,14 @@ export function mapAsaasSubscriptionStatus(status: string): LocalSubscriptionSta
   }
 }
 
-async function asaasRequest<T>(path: string, init: RequestInit = {}): Promise<T> {
+async function asaasRequest<T>(
+  path: string,
+  init: RequestInit = {},
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<T> {
   const { apiKey, apiUrl } = getAsaasConfig();
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(`${apiUrl}${path}`, {
@@ -98,13 +112,10 @@ export class AsaasGateway implements PaymentGateway {
     customerId: string,
     input: UpdatePaymentCustomerInput,
   ): Promise<PaymentCustomerResult> {
-    return asaasRequest<AsaasCustomerResponse>(
-      `/customers/${encodeURIComponent(customerId)}`,
-      {
-        method: "PUT",
-        body: JSON.stringify(input),
-      },
-    );
+    return asaasRequest<AsaasCustomerResponse>(`/customers/${encodeURIComponent(customerId)}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    });
   }
 
   async createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult> {
@@ -126,6 +137,37 @@ export class AsaasGateway implements PaymentGateway {
       status: mapAsaasSubscriptionStatus(subscription.status),
       nextDueDate: subscription.nextDueDate,
     };
+  }
+
+  async createRecurringCheckout(input: CreateRecurringCheckoutInput): Promise<CheckoutResult> {
+    return asaasRequest<AsaasCheckoutResponse>(
+      "/checkouts",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          billingTypes: ["CREDIT_CARD"],
+          chargeTypes: ["RECURRENT"],
+          minutesToExpire: 60,
+          externalReference: input.externalReference,
+          callback: input.callback,
+          items: [
+            {
+              externalReference: "pila-pro-monthly",
+              name: "Pila Pro",
+              description: "Assinatura mensal do Pila Pro",
+              quantity: 1,
+              value: input.value,
+            },
+          ],
+          customerData: input.customerData,
+          subscription: {
+            cycle: "MONTHLY",
+            nextDueDate: input.nextDueDate,
+          },
+        }),
+      },
+      CARD_TIMEOUT_MS,
+    );
   }
 
   async getFirstSubscriptionPayment(subscriptionId: string): Promise<SubscriptionPaymentResult | null> {
