@@ -76,6 +76,7 @@ export interface CheckoutResult {
   id: string;
   link: string;
   status: string;
+  externalReference?: string | null;
 }
 
 export interface PaymentGateway {
@@ -83,6 +84,7 @@ export interface PaymentGateway {
   updateCustomer(customerId: string, input: UpdatePaymentCustomerInput): Promise<PaymentCustomerResult>;
   createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult>;
   createRecurringCheckout(input: CreateRecurringCheckoutInput): Promise<CheckoutResult>;
+  getCheckout(checkoutId: string): Promise<CheckoutResult>;
   getFirstSubscriptionPayment(subscriptionId: string): Promise<SubscriptionPaymentResult | null>;
   cancelSubscription(subscriptionId: string): Promise<void>;
 }

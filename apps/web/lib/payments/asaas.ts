@@ -32,6 +32,7 @@ interface AsaasCheckoutResponse {
   id: string;
   link: string;
   status: string;
+  externalReference?: string | null;
 }
 
 interface AsaasPaymentsResponse {
@@ -168,6 +169,10 @@ export class AsaasGateway implements PaymentGateway {
       },
       CARD_TIMEOUT_MS,
     );
+  }
+
+  async getCheckout(checkoutId: string): Promise<CheckoutResult> {
+    return asaasRequest<AsaasCheckoutResponse>(`/checkouts/${encodeURIComponent(checkoutId)}`);
   }
 
   async getFirstSubscriptionPayment(subscriptionId: string): Promise<SubscriptionPaymentResult | null> {

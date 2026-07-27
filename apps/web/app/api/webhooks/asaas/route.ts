@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { asaasGateway } from "@/lib/payments/asaas";
 import {
   getAsaasExternalReference,
   getAsaasSubscriptionId,
@@ -38,6 +39,11 @@ export async function POST(request: Request) {
     const providerSubscriptionId = getAsaasSubscriptionId(payload);
     let userId = getAsaasExternalReference(payload);
 
+    if (!userId && payload.checkout?.id) {
+      const checkout = await asaasGateway.getCheckout(payload.checkout.id);
+      userId = checkout.externalReference ?? null;
+    }
+
     if (!userId && providerSubscriptionId) {
       const rows = await prisma.$queryRaw<Array<{ userId: string }>>(Prisma.sql`
         SELECT "userId"
@@ -61,11 +67,13 @@ export async function POST(request: Request) {
       `);
     }
 
+    let updatedSubscriptions = 0;
     if (userId && status) {
-      await prisma.subscription.updateMany({
+      const result = await prisma.subscription.updateMany({
         where: { userId },
         data: { status },
       });
+      updatedSubscriptions = result.count;
     }
 
     await prisma.$executeRaw(Prisma.sql`
@@ -74,7 +82,12 @@ export async function POST(request: Request) {
       WHERE "id" = ${payload.id}
     `);
 
-    return NextResponse.json({ received: true, statusApplied: status, userResolved: Boolean(userId) });
+    return NextResponse.json({
+      received: true,
+      statusApplied: status,
+      userResolved: Boolean(userId),
+      updatedSubscriptions,
+    });
   } catch (error) {
     console.error("[webhooks.asaas]", error);
     return NextResponse.json({ received: true, processingError: true });
