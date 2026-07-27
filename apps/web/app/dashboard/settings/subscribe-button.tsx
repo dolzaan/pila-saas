@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 
 type BillingType = "PIX" | "BOLETO" | "CREDIT_CARD";
@@ -34,6 +35,7 @@ function formatPostalCode(value: string): string {
 }
 
 export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: string }) {
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [showOptions, setShowOptions] = useState(false);
   const [cpfCnpj, setCpfCnpj] = useState("");
@@ -44,9 +46,31 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
   const [postalCode, setPostalCode] = useState("");
   const [province, setProvince] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  function handleReconcile() {
+    setError(null);
+    setSuccess(null);
+    startTransition(async () => {
+      try {
+        const response = await fetch("/api/billing/asaas/reconcile", {
+          method: "POST",
+        });
+        const payload = (await response.json()) as { error?: string; reconciled?: boolean };
+        if (!response.ok || !payload.reconciled) {
+          throw new Error(payload.error || "Pagamento ainda não encontrado");
+        }
+        setSuccess("Pagamento encontrado. Seu plano Pro foi ativado.");
+        router.refresh();
+      } catch (caught) {
+        setError(caught instanceof Error ? caught.message : "Não foi possível sincronizar o pagamento");
+      }
+    });
+  }
 
   function handleSubscribe(billingType: BillingType) {
     setError(null);
+    setSuccess(null);
     startTransition(async () => {
       try {
         const isCard = billingType === "CREDIT_CARD";
@@ -87,9 +111,18 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
 
   if (!showOptions) {
     return (
-      <button type="button" onClick={() => setShowOptions(true)} className="app-button app-button--primary">
-        {label}
-      </button>
+      <div className="space-y-3">
+        <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={() => setShowOptions(true)} className="app-button app-button--primary">
+            {label}
+          </button>
+          <button type="button" onClick={handleReconcile} disabled={isPending} className="app-button app-button--secondary">
+            {isPending ? "Sincronizando..." : "Já paguei — sincronizar"}
+          </button>
+        </div>
+        {success ? <p role="status" className="text-sm text-emerald-300">{success}</p> : null}
+        {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
+      </div>
     );
   }
 
@@ -137,7 +170,11 @@ export function SubscribeButton({ label = "Assinar Plano Pro" }: { label?: strin
         <button type="button" onClick={() => handleSubscribe("BOLETO")} disabled={isPending || !documentValid} className="app-button">Pagar com boleto</button>
         <button type="button" onClick={() => setShowOptions(false)} disabled={isPending} className="text-sm text-gray-400 underline-offset-4 hover:underline">Voltar</button>
       </div>
+      <button type="button" onClick={handleReconcile} disabled={isPending} className="text-sm font-medium text-emerald-300 underline-offset-4 hover:underline">
+        Já concluí o pagamento — sincronizar agora
+      </button>
       <p className="text-xs text-gray-500">Telefone e endereço são exigidos apenas pelo checkout de cartão do Asaas.</p>
+      {success ? <p role="status" className="text-sm text-emerald-300">{success}</p> : null}
       {error ? <p role="alert" className="text-sm text-red-300">{error}</p> : null}
     </div>
   );
