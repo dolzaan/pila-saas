@@ -1,3 +1,4 @@
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
@@ -22,6 +23,11 @@ const billingDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
 });
 
+type AsaasSubscriptionRow = {
+  status: string;
+  nextDueDate: Date | null;
+};
+
 export default async function SettingsPage() {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
@@ -35,16 +41,30 @@ export default async function SettingsPage() {
 
   if (!user) redirect("/login");
 
+  const asaasRows = await prisma.$queryRaw<AsaasSubscriptionRow[]>(Prisma.sql`
+    SELECT "status", "nextDueDate"
+    FROM "payment_subscriptions"
+    WHERE "userId" = ${user.id} AND "provider" = 'ASAAS'
+    LIMIT 1
+  `).catch(() => [] as AsaasSubscriptionRow[]);
+  const asaasSubscription = asaasRows[0] ?? null;
+
   const subscription = getUserSubscriptionStatus(user.createdAt, user.subscription);
   const isPro = hasProAccess(subscription);
   const isTrial = subscription.status === "TRIALING";
   const hasStripeSubscription = isStripeSubscriptionId(
     user.subscription?.stripeSubscriptionId,
   );
+  const hasAsaasSubscription = Boolean(
+    asaasSubscription && !["CANCELED", "INACTIVE"].includes(asaasSubscription.status),
+  );
+  const provider = hasAsaasSubscription ? "ASAAS" : hasStripeSubscription ? "STRIPE" : null;
   const nextBillingDate =
-    !isTrial && hasStripeSubscription && user.subscription?.currentPeriodEnd
-      ? user.subscription.currentPeriodEnd
-      : null;
+    !isTrial && provider === "ASAAS"
+      ? asaasSubscription?.nextDueDate ?? null
+      : !isTrial && provider === "STRIPE"
+        ? user.subscription?.currentPeriodEnd ?? null
+        : null;
 
   return (
     <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
@@ -108,10 +128,10 @@ export default async function SettingsPage() {
                 </time>
               </div>
             ) : null}
-            {isTrial || !hasStripeSubscription ? (
+            {isTrial || !provider ? (
               <SubscribeButton label="Assinar por R$ 19,90/mês" />
             ) : (
-              <SubscriptionManager />
+              <SubscriptionManager provider={provider} />
             )}
           </div>
         ) : (
