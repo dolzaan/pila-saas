@@ -4,6 +4,7 @@ import type {
   LocalSubscriptionStatus,
   PaymentCustomerResult,
   PaymentGateway,
+  SubscriptionPaymentResult,
   SubscriptionResult,
 } from "./types";
 
@@ -23,14 +24,20 @@ interface AsaasSubscriptionResponse {
   nextDueDate?: string;
 }
 
+interface AsaasPaymentsResponse {
+  data?: Array<{
+    id: string;
+    invoiceUrl?: string;
+    bankSlipUrl?: string;
+    dueDate?: string;
+  }>;
+}
+
 function getAsaasConfig() {
   const apiKey = process.env.ASAAS_API_KEY;
   const apiUrl = process.env.ASAAS_API_URL ?? "https://api-sandbox.asaas.com/v3";
 
-  if (!apiKey) {
-    throw new Error("ASAAS_API_KEY não configurada");
-  }
-
+  if (!apiKey) throw new Error("ASAAS_API_KEY não configurada");
   return { apiKey, apiUrl: apiUrl.replace(/\/$/, "") };
 }
 
@@ -105,6 +112,12 @@ export class AsaasGateway implements PaymentGateway {
       status: mapAsaasSubscriptionStatus(subscription.status),
       nextDueDate: subscription.nextDueDate,
     };
+  }
+
+  async getFirstSubscriptionPayment(subscriptionId: string): Promise<SubscriptionPaymentResult | null> {
+    const query = new URLSearchParams({ subscription: subscriptionId, limit: "1", offset: "0" });
+    const response = await asaasRequest<AsaasPaymentsResponse>(`/payments?${query.toString()}`);
+    return response.data?.[0] ?? null;
   }
 
   async cancelSubscription(subscriptionId: string): Promise<void> {

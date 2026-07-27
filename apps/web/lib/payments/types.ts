@@ -35,8 +35,16 @@ export interface SubscriptionResult {
   nextDueDate?: string;
 }
 
+export interface SubscriptionPaymentResult {
+  id: string;
+  invoiceUrl?: string;
+  bankSlipUrl?: string;
+  dueDate?: string;
+}
+
 export interface PaymentGateway {
   createCustomer(input: CreatePaymentCustomerInput): Promise<PaymentCustomerResult>;
   createSubscription(input: CreateSubscriptionInput): Promise<SubscriptionResult>;
+  getFirstSubscriptionPayment(subscriptionId: string): Promise<SubscriptionPaymentResult | null>;
   cancelSubscription(subscriptionId: string): Promise<void>;
 }

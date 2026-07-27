@@ -7,12 +7,10 @@ import { prisma } from "@/lib/prisma";
 import { asaasGateway } from "@/lib/payments/asaas";
 
 const RequestSchema = z.object({
-  billingType: z.enum(["CREDIT_CARD", "PIX", "BOLETO"]).default("CREDIT_CARD"),
+  billingType: z.enum(["PIX", "BOLETO"]),
 });
 
-type PaymentCustomerRow = {
-  providerCustomerId: string;
-};
+type PaymentCustomerRow = { providerCustomerId: string };
 
 function getMonthlyValue(): number {
   const value = Number(process.env.ASAAS_PRO_MONTHLY_VALUE);
@@ -34,7 +32,7 @@ export async function POST(request: Request) {
 
   const parsed = RequestSchema.safeParse(await request.json().catch(() => ({})));
   if (!parsed.success) {
-    return NextResponse.json({ error: "Forma de pagamento inválida" }, { status: 400 });
+    return NextResponse.json({ error: "Escolha Pix ou boleto" }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({
@@ -110,10 +108,15 @@ export async function POST(request: Request) {
         "updatedAt" = NOW()
     `);
 
+    const payment = await asaasGateway.getFirstSubscriptionPayment(subscription.id);
+    const paymentUrl = payment?.invoiceUrl ?? payment?.bankSlipUrl ?? null;
+
     return NextResponse.json({
       subscriptionId: subscription.id,
       status: subscription.status,
       nextDueDate: subscription.nextDueDate,
+      paymentUrl,
+      billingType: parsed.data.billingType,
     });
   } catch (error) {
     console.error("[billing.asaas.subscription]", error);
