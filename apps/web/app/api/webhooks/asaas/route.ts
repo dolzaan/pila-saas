@@ -38,10 +38,12 @@ export async function POST(request: Request) {
     const status = mapAsaasPaymentEvent(payload.event);
     const providerSubscriptionId = getAsaasSubscriptionId(payload);
     let userId = getAsaasExternalReference(payload);
+    let checkoutExternalReference: string | null = null;
 
     if (!userId && payload.checkout?.id) {
       const checkout = await asaasGateway.getCheckout(payload.checkout.id);
-      userId = checkout.externalReference ?? null;
+      checkoutExternalReference = checkout.externalReference ?? null;
+      userId = checkoutExternalReference;
     }
 
     if (!userId && providerSubscriptionId) {
@@ -68,12 +70,41 @@ export async function POST(request: Request) {
     }
 
     let updatedSubscriptions = 0;
+    let createdSubscription = false;
+
     if (userId && status) {
-      const result = await prisma.subscription.updateMany({
+      const existingSubscription = await prisma.subscription.findUnique({
         where: { userId },
-        data: { status },
+        select: { id: true },
       });
-      updatedSubscriptions = result.count;
+
+      if (existingSubscription) {
+        await prisma.subscription.update({
+          where: { userId },
+          data: {
+            status,
+            plan: status === "ACTIVE" ? "pro" : undefined,
+          },
+        });
+        updatedSubscriptions = 1;
+      } else if (status === "ACTIVE") {
+        const asaasReference =
+          providerSubscriptionId ?? payload.checkout?.id ?? checkoutExternalReference ?? payload.id;
+
+        await prisma.subscription.create({
+          data: {
+            userId,
+            stripeSubscriptionId: `asaas:${asaasReference}`,
+            status: "ACTIVE",
+            plan: "pro",
+            currentPeriodEnd: payload.subscription?.nextDueDate
+              ? new Date(payload.subscription.nextDueDate)
+              : null,
+          },
+        });
+        updatedSubscriptions = 1;
+        createdSubscription = true;
+      }
     }
 
     await prisma.$executeRaw(Prisma.sql`
@@ -87,6 +118,7 @@ export async function POST(request: Request) {
       statusApplied: status,
       userResolved: Boolean(userId),
       updatedSubscriptions,
+      createdSubscription,
     });
   } catch (error) {
     console.error("[webhooks.asaas]", error);
