@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         name: user.name || user.email,
         email: user.email,
         cpfCnpj: parsed.data.cpfCnpj,
-        phoneNumber: parsed.data.phoneNumber,
+        phone: parsed.data.phoneNumber,
         address: parsed.data.address,
         addressNumber: parsed.data.addressNumber,
         complement: parsed.data.complement || undefined,
