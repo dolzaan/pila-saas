@@ -22,9 +22,12 @@ describe("mapAsaasPaymentEvent", () => {
   it.each([
     ["PAYMENT_CONFIRMED", "ACTIVE"],
     ["PAYMENT_RECEIVED", "ACTIVE"],
+    ["CHECKOUT_PAID", "ACTIVE"],
     ["PAYMENT_OVERDUE", "PAST_DUE"],
     ["PAYMENT_CREDIT_CARD_CAPTURE_REFUSED", "PAST_DUE"],
     ["PAYMENT_REFUNDED", "INACTIVE"],
+    ["CHECKOUT_CANCELED", "INACTIVE"],
+    ["CHECKOUT_EXPIRED", "INACTIVE"],
     ["SUBSCRIPTION_DELETED", "CANCELED"],
   ] as const)("converte %s para %s", (event, localStatus) => {
     expect(mapAsaasPaymentEvent(event)).toBe(localStatus);
@@ -59,5 +62,20 @@ describe("helpers do webhook", () => {
 
     expect(getAsaasExternalReference(payload)).toBe("user_1");
     expect(getAsaasSubscriptionId(payload)).toBe("sub_1");
+  });
+
+  it("extrai o usuário de um checkout pago", () => {
+    const payload = {
+      id: "evt_checkout_1",
+      event: "CHECKOUT_PAID",
+      checkout: {
+        id: "checkout_1",
+        status: "PAID",
+        externalReference: "user_2",
+      },
+    };
+
+    expect(getAsaasExternalReference(payload)).toBe("user_2");
+    expect(getAsaasSubscriptionId(payload)).toBeNull();
   });
 });

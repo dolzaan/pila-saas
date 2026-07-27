@@ -22,18 +22,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
-  const inserted = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
+  await prisma.$executeRaw(Prisma.sql`
     INSERT INTO "payment_webhook_events"
       ("id", "provider", "eventType", "payload", "receivedAt")
     VALUES
       (${payload.id}, 'ASAAS', ${payload.event}, ${JSON.stringify(payload)}::jsonb, NOW())
-    ON CONFLICT ("id") DO NOTHING
-    RETURNING "id"
+    ON CONFLICT ("id") DO UPDATE SET
+      "eventType" = EXCLUDED."eventType",
+      "payload" = EXCLUDED."payload",
+      "receivedAt" = NOW()
   `);
-
-  if (inserted.length === 0) {
-    return NextResponse.json({ received: true, duplicate: true });
-  }
 
   try {
     const status = mapAsaasPaymentEvent(payload.event);
@@ -76,7 +74,7 @@ export async function POST(request: Request) {
       WHERE "id" = ${payload.id}
     `);
 
-    return NextResponse.json({ received: true });
+    return NextResponse.json({ received: true, statusApplied: status, userResolved: Boolean(userId) });
   } catch (error) {
     console.error("[webhooks.asaas]", error);
     return NextResponse.json({ received: true, processingError: true });
