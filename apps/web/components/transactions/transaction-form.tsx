@@ -24,6 +24,8 @@ type TransactionFormProps = {
   financialAccounts: FinancialAccount[];
   openOnMount?: boolean;
   onboardingMode?: boolean;
+  defaultOccurredAt?: string;
+  viewingPastMonth?: boolean;
   transactionToEdit?: {
     id: string;
     amount: number;
@@ -40,6 +42,8 @@ export function TransactionForm({
   financialAccounts,
   openOnMount = false,
   onboardingMode = false,
+  defaultOccurredAt,
+  viewingPastMonth = false,
   transactionToEdit,
 }: TransactionFormProps) {
   const router = useRouter();
@@ -146,6 +150,12 @@ export function TransactionForm({
               </div>
             )}
 
+            {viewingPastMonth && !transactionToEdit && (
+              <div className="rounded-xl border border-amber-400/20 bg-amber-400/[0.07] p-3 text-sm text-amber-100">
+                Você está adicionando uma transação em um mês anterior. Confira a data antes de salvar.
+              </div>
+            )}
+
             <div className="flex flex-col items-center justify-center py-2">
               <label htmlFor="amount" className="text-xs font-medium text-gray-400 mb-1">Valor da transação</label>
               <div className="flex items-center justify-center">
@@ -218,7 +228,7 @@ export function TransactionForm({
                     defaultValue={
                       transactionToEdit 
                         ? new Date(transactionToEdit.occurredAt).toISOString().split("T")[0]
-                        : new Date().toISOString().split("T")[0]
+                        : defaultOccurredAt || new Date().toISOString().split("T")[0]
                     }
                     className="w-full bg-transparent border-b border-gray-700 py-2 text-sm text-gray-100 focus:outline-none focus:border-white transition-colors [color-scheme:dark] cursor-pointer"
                   />
