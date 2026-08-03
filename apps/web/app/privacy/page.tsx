@@ -14,7 +14,7 @@ export default function PrivacyPage() {
         </Link>
         
         <h1 className="text-4xl font-bold text-white mb-6">Política de Privacidade</h1>
-        <p className="text-sm text-gray-500">Última atualização: 15 de Julho de 2026</p>
+        <p className="text-sm text-gray-500">Última atualização: 3 de Agosto de 2026</p>
 
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold text-white mt-8">1. Coleta de Dados</h2>
@@ -39,7 +39,10 @@ export default function PrivacyPage() {
         <section className="space-y-4">
           <h2 className="text-2xl font-semibold text-white mt-8">3. Inteligência Artificial e Privacidade</h2>
           <p>
-            O Pila utiliza a API do Google Gemini para interpretar suas mensagens do WhatsApp. Os textos financeiros que você nos envia são repassados ao Google de forma temporária e anônima (sem associar seu nome real), exclusivamente para extrair os valores e categorias. <strong>Suas mensagens não são usadas para treinar modelos públicos de inteligência artificial.</strong>
+            O Pila utiliza a API do Google Gemini para interpretar suas mensagens do WhatsApp e Telegram. Os textos financeiros que você nos envia são repassados ao Google de forma temporária e anônima (sem associar seu nome real), exclusivamente para interpretar solicitações, extrair dados e responder às suas dúvidas. <strong>Suas mensagens não são usadas para treinar modelos públicos de inteligência artificial.</strong>
+          </p>
+          <p>
+            Para manter a continuidade da conversa entre WhatsApp e Telegram, o Pila pode guardar temporariamente as últimas 6 trocas de mensagens da sua conta por até 6 horas. Esse contexto é criptografado, tem dados sensíveis removidos antes do armazenamento e expira automaticamente. Se o serviço de memória estiver indisponível, o bot continua funcionando sem esse histórico.
           </p>
         </section>
 
