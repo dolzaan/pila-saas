@@ -769,6 +769,119 @@ img, svg { display: block; max-width: 100%; }
   font-weight: 650;
 }
 
+/* Shared monthly navigation for financial screens */
+.month-navigator {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.6rem;
+}
+
+.month-navigator__controls,
+.month-navigator__picker,
+.month-navigator__shortcuts {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.month-navigator__controls {
+  padding: 0.3rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.month-navigator__arrow {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  color: var(--color-text-muted);
+  transition: color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.month-navigator__arrow:hover {
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.09);
+}
+
+.month-navigator__arrow--disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.month-navigator__label {
+  display: flex;
+  min-width: 10.75rem;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  color: var(--color-text);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.month-navigator__input {
+  min-height: 40px;
+  padding: 0.45rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+  background: rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+  font-size: 0.78rem;
+}
+
+.month-navigator__submit,
+.month-navigator__shortcut {
+  min-height: 36px;
+  padding: 0.45rem 0.7rem;
+  border-radius: var(--radius-sm);
+  color: var(--color-mint);
+  font-size: 0.76rem;
+  font-weight: 750;
+}
+
+.month-navigator__submit {
+  border: 1px solid rgba(53, 230, 161, 0.24);
+  background: rgba(53, 230, 161, 0.08);
+}
+
+.month-navigator__submit:hover,
+.month-navigator__shortcut:hover {
+  color: var(--color-mint-hover);
+  background: rgba(53, 230, 161, 0.1);
+}
+
+.month-navigator a:focus-visible,
+.month-navigator button:focus-visible,
+.month-navigator input:focus-visible {
+  outline: 2px solid var(--color-mint);
+  outline-offset: 2px;
+}
+
+.month-navigator--mint .month-navigator__controls,
+.month-navigator--mint .month-navigator__input {
+  border-color: rgba(4, 18, 13, 0.18);
+  background: var(--color-bg);
+}
+
+.month-navigator--mint .month-navigator__arrow,
+.month-navigator--mint .month-navigator__label,
+.month-navigator--mint .month-navigator__input {
+  color: var(--color-text);
+}
+
+.month-navigator--mint .month-navigator__submit,
+.month-navigator--mint .month-navigator__shortcut {
+  border-color: rgba(4, 18, 13, 0.2);
+  color: var(--color-ink);
+  background: rgba(4, 18, 13, 0.08);
+}
+
 /* Stable button primitives for the authenticated area */
 .app-button,
 .btn-secondary {
@@ -1383,6 +1496,14 @@ img, svg { display: block; max-width: 100%; }
   .dashboard-loading-stats { grid-template-columns: 1fr 1fr; }
   .dashboard-loading-content { grid-template-columns: 1fr; }
   .dashboard-hero { align-items: flex-start; gap: 1rem; }
+  .month-navigator,
+  .month-navigator__picker,
+  .month-navigator__shortcuts {
+    width: 100%;
+    justify-content: center;
+  }
+  .month-navigator__controls { width: 100%; justify-content: space-between; }
+  .month-navigator__label { flex: 1; min-width: 0; }
   .whatsapp-cta { flex-direction: column; text-align: center; }
   .auth-card { padding: 1.75rem; }
 }

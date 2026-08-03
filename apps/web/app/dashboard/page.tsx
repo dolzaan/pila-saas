@@ -3,10 +3,12 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { OverviewChart } from "@/components/dashboard/overview-chart";
+import { MonthNavigator } from "@/components/dashboard/month-navigator";
 import Link from "next/link";
 import { Wallet, TrendingDown, TrendingUp, Activity, Search, MessageCircle, CheckCircle2, ArrowRight, AlertTriangle, Send } from "lucide-react";
 import { getPilaWhatsappUrl, PILA_WHATSAPP_DISPLAY, PILA_WHATSAPP_NUMBER } from "@/lib/whatsapp-contact";
 import { getTelegramBotUsername } from "@/lib/telegram";
+import { resolveMonthPeriod } from "@/lib/month-period";
 
 export const metadata: Metadata = {
   title: "Dashboard — Pila",
@@ -39,13 +41,19 @@ async function isWhatsappBotConnected() {
   }
 }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ month?: string }>;
+}) {
   const session = await auth();
   if (!session?.user?.id) redirect("/login");
+  const query = await searchParams;
+  const period = resolveMonthPeriod(query.month);
 
   const firstName = session.user.name?.split(" ")[0] ?? "Usuário";
 
-  const [user, whatsappBotConnected] = await Promise.all([
+  const [user, whatsappBotConnected, currentMonthTransactions, previousMonthExpenses] = await Promise.all([
     prisma.user.findUnique({
       where: { id: session.user.id },
       select: {
@@ -59,6 +67,22 @@ export default async function DashboardPage() {
       },
     }),
     isWhatsappBotConnected(),
+    prisma.transaction.findMany({
+      where: {
+        userId: session.user.id,
+        occurredAt: { gte: period.start, lt: period.end },
+      },
+      include: { category: true },
+      orderBy: { occurredAt: "desc" },
+    }),
+    prisma.transaction.aggregate({
+      where: {
+        userId: session.user.id,
+        kind: "EXPENSE",
+        occurredAt: { gte: period.previousStart, lt: period.previousEnd },
+      },
+      _sum: { amount: true },
+    }),
   ]);
 
   const userWhatsappLinked = Boolean(user?.whatsappVerifiedAt && user?.whatsappNumber);
@@ -68,19 +92,6 @@ export default async function DashboardPage() {
   const telegramBotUrl = telegramBotUsername
     ? `https://t.me/${telegramBotUsername}`
     : null;
-
-  const now = new Date();
-  const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
-  const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
-
-  const currentMonthTransactions = await prisma.transaction.findMany({
-    where: {
-      userId: session.user.id,
-      occurredAt: { gte: firstDay, lte: lastDay },
-    },
-    include: { category: true },
-    orderBy: { occurredAt: "desc" },
-  });
 
   let totalIncome = 0;
   let totalExpense = 0;
@@ -98,6 +109,17 @@ export default async function DashboardPage() {
   }
 
   const balance = totalIncome - totalExpense;
+  const previousExpense = previousMonthExpenses._sum.amount?.toNumber() || 0;
+  const expenseChange = previousExpense > 0
+    ? ((totalExpense - previousExpense) / previousExpense) * 100
+    : null;
+  const expenseComparison = expenseChange === null
+    ? totalExpense > 0
+      ? "Sem gastos no mês anterior para comparar"
+      : "Sem gastos neste período"
+    : expenseChange === 0
+      ? "Mesmo valor do mês anterior"
+      : `${Math.abs(expenseChange).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% ${expenseChange > 0 ? "a mais" : "a menos"} que no mês anterior`;
   const chartData = Object.entries(expensesByCategory)
     .map(([name, total]) => ({ name, total }))
     .sort((a, b) => b.total - a.total);
@@ -113,11 +135,13 @@ export default async function DashboardPage() {
           <h1 className="dashboard-greeting">Olá, {firstName}! 👋</h1>
           <p className="dashboard-subtitle">Aqui está o resumo das suas finanças.</p>
         </div>
-        <div className="dashboard-period">
-          <span className="period-badge">
-            {now.toLocaleString("pt-BR", { month: "long", year: "numeric" })}
-          </span>
-        </div>
+        <MonthNavigator
+          pathname="/dashboard"
+          selectedMonth={period.key}
+          label={period.label}
+          isCurrent={period.isCurrent}
+          tone="mint"
+        />
       </div>
 
       {!whatsappBotConnected && (
@@ -229,22 +253,22 @@ export default async function DashboardPage() {
         <div className="stat-card stat-card--balance">
           <div className="stat-card-header"><span className="stat-label">Saldo do mês</span><Wallet className="w-6 h-6 text-emerald-400" /></div>
           <div className="stat-value">{formatCurrency(balance)}</div>
-          <div className="stat-footer">Balanço de Receitas - Despesas</div>
+          <div className="stat-footer">Receitas menos despesas em {period.label.toLowerCase()}</div>
         </div>
         <div className="stat-card stat-card--expense">
           <div className="stat-card-header"><span className="stat-label">Gastos</span><TrendingDown className="w-6 h-6 text-red-400" /></div>
           <div className="stat-value text-red-400">{formatCurrency(totalExpense)}</div>
-          <div className="stat-footer">Este mês</div>
+          <div className="stat-footer">{expenseComparison}</div>
         </div>
         <div className="stat-card stat-card--income">
           <div className="stat-card-header"><span className="stat-label">Receitas</span><TrendingUp className="w-6 h-6 text-emerald-400" /></div>
           <div className="stat-value text-emerald-400">{formatCurrency(totalIncome)}</div>
-          <div className="stat-footer">Este mês</div>
+          <div className="stat-footer">Em {period.label.toLowerCase()}</div>
         </div>
         <div className="stat-card stat-card--transactions">
           <div className="stat-card-header"><span className="stat-label">Transações</span><Activity className="w-6 h-6 text-indigo-400" /></div>
           <div className="stat-value">{currentMonthTransactions.length}</div>
-          <div className="stat-footer">Neste mês</div>
+          <div className="stat-footer">Em {period.label.toLowerCase()}</div>
         </div>
       </div>
 
@@ -257,7 +281,7 @@ export default async function DashboardPage() {
           <div>
             <h2 className="section-title">Transações Recentes</h2>
             {currentMonthTransactions.length === 0 ? (
-              <div className="empty-state py-8"><Search className="w-8 h-8 text-gray-500 mb-2" /><p className="text-sm">Nenhuma transação ainda.</p></div>
+              <div className="empty-state py-8"><Search className="w-8 h-8 text-gray-500 mb-2" /><p className="text-sm">Você ainda não possui lançamentos em {period.label.toLowerCase()}.</p></div>
             ) : (
               <div className="space-y-4 mt-4">
                 {currentMonthTransactions.slice(0, 5).map((tx) => (
@@ -266,7 +290,7 @@ export default async function DashboardPage() {
                       <div className="text-2xl opacity-80">{tx.category?.icon || "💵"}</div>
                       <div>
                         <div className="text-gray-200 text-sm font-medium">{tx.description || tx.category?.name || "Sem descrição"}</div>
-                        <div className="text-gray-500 text-xs">{tx.occurredAt.toLocaleDateString("pt-BR")}</div>
+                        <div className="text-gray-500 text-xs">{tx.occurredAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</div>
                       </div>
                     </div>
                     <div className={`text-sm font-medium ${tx.kind === "INCOME" ? "text-emerald-400" : "text-gray-200"}`}>
@@ -278,7 +302,7 @@ export default async function DashboardPage() {
             )}
           </div>
           <div className="mt-6 pt-4 border-t border-gray-800">
-            <Link href="/dashboard/transactions" className="text-emerald-500 hover:text-emerald-400 text-sm font-medium transition-colors w-full inline-block text-center">
+            <Link href={`/dashboard/transactions?month=${period.key}`} className="text-emerald-500 hover:text-emerald-400 text-sm font-medium transition-colors w-full inline-block text-center">
               Ver todas as transações →
             </Link>
           </div>
