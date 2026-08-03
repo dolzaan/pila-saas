@@ -40,6 +40,10 @@ import {
   parseCardPaymentCommand,
   type CardCycle,
 } from "@/lib/credit-card";
+import {
+  getConversationMemory,
+  rememberConversationExchange,
+} from "@/lib/conversation-memory";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -567,6 +571,21 @@ ${budgetLines.length > 0 ? budgetLines.join("\n") : "Nenhum orçamento configura
 ${contextLines.slice(0, 20).join("\n")}
     `.trim();
 
+    // A memória é vinculada à conta, não ao canal. Assim, WhatsApp e Telegram
+    // compartilham uma continuidade curta sem transformar o histórico em dado permanente.
+    const conversationMemory = await getConversationMemory(user.id);
+    const rememberReply = (replyMessage: string) =>
+      rememberConversationExchange(
+        user.id,
+        conversationMemory,
+        text,
+        replyMessage,
+      );
+    const sendReplyWithMemory = async (replyMessage: string) => {
+      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await rememberReply(replyMessage);
+    };
+
     // 6. Pagamentos de fatura são identificados de forma determinística antes da IA.
     const paymentCommand = parseCardPaymentCommand(text);
     if (paymentCommand.matched) {
@@ -578,14 +597,14 @@ ${contextLines.slice(0, 20).join("\n")}
 
       if (resolution.status !== "MATCHED") {
         const replyMessage = buildAccountClarificationMessage(resolution.candidates);
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
       const card = resolution.account;
       if (card.closingDay === null || card.dueDay === null) {
         const replyMessage = `Cadastre o fechamento e o vencimento do cartão ${card.name} antes de registrar pagamentos de fatura.`;
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
@@ -601,14 +620,14 @@ ${contextLines.slice(0, 20).join("\n")}
 
       if (target.totals.remaining <= 0) {
         const replyMessage = `Não encontrei uma fatura pendente do cartão ${card.name} para registrar o pagamento.`;
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
       const paymentAmount = paymentCommand.amount || target.totals.remaining;
       if (paymentAmount > target.totals.remaining + 0.009) {
         const replyMessage = `O valor informado é maior que o saldo estimado da fatura do cartão ${card.name}, que está em R$ ${target.totals.remaining.toFixed(2).replace(".", ",")}. Confira o valor e envie novamente.`;
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
@@ -630,12 +649,18 @@ ${contextLines.slice(0, 20).join("\n")}
         statementDate: target.cycle.statementDate,
         remaining,
       });
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, processed: true, replyMessage });
     }
 
     // 6.1 Processar via IA com Contexto e possível Mídia (Áudio, Imagem, PDF)
-    const aiResult = await parseFinancialMessage(text, userContext, mediaBase64, mediaMimeType);
+    const aiResult = await parseFinancialMessage(
+      text,
+      userContext,
+      mediaBase64,
+      mediaMimeType,
+      conversationMemory,
+    );
 
     // 6.2 Consultas de cartão são respondidas com dados determinísticos do banco.
     if (aiResult.isCardQuery && aiResult.cardQuery) {
@@ -647,7 +672,7 @@ ${contextLines.slice(0, 20).join("\n")}
 
       if (resolution.status !== "MATCHED") {
         const replyMessage = buildAccountClarificationMessage(resolution.candidates);
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
@@ -672,7 +697,7 @@ ${contextLines.slice(0, 20).join("\n")}
         invoicePaid: invoice.invoicePaid,
         outstandingBalance,
       });
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
@@ -681,7 +706,7 @@ ${contextLines.slice(0, 20).join("\n")}
         || buildAccountClarificationMessage(
           financialAccounts.filter((account) => account.type === "CREDIT_CARD"),
         );
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
@@ -699,7 +724,7 @@ ${contextLines.slice(0, 20).join("\n")}
       });
       if (!reminder) {
         const replyMessage = "Não encontrei uma conta pendente com essa descrição.";
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
@@ -709,7 +734,7 @@ ${contextLines.slice(0, 20).join("\n")}
           data: { isPaid: true, paidAt: new Date() },
         });
         const replyMessage = `✅ Marquei “${reminder.description}” como paga.`;
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
@@ -719,7 +744,7 @@ ${contextLines.slice(0, 20).join("\n")}
         data: { snoozedUntil, lastNotifiedAt: null },
       });
       const replyMessage = `Combinado! Vou lembrar você novamente em ${snoozedUntil.toLocaleDateString("pt-BR")}.`;
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
@@ -736,7 +761,7 @@ ${contextLines.slice(0, 20).join("\n")}
         });
       }
       const replyMessage = aiResult.replyMessage || "Lembrete anotado!";
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
@@ -781,18 +806,19 @@ ${contextLines.slice(0, 20).join("\n")}
             `${summary}\n\n⚠️ Não consegui anexar o gráfico agora, mas seu resumo está acima.`,
           );
         }
+        await rememberReply(summary);
         return NextResponse.json({ success: true, replyMessage: summary, mediaSent });
       }
 
       const emptyMessage = `Não encontrei movimentações para esse relatório em ${reportRequest.periodLabel}.\n\n${summary}`;
-      await sendWhatsAppMessage(remoteJid, emptyMessage);
+      await sendReplyWithMemory(emptyMessage);
       return NextResponse.json({ success: true, replyMessage: emptyMessage });
     }
 
     // 6.6 Tratamento de Não-Transações em geral
     if (!aiResult.isTransaction) {
       const replyMessage = aiResult.replyMessage || "Não entendi muito bem. Mande um gasto para eu registrar!";
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
@@ -810,7 +836,7 @@ ${contextLines.slice(0, 20).join("\n")}
       if (resolution.status !== "MATCHED") {
         const label = shouldResolveCreditCard ? "cartão" : "conta";
         const replyMessage = buildAccountClarificationMessage(resolution.candidates, label);
-        await sendWhatsAppMessage(remoteJid, replyMessage);
+        await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
@@ -820,7 +846,7 @@ ${contextLines.slice(0, 20).join("\n")}
     const installmentCount = aiResult.installments || 1;
     if (installmentCount > 1 && resolvedFinancialAccount?.type !== "CREDIT_CARD") {
       const replyMessage = "Consigo parcelar automaticamente apenas compras feitas em um cartão de crédito cadastrado. Informe qual cartão foi usado.";
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
@@ -830,7 +856,7 @@ ${contextLines.slice(0, 20).join("\n")}
       && (resolvedFinancialAccount.closingDay === null || resolvedFinancialAccount.dueDay === null)
     ) {
       const replyMessage = `Cadastre o fechamento e o vencimento do cartão ${resolvedFinancialAccount.name} para eu distribuir as parcelas nas faturas corretas.`;
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
 
@@ -919,7 +945,7 @@ ${contextLines.slice(0, 20).join("\n")}
       const first = plan[0];
       const last = plan[plan.length - 1];
       const replyMessage = `✅ Compra de R$ ${amount.toFixed(2).replace(".", ",")} registrada no ${resolvedFinancialAccount.name} em ${installmentCount} parcelas. A primeira, de R$ ${first.amount.toFixed(2).replace(".", ",")}, vence em ${first.dueDate.toLocaleDateString("pt-BR", { timeZone: "UTC" })}; a última vence em ${last.dueDate.toLocaleDateString("pt-BR", { timeZone: "UTC" })}.`;
-      await sendWhatsAppMessage(remoteJid, replyMessage);
+      await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, processed: true, replyMessage });
     }
 
@@ -958,7 +984,7 @@ ${contextLines.slice(0, 20).join("\n")}
       : "";
     const fallbackMessage = `✅ ${movementLabel} registrado: R$ ${Number(aiResult.amount).toFixed(2)} em ${aiResult.categoryName || "Sem categoria"}${accountSuffix}`;
     const replyMessage = aiResult.replyMessage || fallbackMessage;
-    await sendWhatsAppMessage(remoteJid, replyMessage);
+    await sendReplyWithMemory(replyMessage);
 
     return NextResponse.json({ success: true, processed: true, replyMessage });
   } catch (error: unknown) {
