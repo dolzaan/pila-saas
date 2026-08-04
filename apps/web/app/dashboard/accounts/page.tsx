@@ -77,7 +77,115 @@ function nextRechargeLabel(rechargeDay: number | null) {
   if (!rechargeDay) return null;
   const now = new Date();
   let target = new Date(now.getFullYear(), now.getMonth(), Math.min(rechargeDay, 28));
-  if (target < new Date(now.getFullYear-y�{h��춻�q�^uibold text-gray-100">Minhas contas</h2>
+  if (target < new Date(now.getFullYear(), now.getMonth(), now.getDate())) {
+    target = new Date(now.getFullYear(), now.getMonth() + 1, Math.min(rechargeDay, 28));
+  }
+  return target.toLocaleDateString("pt-BR", { day: "2-digit", month: "long" });
+}
+
+type AccountsPageProps = {
+  searchParams: Promise<{ cartoes?: string }>;
+};
+
+export default async function AccountsPage({ searchParams }: AccountsPageProps) {
+  const session = await auth();
+  if (!session?.user?.id) redirect("/login");
+
+  const query = await searchParams;
+  const selectedCardTab = query.cartoes === "beneficios" ? "beneficios" : "credito";
+  const month = currentMonthRange();
+  const [accounts, ledgerSummaries, monthlyBenefitTotals] = await Promise.all([
+    prisma.financialAccount.findMany({
+      where: { userId: session.user.id },
+      orderBy: [{ isArchived: "asc" }, { createdAt: "asc" }],
+    }),
+    getAccountLedgerSummaries(session.user.id),
+    prisma.transaction.groupBy({
+      by: ["financialAccountId", "kind"],
+      where: {
+        userId: session.user.id,
+        occurredAt: { gte: month.start, lt: month.end },
+        financialAccount: { type: "BENEFIT_CARD" },
+      },
+      _sum: { amount: true },
+    }),
+  ]);
+
+  const activeAccounts = accounts.filter((account) => !account.isArchived);
+  const regularAccounts = activeAccounts.filter(
+    (account) => account.type !== "CREDIT_CARD" && account.type !== "BENEFIT_CARD",
+  );
+  const creditCards = activeAccounts.filter((account) => account.type === "CREDIT_CARD");
+  const benefitCards = activeAccounts.filter((account) => account.type === "BENEFIT_CARD");
+  const displayedCards = selectedCardTab === "beneficios" ? benefitCards : creditCards;
+  const archivedAccounts = accounts.filter((account) => account.isArchived);
+  const transferableAccounts = regularAccounts.map((account) => ({ id: account.id, name: account.name }));
+
+  const cashBalance = regularAccounts.reduce(
+    (sum, account) => sum + (ledgerSummaries.get(account.id)?.balance || 0),
+    0,
+  );
+  const benefitBalance = benefitCards.reduce(
+    (sum, account) => sum + (ledgerSummaries.get(account.id)?.balance || 0),
+    0,
+  );
+  const cardOutstanding = creditCards.reduce(
+    (sum, account) => sum + (ledgerSummaries.get(account.id)?.outstandingBalance || 0),
+    0,
+  );
+  const benefitMonthByAccount = new Map<string, { income: number; expense: number }>();
+  for (const total of monthlyBenefitTotals) {
+    if (!total.financialAccountId) continue;
+    const current = benefitMonthByAccount.get(total.financialAccountId) || { income: 0, expense: 0 };
+    current[total.kind === "INCOME" ? "income" : "expense"] = Number(total._sum.amount || 0);
+    benefitMonthByAccount.set(total.financialAccountId, current);
+  }
+
+  return (
+    <div className="dashboard-page">
+      <div className="dashboard-header flex-col gap-4 sm:flex-row sm:items-center">
+        <div>
+          <h1 className="dashboard-greeting">Contas e cartões</h1>
+          <p className="dashboard-subtitle">
+            Acompanhe saldos, faturas, cartões-benefício e extratos.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <AccountTransferForm accounts={transferableAccounts} />
+          <FinancialAccountForm />
+        </div>
+      </div>
+
+      <div className="stats-grid">
+        <div className="stat-card stat-card--balance">
+          <div className="stat-card-header">
+            <span className="stat-label">Saldo nas contas</span>
+            <WalletCards className="h-6 w-6 text-emerald-400" />
+          </div>
+          <div className="stat-value">{formatCurrency(cashBalance)}</div>
+          <div className="stat-footer">Contas, dinheiro e investimentos</div>
+        </div>
+        <div className="stat-card stat-card--transactions">
+          <div className="stat-card-header">
+            <span className="stat-label">Saldo em benefícios</span>
+            <Utensils className="h-6 w-6 text-indigo-400" />
+          </div>
+          <div className="stat-value">{formatCurrency(benefitBalance)}</div>
+          <div className="stat-footer">Disponível para alimentação e outros benefícios</div>
+        </div>
+        <div className="stat-card stat-card--expense">
+          <div className="stat-card-header">
+            <span className="stat-label">Faturas pendentes</span>
+            <CreditCard className="h-6 w-6 text-red-400" />
+          </div>
+          <div className="stat-value text-red-300">{formatCurrency(cardOutstanding)}</div>
+          <div className="stat-footer">Compras menos pagamentos de fatura</div>
+        </div>
+      </div>
+
+      <section className="mb-8" aria-labelledby="active-accounts-title">
+        <div className="mb-4">
+          <h2 id="active-accounts-title" className="text-lg font-semibold text-gray-100">Minhas contas</h2>
           <p className="mt-1 text-sm text-gray-500">Transferências movimentam o saldo sem virar receita ou despesa.</p>
         </div>
 
