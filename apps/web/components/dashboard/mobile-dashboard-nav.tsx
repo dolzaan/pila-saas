@@ -19,6 +19,7 @@ import {
   type NavigationItemProps,
 } from "./dashboard-nav";
 import { PwaInstallButton } from "@/components/pwa-install-button";
+import { SupportButton } from "@/components/dashboard/support-button";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
@@ -331,6 +332,9 @@ export function MobileDashboardNav({
                   )}
                 </div>
                 <div className="mobile-sheet-account">
+                  <div className="[&_a]:w-full [&_a]:justify-center">
+                    <SupportButton />
+                  </div>
                   <div className="mobile-sheet-user">
                     <span className="sidebar-avatar" aria-hidden="true">
                       {userName?.charAt(0).toUpperCase() || "U"}
