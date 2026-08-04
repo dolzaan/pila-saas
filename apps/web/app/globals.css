@@ -1669,6 +1669,15 @@ img, svg { display: block; max-width: 100%; }
   }
   .month-navigator__controls { width: 100%; justify-content: space-between; }
   .month-navigator__label { flex: 1; min-width: 0; }
+  .month-navigator__picker {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(7.5rem, 0.9fr);
+  }
+  .month-navigator__input,
+  .month-navigator__submit {
+    width: 100%;
+    min-width: 0;
+  }
   .whatsapp-cta { flex-direction: column; text-align: center; }
   .auth-card { padding: 1.75rem; }
 }
@@ -1682,6 +1691,31 @@ img, svg { display: block; max-width: 100%; }
   .dashboard-loading-header { flex-direction: column; gap: 1.25rem; }
   .dashboard-loading-stats { grid-template-columns: 1fr; }
   .dashboard-greeting { font-size: 1.4rem; }
+
+  .dashboard-hero {
+    padding: 1.25rem;
+    border-radius: 1.5rem;
+  }
+
+  .month-navigator {
+    gap: 0.5rem;
+    padding: 0.3rem;
+  }
+
+  .month-navigator__picker {
+    grid-template-columns: minmax(0, 1fr) minmax(6.75rem, 0.82fr);
+    gap: 0.45rem;
+  }
+
+  .month-navigator__input,
+  .month-navigator__submit {
+    padding-inline: 0.65rem;
+  }
+
+  .stat-value {
+    font-size: clamp(1.75rem, 9vw, 2.35rem);
+    overflow-wrap: anywhere;
+  }
 
   .mobile-dashboard-title {
     max-width: 7rem;
