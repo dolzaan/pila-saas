@@ -270,7 +270,7 @@ export function DashboardShell({
           </div>
         </header>
 
-        <main className="min-h-screen px-4 pb-28 pt-[calc(4.5rem+env(safe-area-inset-top))] sm:px-6 md:px-8 md:pb-8 md:pt-7">
+        <main className="min-h-screen min-w-0 overflow-x-clip px-4 pb-[calc(7rem+env(safe-area-inset-bottom))] pt-[calc(4.5rem+env(safe-area-inset-top))] sm:px-6 md:px-8 md:pb-8 md:pt-7">
           {children}
         </main>
       </div>
