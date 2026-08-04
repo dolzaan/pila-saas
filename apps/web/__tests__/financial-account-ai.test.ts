@@ -33,6 +33,17 @@ const accounts: FinancialAccountForAi[] = [
     closingDay: null,
     dueDay: null,
   },
+  {
+    id: "benefit-food",
+    name: "Vale alimentação",
+    type: "BENEFIT_CARD",
+    creditLimit: null,
+    closingDay: null,
+    dueDay: null,
+    benefitType: "FOOD",
+    expectedRecharge: 700,
+    rechargeDay: 10,
+  },
 ];
 
 describe("financial account AI helpers", () => {
@@ -89,6 +100,8 @@ describe("financial account AI helpers", () => {
     expect(context).toContain("Fechamento: dia 8");
     expect(context).toContain("420,50");
     expect(context).not.toMatch(/\b\d{16}\b/);
+    expect(context).toContain("Tipo: cartão-benefício");
+    expect(context).toContain("Recarga mensal prevista");
   });
 
   it("builds deterministic replies for card queries", () => {

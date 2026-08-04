@@ -26,8 +26,17 @@ enum FinancialAccountType {
   SAVINGS
   CASH
   CREDIT_CARD
+  BENEFIT_CARD
   INVESTMENT
   OTHER
+}
+
+enum BenefitCardType {
+  FOOD
+  MEAL
+  MOBILITY
+  CULTURE
+  FLEXIBLE
 }
 
 enum SubscriptionStatus {
@@ -205,6 +214,10 @@ model FinancialAccount {
   creditLimit    Decimal?             @db.Decimal(12, 2)
   closingDay     Int?
   dueDay         Int?
+  benefitType    BenefitCardType?
+  expectedRecharge Decimal?           @db.Decimal(12, 2)
+  rechargeDay    Int?
+  balanceCarriesOver Boolean          @default(true)
   isArchived     Boolean              @default(false)
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt

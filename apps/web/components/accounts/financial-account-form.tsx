@@ -62,7 +62,7 @@ export function FinancialAccountForm() {
                 name="name"
                 required
                 maxLength={80}
-                placeholder="Ex: Nubank, Itaú ou Dinheiro"
+                placeholder={type === "BENEFIT_CARD" ? "Ex: Vale alimentação" : "Ex: Nubank, Itaú ou Dinheiro"}
                 className="form-input"
               />
               {state?.details?.name && (
@@ -85,6 +85,7 @@ export function FinancialAccountForm() {
                 <option value="SAVINGS">Poupança</option>
                 <option value="CASH">Dinheiro</option>
                 <option value="CREDIT_CARD">Cartão de crédito</option>
+                <option value="BENEFIT_CARD">Cartão-benefício</option>
                 <option value="INVESTMENT">Investimento</option>
                 <option value="OTHER">Outro</option>
               </select>
@@ -168,6 +169,82 @@ export function FinancialAccountForm() {
                 </div>
               </div>
             )}
+
+            {type === "BENEFIT_CARD" && (
+              <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/5 p-4">
+                <p className="mb-4 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-300">
+                  Dados do benefício
+                </p>
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label htmlFor="benefit-type" className="text-sm font-medium text-gray-300">
+                      Tipo de benefício
+                    </label>
+                    <select id="benefit-type" name="benefitType" required className="form-input">
+                      <option value="FOOD">Alimentação</option>
+                      <option value="MEAL">Refeição</option>
+                      <option value="MOBILITY">Mobilidade</option>
+                      <option value="CULTURE">Cultura</option>
+                      <option value="FLEXIBLE">Flexível</option>
+                    </select>
+                    {state?.details?.benefitType && (
+                      <p className="text-xs text-red-400">
+                        {state.details.benefitType._errors.join(", ")}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <label htmlFor="expected-recharge" className="text-sm font-medium text-gray-300">
+                        Recarga prevista
+                      </label>
+                      <input
+                        id="expected-recharge"
+                        name="expectedRecharge"
+                        type="number"
+                        min="0.01"
+                        step="0.01"
+                        placeholder="650,00"
+                        className="form-input"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label htmlFor="recharge-day" className="text-sm font-medium text-gray-300">
+                        Dia previsto
+                      </label>
+                      <input
+                        id="recharge-day"
+                        name="rechargeDay"
+                        type="number"
+                        min="1"
+                        max="31"
+                        placeholder="10"
+                        className="form-input"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    A previsão é só informativa. Você registra o valor real sempre que a recarga cair.
+                  </p>
+
+                  <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-white/5 bg-black/10 p-3">
+                    <input
+                      type="checkbox"
+                      name="balanceCarriesOver"
+                      defaultChecked
+                      className="mt-0.5 h-4 w-4 accent-emerald-400"
+                    />
+                    <span>
+                      <span className="block text-sm font-medium text-gray-300">Saldo acumula</span>
+                      <span className="mt-0.5 block text-xs text-gray-500">
+                        O valor que sobrar continua disponível no mês seguinte.
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-gray-800 bg-gray-900/50 p-5">
@@ -179,7 +256,7 @@ export function FinancialAccountForm() {
               Cancelar
             </button>
             <button type="submit" disabled={isPending} className="app-button app-button--primary">
-              {isPending ? "Salvando..." : "Salvar conta"}
+              {isPending ? "Salvando..." : type === "BENEFIT_CARD" ? "Salvar benefício" : "Salvar conta"}
             </button>
           </div>
         </form>
@@ -191,7 +268,7 @@ export function FinancialAccountForm() {
     <>
       <button onClick={() => setIsOpen(true)} className="app-button app-button--primary">
         <Plus className="h-4 w-4" />
-        Nova conta
+        Nova conta ou cartão
       </button>
       {isOpen && typeof document !== "undefined" && createPortal(modal, document.body)}
     </>

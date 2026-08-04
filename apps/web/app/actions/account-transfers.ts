@@ -76,9 +76,9 @@ export async function createAccountTransfer(_state: unknown, formData: FormData)
     return { error: "Uma das contas não existe ou está arquivada." };
   }
 
-  if (accounts.some((account) => account.type === "CREDIT_CARD")) {
+  if (accounts.some((account) => account.type === "CREDIT_CARD" || account.type === "BENEFIT_CARD")) {
     return {
-      error: "Cartões não participam de transferências. Use o pagamento de fatura.",
+      error: "Cartões não participam de transferências. Use pagamento de fatura ou recarga de benefício.",
     };
   }
 

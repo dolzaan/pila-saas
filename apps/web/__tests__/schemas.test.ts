@@ -162,6 +162,33 @@ describe("FinancialAccountSchema", () => {
       );
     }
   });
+
+  it("valida cartão-benefício com recarga flexível", () => {
+    expect(
+      FinancialAccountSchema.safeParse({
+        name: "Vale alimentação",
+        type: "BENEFIT_CARD",
+        initialBalance: 320,
+        benefitType: "FOOD",
+        expectedRecharge: 650,
+        rechargeDay: 10,
+        balanceCarriesOver: true,
+      }).success,
+    ).toBe(true);
+  });
+
+  it("rejeita cartão-benefício sem modalidade", () => {
+    const result = FinancialAccountSchema.safeParse({
+      name: "Meu vale",
+      type: "BENEFIT_CARD",
+      initialBalance: 0,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues.map((issue) => issue.path[0])).toContain("benefitType");
+    }
+  });
 });
 
 describe("BillReminderSchema", () => {

@@ -491,6 +491,9 @@ export async function POST(req: Request) {
           creditLimit: true,
           closingDay: true,
           dueDay: true,
+          benefitType: true,
+          expectedRecharge: true,
+          rechargeDay: true,
         },
         orderBy: { createdAt: "asc" },
       }),
@@ -513,6 +516,9 @@ export async function POST(req: Request) {
       creditLimit: account.creditLimit === null ? null : Number(account.creditLimit),
       closingDay: account.closingDay,
       dueDay: account.dueDay,
+      benefitType: account.benefitType,
+      expectedRecharge: account.expectedRecharge === null ? null : Number(account.expectedRecharge),
+      rechargeDay: account.rechargeDay,
     }));
     const expensesThisMonthByAccountId = new Map<string, number>();
     for (const item of expensesByAccount) {
