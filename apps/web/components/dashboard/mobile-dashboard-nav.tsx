@@ -22,6 +22,7 @@ import { PwaInstallButton } from "@/components/pwa-install-button";
 import { SupportButton } from "@/components/dashboard/support-button";
 import {
   type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
   useEffect,
   useRef,
@@ -92,7 +93,13 @@ export function MobileDashboardNav({
 }: MobileDashboardNavProps) {
   const pathname = usePathname();
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null);
+  const [dragOffset, setDragOffset] = useState<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const dragActiveRef = useRef(false);
+  const dragStartYRef = useRef(0);
+  const dragStartedAtRef = useRef(0);
+  const dragResetTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const currentItem = dashboardNavigationItems.find((item) =>
     isActiveRoute(pathname, item.href),
   );
@@ -126,7 +133,92 @@ export function MobileDashboardNav({
     };
   }, [openPanel]);
 
-  const closePanel = () => setOpenPanel(null);
+  useEffect(
+    () => () => {
+      if (dragResetTimerRef.current) {
+        clearTimeout(dragResetTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const closePanel = () => {
+    if (dragResetTimerRef.current) {
+      clearTimeout(dragResetTimerRef.current);
+      dragResetTimerRef.current = null;
+    }
+    dragActiveRef.current = false;
+    setOpenPanel(null);
+    setDragOffset(null);
+    setIsDragging(false);
+  };
+
+  function beginSheetDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!event.isPrimary || (event.pointerType === "mouse" && event.button !== 0)) {
+      return;
+    }
+
+    if (dragResetTimerRef.current) {
+      clearTimeout(dragResetTimerRef.current);
+      dragResetTimerRef.current = null;
+    }
+
+    dragStartYRef.current = event.clientY;
+    dragStartedAtRef.current = performance.now();
+    dragActiveRef.current = true;
+    setDragOffset(0);
+    setIsDragging(true);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function moveSheetDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragActiveRef.current) return;
+
+    const nextOffset = Math.max(0, event.clientY - dragStartYRef.current);
+    setDragOffset(nextOffset);
+  }
+
+  function finishSheetDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragActiveRef.current) return;
+
+    const offset = Math.max(0, event.clientY - dragStartYRef.current);
+    const elapsed = Math.max(performance.now() - dragStartedAtRef.current, 1);
+    const velocity = offset / elapsed;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    dragActiveRef.current = false;
+
+    if (offset >= 96 || (offset >= 36 && velocity >= 0.65)) {
+      closePanel();
+      return;
+    }
+
+    setIsDragging(false);
+    setDragOffset(0);
+    dragResetTimerRef.current = setTimeout(() => {
+      setDragOffset(null);
+      dragResetTimerRef.current = null;
+    }, 180);
+  }
+
+  function cancelSheetDrag(event: ReactPointerEvent<HTMLDivElement>) {
+    if (!dragActiveRef.current) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    dragActiveRef.current = false;
+    setIsDragging(false);
+    setDragOffset(0);
+    dragResetTimerRef.current = setTimeout(() => {
+      setDragOffset(null);
+      dragResetTimerRef.current = null;
+    }, 180);
+  }
 
   function keepFocusInside(event: ReactKeyboardEvent<HTMLElement>) {
     if (event.key !== "Tab") return;
@@ -250,27 +342,43 @@ export function MobileDashboardNav({
             aria-modal="true"
             aria-labelledby={`mobile-${openPanel}-title`}
             onKeyDown={keepFocusInside}
+            style={
+              dragOffset === null
+                ? undefined
+                : {
+                    transform: `translateY(${dragOffset}px)`,
+                    transition: isDragging ? "none" : "transform 180ms ease-out",
+                  }
+            }
           >
-            <div className="mobile-sheet-handle" aria-hidden="true" />
-            <header className="mobile-sheet-header">
-              <div>
-                <span className="dashboard-kicker text-emerald-400">
-                  {openPanel === "actions" ? "Acesso rápido" : "Navegação"}
-                </span>
-                <h2 id={`mobile-${openPanel}-title`}>
-                  {openPanel === "actions" ? "O que deseja adicionar?" : "Menu do Pila"}
-                </h2>
-              </div>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                className="mobile-sheet-close"
-                onClick={closePanel}
-                aria-label="Fechar"
-              >
-                <X className="h-5 w-5" aria-hidden="true" />
-              </button>
-            </header>
+            <div
+              className="mobile-sheet-drag-zone"
+              onPointerDown={beginSheetDrag}
+              onPointerMove={moveSheetDrag}
+              onPointerUp={finishSheetDrag}
+              onPointerCancel={cancelSheetDrag}
+            >
+              <div className="mobile-sheet-handle" aria-hidden="true" />
+              <header className="mobile-sheet-header">
+                <div>
+                  <span className="dashboard-kicker text-emerald-400">
+                    {openPanel === "actions" ? "Acesso rápido" : "Navegação"}
+                  </span>
+                  <h2 id={`mobile-${openPanel}-title`}>
+                    {openPanel === "actions" ? "O que deseja adicionar?" : "Menu do Pila"}
+                  </h2>
+                </div>
+                <button
+                  ref={closeButtonRef}
+                  type="button"
+                  className="mobile-sheet-close"
+                  onClick={closePanel}
+                  aria-label="Fechar"
+                >
+                  <X className="h-5 w-5" aria-hidden="true" />
+                </button>
+              </header>
+            </div>
 
             {openPanel === "actions" ? (
               <div className="mobile-quick-actions">
