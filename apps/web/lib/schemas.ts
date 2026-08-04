@@ -40,37 +40,53 @@ export const CategorySchema = z.object({
 export const FinancialAccountSchema = z
   .object({
     name: z.string().trim().min(2, "Nome muito curto").max(80, "Nome muito longo"),
-    type: z.enum(["CHECKING", "SAVINGS", "CASH", "CREDIT_CARD", "INVESTMENT", "OTHER"]),
+    type: z.enum(["CHECKING", "SAVINGS", "CASH", "CREDIT_CARD", "BENEFIT_CARD", "INVESTMENT", "OTHER"]),
     initialBalance: z.number().finite().min(-1_000_000_000).max(1_000_000_000),
     creditLimit: z.number().finite().positive("O limite deve ser positivo").max(1_000_000_000).optional(),
     closingDay: z.number().int().min(1).max(31).optional(),
     dueDay: z.number().int().min(1).max(31).optional(),
+    benefitType: z.enum(["FOOD", "MEAL", "MOBILITY", "CULTURE", "FLEXIBLE"]).optional(),
+    expectedRecharge: z.number().finite().positive("A previsão deve ser positiva").max(1_000_000_000).optional(),
+    rechargeDay: z.number().int().min(1).max(31).optional(),
+    balanceCarriesOver: z.boolean().default(true),
   })
   .superRefine((data, context) => {
-    if (data.type !== "CREDIT_CARD") return;
-
-    if (!data.creditLimit) {
+    if (data.type === "CREDIT_CARD" && !data.creditLimit) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["creditLimit"],
         message: "Informe o limite do cartão",
       });
     }
-    if (!data.closingDay) {
+    if (data.type === "CREDIT_CARD" && !data.closingDay) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["closingDay"],
         message: "Informe o dia de fechamento",
       });
     }
-    if (!data.dueDay) {
+    if (data.type === "CREDIT_CARD" && !data.dueDay) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["dueDay"],
         message: "Informe o dia de vencimento",
       });
     }
+
+    if (data.type === "BENEFIT_CARD" && !data.benefitType) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["benefitType"],
+        message: "Escolha o tipo de benefício",
+      });
+    }
   });
+
+export const BenefitRechargeSchema = z.object({
+  accountId: z.string().trim().min(1).max(191),
+  amount: z.number().finite().positive("Informe um valor positivo").max(1_000_000_000),
+  occurredAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida").optional(),
+});
 
 export const BillReminderSchema = z.object({
   description: z.string().trim().min(2, "Descrição muito curta").max(120, "Descrição muito longa"),

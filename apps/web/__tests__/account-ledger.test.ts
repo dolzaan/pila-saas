@@ -151,6 +151,30 @@ describe("calculateAccountLedgerSummaries", () => {
     expect(summaries.get("cash")?.balance).toBe(270);
   });
 
+  it("trata recargas e gastos de benefício como saldo, sem fatura", () => {
+    const summaries = calculateAccountLedgerSummaries({
+      accounts: [
+        {
+          id: "benefit",
+          type: "BENEFIT_CARD",
+          initialBalance: 120,
+          creditLimit: null,
+        },
+      ],
+      transactionTotals: [
+        { financialAccountId: "benefit", kind: "INCOME", amount: 700 },
+        { financialAccountId: "benefit", kind: "EXPENSE", amount: 245 },
+      ],
+      cardPayments: [],
+    });
+
+    expect(summaries.get("benefit")).toMatchObject({
+      balance: 575,
+      outstandingBalance: 0,
+      availableLimit: null,
+    });
+  });
+
   it("move saldo entre contas sem criar receita nem despesa", () => {
     const summaries = calculateAccountLedgerSummaries({
       accounts: [

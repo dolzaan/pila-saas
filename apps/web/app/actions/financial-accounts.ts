@@ -8,7 +8,7 @@ import {
   parseFinancialImport,
 } from "@/lib/financial-import";
 import { prisma } from "@/lib/prisma";
-import { FinancialAccountSchema } from "@/lib/schemas";
+import { BenefitRechargeSchema, FinancialAccountSchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
 import { matchTransactionRule } from "@/lib/transaction-rules";
 import { z } from "zod";
@@ -65,6 +65,10 @@ export async function createFinancialAccount(_state: unknown, formData: FormData
     creditLimit: type === "CREDIT_CARD" ? optionalNumber(formData.get("creditLimit")) : undefined,
     closingDay: type === "CREDIT_CARD" ? optionalNumber(formData.get("closingDay")) : undefined,
     dueDay: type === "CREDIT_CARD" ? optionalNumber(formData.get("dueDay")) : undefined,
+    benefitType: type === "BENEFIT_CARD" ? formData.get("benefitType")?.toString() : undefined,
+    expectedRecharge: type === "BENEFIT_CARD" ? optionalNumber(formData.get("expectedRecharge")) : undefined,
+    rechargeDay: type === "BENEFIT_CARD" ? optionalNumber(formData.get("rechargeDay")) : undefined,
+    balanceCarriesOver: type === "BENEFIT_CARD" ? formData.get("balanceCarriesOver") === "on" : true,
   });
 
   if (!parsed.success) {
@@ -90,6 +94,10 @@ export async function createFinancialAccount(_state: unknown, formData: FormData
         creditLimit: parsed.data.creditLimit,
         closingDay: parsed.data.closingDay,
         dueDay: parsed.data.dueDay,
+        benefitType: parsed.data.benefitType,
+        expectedRecharge: parsed.data.expectedRecharge,
+        rechargeDay: parsed.data.rechargeDay,
+        balanceCarriesOver: parsed.data.balanceCarriesOver,
       },
     });
     revalidateFinancialPages();
@@ -97,6 +105,50 @@ export async function createFinancialAccount(_state: unknown, formData: FormData
   } catch (error) {
     console.error("[createFinancialAccount]", error);
     return { error: "Não foi possível criar a conta." };
+  }
+}
+
+export async function registerBenefitRecharge(_state: unknown, formData: FormData) {
+  const session = await auth();
+  if (!session?.user?.id) return { error: "Não autorizado." };
+
+  const parsed = BenefitRechargeSchema.safeParse({
+    accountId: formData.get("accountId")?.toString(),
+    amount: optionalNumber(formData.get("amount")),
+    occurredAt: formData.get("occurredAt")?.toString() || undefined,
+  });
+  if (!parsed.success) return { error: "Revise o valor e a data da recarga." };
+
+  const account = await prisma.financialAccount.findFirst({
+    where: {
+      id: parsed.data.accountId,
+      userId: session.user.id,
+      type: "BENEFIT_CARD",
+      isArchived: false,
+    },
+    select: { id: true, name: true },
+  });
+  if (!account) return { error: "Cartão-benefício não encontrado." };
+
+  try {
+    await prisma.transaction.create({
+      data: {
+        userId: session.user.id,
+        financialAccountId: account.id,
+        amount: parsed.data.amount,
+        kind: "INCOME",
+        description: `Recarga de ${account.name}`,
+        occurredAt: parsed.data.occurredAt
+          ? new Date(`${parsed.data.occurredAt}T12:00:00.000Z`)
+          : new Date(),
+        source: "manual",
+      },
+    });
+    revalidateFinancialPages();
+    return { success: true };
+  } catch (error) {
+    console.error("[registerBenefitRecharge]", error);
+    return { error: "Não foi possível registrar a recarga." };
   }
 }
 

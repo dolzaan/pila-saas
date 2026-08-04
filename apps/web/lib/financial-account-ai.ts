@@ -3,6 +3,7 @@ export type FinancialAccountAiType =
   | "SAVINGS"
   | "CASH"
   | "CREDIT_CARD"
+  | "BENEFIT_CARD"
   | "INVESTMENT"
   | "OTHER";
 
@@ -13,6 +14,9 @@ export type FinancialAccountForAi = {
   creditLimit: number | null;
   closingDay: number | null;
   dueDay: number | null;
+  benefitType?: "FOOD" | "MEAL" | "MOBILITY" | "CULTURE" | "FLEXIBLE" | null;
+  expectedRecharge?: number | null;
+  rechargeDay?: number | null;
 };
 
 export type CardQuery =
@@ -153,6 +157,7 @@ function accountTypeLabel(type: FinancialAccountAiType) {
     SAVINGS: "poupança",
     CASH: "dinheiro",
     CREDIT_CARD: "cartão de crédito",
+    BENEFIT_CARD: "cartão-benefício",
     INVESTMENT: "investimento",
     OTHER: "outra conta",
   };
@@ -185,6 +190,26 @@ export function formatFinancialAccountsForAi(
           ? "Vencimento: não cadastrado"
           : `Vencimento: dia ${account.dueDay}`,
         `Compras registradas neste mês: ${formatMoney(expenseThisMonthByAccountId.get(account.id) || 0)}`,
+      );
+    }
+
+    if (account.type === "BENEFIT_CARD") {
+      const benefitLabels = {
+        FOOD: "alimentação",
+        MEAL: "refeição",
+        MOBILITY: "mobilidade",
+        CULTURE: "cultura",
+        FLEXIBLE: "flexível",
+      } as const;
+      details.push(
+        `Benefício: ${account.benefitType ? benefitLabels[account.benefitType] : "não informado"}`,
+        account.expectedRecharge == null
+          ? "Recarga prevista: não cadastrada"
+          : `Recarga mensal prevista: ${formatMoney(account.expectedRecharge)}`,
+        account.rechargeDay == null
+          ? "Dia previsto de recarga: não cadastrado"
+          : `Dia previsto de recarga: ${account.rechargeDay}`,
+        `Gasto registrado neste mês: ${formatMoney(expenseThisMonthByAccountId.get(account.id) || 0)}`,
       );
     }
 
