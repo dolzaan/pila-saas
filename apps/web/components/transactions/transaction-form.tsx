@@ -73,13 +73,13 @@ export function TransactionForm({
   const isExpense = selectedKind === "EXPENSE";
 
   const modalContent = (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-end justify-center p-0 sm:items-center sm:p-4">
       <div 
         className="absolute inset-0 bg-black/60 backdrop-blur-md transition-opacity" 
         onClick={() => setIsOpen(false)} 
       />
       
-      <div className="relative bg-[#0d1117] border border-gray-800 rounded-3xl w-[92vw] sm:w-[480px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh] animate-in fade-in zoom-in-95 duration-150">
+      <div className="relative flex max-h-[calc(100dvh-env(safe-area-inset-top))] w-full flex-col overflow-hidden rounded-t-3xl border border-gray-800 bg-[#0d1117] shadow-2xl animate-in fade-in zoom-in-95 duration-150 sm:max-h-[90dvh] sm:w-[480px] sm:rounded-3xl">
         
         <div className="px-5 sm:px-6 py-4 flex justify-between items-center border-b border-gray-800/50">
           <div>
