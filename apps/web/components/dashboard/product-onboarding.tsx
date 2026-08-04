@@ -230,7 +230,7 @@ export function ProductOnboarding({
         <button
           type="button"
           onClick={reopenGuide}
-          className="fixed right-14 top-[calc(.7rem+env(safe-area-inset-top))] z-[65] grid h-9 w-9 place-items-center rounded-xl border border-white/10 bg-[#111827] text-slate-400 shadow-lg md:hidden"
+          className="fixed bottom-[calc(5.5rem+env(safe-area-inset-bottom))] right-3 z-[65] grid h-11 w-11 place-items-center rounded-full border border-emerald-400/25 bg-[#111827]/95 text-emerald-300 shadow-2xl backdrop-blur-xl transition hover:border-emerald-300/50 hover:bg-emerald-400/10 md:hidden"
           aria-label="Abrir guia do Pila"
           title="Guia do Pila"
         >
