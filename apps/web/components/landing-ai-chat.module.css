@@ -149,7 +149,11 @@
 .disclaimer { padding: 0 14px 11px; color: #65758a; background: #111a28; font-size: 0.59rem; text-align: center; }
 
 @media (max-width: 768px) {
-  .accountChatRoot { bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .accountChatRoot {
+    z-index: 60;
+    right: 12px;
+    bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  }
   .accountChatRoot .panel {
     height: min(620px, calc(100dvh - 110px - env(safe-area-inset-bottom)));
   }
@@ -157,7 +161,10 @@
 
 @media (max-width: 560px) {
   .chatRoot { right: 14px; bottom: 14px; }
-  .accountChatRoot { bottom: calc(88px + env(safe-area-inset-bottom)); }
+  .accountChatRoot {
+    right: 12px;
+    bottom: calc(5.75rem + env(safe-area-inset-bottom));
+  }
   .launcherText { display: none; }
   .launcher { padding: 6px; }
   .panel { width: calc(100vw - 28px); height: min(620px, calc(100dvh - 28px)); }
