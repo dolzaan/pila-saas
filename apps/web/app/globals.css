@@ -1322,7 +1322,7 @@ img, svg { display: block; max-width: 100%; }
       1rem
       0.75rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: rgba(11, 15, 25, 0.94);
+    background: #0b0f19;
     box-shadow: 0 12px 34px rgba(0, 0, 0, 0.24);
     backdrop-filter: blur(18px);
     -webkit-backdrop-filter: blur(18px);
@@ -1348,6 +1348,22 @@ img, svg { display: block; max-width: 100%; }
     font-weight: 650;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .mobile-dashboard-context {
+    display: flex;
+    min-width: 0;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .mobile-dashboard-context .mobile-dashboard-title {
+    max-width: 7.5rem;
+  }
+
+  .dashboard-content-main {
+    padding-top: calc(5rem + env(safe-area-inset-top));
   }
 
   .dashboard-page,

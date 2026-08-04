@@ -37,7 +37,9 @@ const SUGGESTIONS: Record<"demo" | "account", string[]> = {
 
 export function LandingAiChat() {
   const pathname = usePathname();
-  const chatMode = pathname.startsWith("/dashboard") ? "account" : "demo";
+  const isAuthenticatedArea =
+    pathname.startsWith("/dashboard") || pathname.startsWith("/painel");
+  const chatMode = isAuthenticatedArea ? "account" : "demo";
   const previousMode = useRef(chatMode);
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGES[chatMode]]);
