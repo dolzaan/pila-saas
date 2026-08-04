@@ -39,9 +39,9 @@ interface MobileDashboardNavProps {
 type OpenPanel = "actions" | "more" | null;
 
 const primaryRoutes = new Set([
-  "/dashboard",
-  "/dashboard/transactions",
-  "/dashboard/agenda",
+  "/painel",
+  "/painel/movimentacoes",
+  "/painel/agenda",
 ]);
 const focusableElements = [
   "a[href]",
@@ -53,7 +53,7 @@ const focusableElements = [
 ].join(",");
 
 function isActiveRoute(pathname: string, href: string) {
-  return href === "/dashboard"
+  return href === "/painel"
     ? pathname === href
     : pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -154,7 +154,7 @@ export function MobileDashboardNav({
     <>
       <header className="mobile-dashboard-header">
         <Link
-          href="/dashboard"
+          href="/painel"
           className="mobile-dashboard-brand"
           aria-label="Ir para o dashboard"
         >
@@ -167,8 +167,8 @@ export function MobileDashboardNav({
           />
           <span>Pila</span>
         </Link>
-        <div className="flex min-w-0 items-center gap-2">
-          <span className="mobile-dashboard-title max-w-[9rem] truncate">
+        <div className="mobile-dashboard-context">
+          <span className="mobile-dashboard-title">
             {pathname.startsWith("/admin")
               ? "Admin"
               : currentItem?.label || "Painel"}
@@ -180,7 +180,7 @@ export function MobileDashboardNav({
       <nav className="mobile-bottom-nav" aria-label="Navegação principal">
         <MobileNavLink
           item={{
-            href: "/dashboard",
+            href: "/painel",
             label: "Início",
             icon: LayoutDashboard,
           }}
@@ -188,8 +188,8 @@ export function MobileDashboardNav({
         />
         <MobileNavLink
           item={{
-            href: "/dashboard/transactions",
-            label: "Transações",
+            href: "/painel/movimentacoes",
+            label: "Movimentações",
             icon: CreditCard,
           }}
           pathname={pathname}
@@ -213,7 +213,7 @@ export function MobileDashboardNav({
         </button>
         <MobileNavLink
           item={{
-            href: "/dashboard/agenda",
+            href: "/painel/agenda",
             label: "Agenda",
             icon: CalendarRange,
           }}
@@ -275,7 +275,7 @@ export function MobileDashboardNav({
             {openPanel === "actions" ? (
               <div className="mobile-quick-actions">
                 <Link
-                  href="/dashboard/transactions?new=1"
+                  href="/painel/movimentacoes?new=1"
                   className="mobile-quick-action mobile-quick-action--primary"
                   onClick={closePanel}
                 >
@@ -297,7 +297,7 @@ export function MobileDashboardNav({
                   </span>
                 </Link>
                 <Link
-                  href="/dashboard/whatsapp"
+                  href="/painel/whatsapp"
                   className="mobile-quick-action"
                   onClick={closePanel}
                 >
