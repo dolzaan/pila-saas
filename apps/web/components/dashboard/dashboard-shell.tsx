@@ -275,7 +275,6 @@ export function DashboardShell({
         </main>
       </div>
 
-      <SupportButton floating />
       <ProductOnboarding
         userName={userName}
         initialStep={onboarding.initialStep}
