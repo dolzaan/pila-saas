@@ -1297,7 +1297,9 @@ img, svg { display: block; max-width: 100%; }
 /* =============================================================================
    Responsividade
 ============================================================================= */
-@media (max-width: 768px) {
+/* Tailwind's `md` layout starts at 768px. Keep the mobile shell strictly below
+   that value so the fixed mobile and desktop navigations can never coexist. */
+@media (max-width: 767.98px) {
   .sidebar { display: none; }
 
   .dashboard-layout {
@@ -1314,7 +1316,7 @@ img, svg { display: block; max-width: 100%; }
     min-height: calc(58px + env(safe-area-inset-top));
     align-items: flex-end;
     justify-content: space-between;
-    gap: 1rem;
+    gap: 0.625rem;
     padding:
       calc(0.75rem + env(safe-area-inset-top))
       1rem
@@ -1327,6 +1329,8 @@ img, svg { display: block; max-width: 100%; }
   }
 
   .mobile-dashboard-brand {
+    min-width: 0;
+    flex: 0 1 auto;
     display: flex;
     align-items: center;
     gap: 0.45rem;
@@ -1346,6 +1350,18 @@ img, svg { display: block; max-width: 100%; }
     white-space: nowrap;
   }
 
+  .dashboard-page,
+  .dashboard-page > *,
+  .section-card,
+  .stat-card {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .dashboard-page {
+    overflow-x: clip;
+  }
+
   .mobile-bottom-nav {
     position: fixed;
     z-index: 70;
@@ -1356,7 +1372,7 @@ img, svg { display: block; max-width: 100%; }
     min-height: calc(70px + env(safe-area-inset-bottom));
     grid-template-columns: repeat(5, minmax(0, 1fr));
     align-items: start;
-    padding: 0.35rem 0.35rem calc(0.35rem + env(safe-area-inset-bottom));
+    padding: 0.35rem max(0.2rem, env(safe-area-inset-left)) calc(0.35rem + env(safe-area-inset-bottom)) max(0.2rem, env(safe-area-inset-right));
     border-top: 1px solid rgba(255, 255, 255, 0.1);
     background: rgba(13, 18, 29, 0.96);
     box-shadow: 0 -14px 38px rgba(0, 0, 0, 0.28);
@@ -1386,6 +1402,7 @@ img, svg { display: block; max-width: 100%; }
 
   .mobile-nav-link span,
   .mobile-nav-action {
+    max-width: 100%;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -1454,7 +1471,8 @@ img, svg { display: block; max-width: 100%; }
     width: 100%;
     max-height: calc(100dvh - 4rem - env(safe-area-inset-top));
     overflow-y: auto;
-    padding: 0.55rem 1rem calc(1rem + env(safe-area-inset-bottom));
+    overscroll-behavior: contain;
+    padding: 0.55rem max(1rem, env(safe-area-inset-right)) calc(1rem + env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left));
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-bottom: 0;
     border-radius: 1.6rem 1.6rem 0 0;
@@ -1664,6 +1682,15 @@ img, svg { display: block; max-width: 100%; }
   .dashboard-loading-header { flex-direction: column; gap: 1.25rem; }
   .dashboard-loading-stats { grid-template-columns: 1fr; }
   .dashboard-greeting { font-size: 1.4rem; }
+
+  .mobile-dashboard-title {
+    max-width: 7rem;
+  }
+
+  .mobile-nav-link,
+  .mobile-nav-action {
+    font-size: 0.58rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
