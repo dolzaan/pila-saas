@@ -150,21 +150,12 @@
 
 @media (max-width: 768px) {
   .accountChatRoot {
-    z-index: 60;
-    right: 12px;
-    bottom: calc(5.75rem + env(safe-area-inset-bottom));
-  }
-  .accountChatRoot .panel {
-    height: min(620px, calc(100dvh - 110px - env(safe-area-inset-bottom)));
+    display: none;
   }
 }
 
 @media (max-width: 560px) {
   .chatRoot { right: 14px; bottom: 14px; }
-  .accountChatRoot {
-    right: 12px;
-    bottom: calc(5.75rem + env(safe-area-inset-bottom));
-  }
   .launcherText { display: none; }
   .launcher { padding: 6px; }
   .panel { width: calc(100vw - 28px); height: min(620px, calc(100dvh - 28px)); }
