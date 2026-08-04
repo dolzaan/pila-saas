@@ -261,8 +261,72 @@ export default async function TransactionsPage({
             </p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full border-collapse text-left">
+          <>
+            <div className="grid gap-3 md:hidden" aria-label="Lista de transações">
+              {transactions.map((transaction) => (
+                <article
+                  key={transaction.id}
+                  className="rounded-2xl border border-white/8 bg-white/[0.025] p-4"
+                >
+                <div className="flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate font-semibold text-gray-100">
+                      {transaction.description || "Sem descrição"}
+                    </p>
+                    <p className="mt-1 text-xs text-gray-500">
+                      {transaction.occurredAt.toLocaleDateString("pt-BR", {
+                        timeZone: "America/Sao_Paulo",
+                      })}
+                      {transaction.category ? ` · ${transaction.category.icon} ${transaction.category.name}` : ""}
+                    </p>
+                  </div>
+                  <p className={`shrink-0 text-sm font-bold ${transaction.kind === "INCOME" ? "text-emerald-400" : "text-gray-100"}`}>
+                    {transaction.kind === "INCOME" ? "+" : "-"} {formatCurrency(transaction.amount.toNumber())}
+                  </p>
+                </div>
+
+                <div className="mt-3 flex min-w-0 flex-wrap items-center gap-2 text-xs">
+                  {transaction.financialAccount?.name && (
+                    <span className="max-w-full truncate rounded-full bg-white/5 px-2.5 py-1 text-gray-400">
+                      {transaction.financialAccount.name}
+                    </span>
+                  )}
+                  {transaction.reconciliationId ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-emerald-400/10 px-2.5 py-1 text-emerald-300">
+                      <CheckCircle2 className="h-3.5 w-3.5" /> Conferida
+                    </span>
+                  ) : transaction.financialAccountId ? (
+                    <span className="rounded-full bg-amber-400/10 px-2.5 py-1 text-amber-300">Pendente</span>
+                  ) : null}
+                  {transaction.appliedRuleId && (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-indigo-400/10 px-2.5 py-1 text-indigo-300">
+                      <Sparkles className="h-3 w-3" /> Regra automática
+                    </span>
+                  )}
+                </div>
+
+                <div className="mt-4 flex items-center justify-end gap-2 border-t border-white/5 pt-3">
+                  <TransactionForm
+                    categories={serializedCategories}
+                    financialAccounts={financialAccounts}
+                    transactionToEdit={{
+                      id: transaction.id,
+                      amount: transaction.amount.toNumber(),
+                      kind: transaction.kind,
+                      description: transaction.description,
+                      categoryId: transaction.categoryId,
+                      financialAccountId: transaction.financialAccountId,
+                      occurredAt: transaction.occurredAt,
+                    }}
+                  />
+                  <DeleteTransactionButton id={transaction.id} />
+                </div>
+                </article>
+              ))}
+            </div>
+
+            <div className="hidden overflow-x-auto md:block">
+              <table className="w-full border-collapse text-left">
               <thead>
                 <tr className="border-b border-gray-800 text-sm text-gray-500">
                   <th className="pb-3 font-medium">Data</th>
@@ -336,8 +400,9 @@ export default async function TransactionsPage({
                   </tr>
                 ))}
               </tbody>
-            </table>
-          </div>
+              </table>
+            </div>
+          </>
         )}
       </div>
     </div>
