@@ -45,6 +45,7 @@ export function LandingAiChat() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGES[chatMode]]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [demoHeroVisible, setDemoHeroVisible] = useState(pathname === "/");
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -58,6 +59,27 @@ export function LandingAiChat() {
   useEffect(() => {
     if (open) endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading, open]);
+
+  useEffect(() => {
+    if (chatMode !== "demo") {
+      setDemoHeroVisible(false);
+      return;
+    }
+
+    const demo = document.querySelector<HTMLElement>("[data-interactive-demo]");
+    const hero = demo?.closest("section");
+    if (!hero || !("IntersectionObserver" in window)) {
+      setDemoHeroVisible(false);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setDemoHeroVisible(entry.isIntersecting),
+      { threshold: 0.12 },
+    );
+    observer.observe(hero);
+    return () => observer.disconnect();
+  }, [chatMode, pathname]);
 
   async function sendMessage(text: string) {
     const message = text.trim();
@@ -102,6 +124,10 @@ export function LandingAiChat() {
   }
 
   if (pathname.startsWith("/admin")) {
+    return null;
+  }
+
+  if (!open && demoHeroVisible) {
     return null;
   }
 
