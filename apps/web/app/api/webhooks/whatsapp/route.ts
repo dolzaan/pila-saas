@@ -16,8 +16,9 @@ import {
   parseOnboardingEmail,
   parseOnboardingName,
 } from "@/lib/whatsapp-onboarding";
-import { generateExpenseChart } from "@/lib/report-chart";
-import { buildReportData, parseReportRequest } from "@/lib/report-query";
+import { generateProfessionalReportChart } from "@/lib/report-chart";
+import { buildProfessionalReport } from "@/lib/report-engine";
+import { buildReportPlan } from "@/lib/report-plan";
 import {
   claimWhatsappInboundMessage,
   completeWhatsappInboundMessage,
@@ -771,54 +772,40 @@ ${contextLines.slice(0, 20).join("\n")}
       return NextResponse.json({ success: true, replyMessage });
     }
 
-    // 6.5 Tratamento de Gráficos/Relatórios Visuais.
-    // O período, a métrica e o agrupamento são extraídos da consulta do usuário.
-    const explicitlyRequestedReport = /\b(gr[aá]fico|relat[oó]rio|resumo(?:\s+visual)?|gastos por categoria)\b/i.test(text);
+    // 6.5 Relatórios profissionais. A IA planeja a intenção, mas somente
+    // consultas determinísticas ao banco calculam os valores exibidos.
+    const explicitlyRequestedReport = /\b(gr[aá]fico|relat[oó]rio|resumo\s+visual|dashboard visual)\b/i.test(text);
     if (aiResult.isReport || explicitlyRequestedReport) {
-      const reportRequest = parseReportRequest(text);
-      const reportTransactions = await prisma.transaction.findMany({
-        where: {
-          userId: user.id,
-          occurredAt: {
-            gte: reportRequest.start,
-            lt: reportRequest.end,
-          },
-        },
-        include: { category: true },
-        orderBy: { occurredAt: "asc" },
-      });
-      const report = buildReportData(reportTransactions, reportRequest);
-      const balance = report.income - report.expense;
-      const summary = [
-        `📊 Relatório: ${reportRequest.periodLabel}`,
-        "",
-        `💰 Ganhos: R$ ${report.income.toFixed(2).replace(".", ",")}`,
-        `💸 Gastos: R$ ${report.expense.toFixed(2).replace(".", ",")}`,
-        `📈 Saldo: R$ ${balance.toFixed(2).replace(".", ",")}`,
-      ].join("\n");
+      const reportPlan = buildReportPlan(text, aiResult.reportPlan);
+      const report = await buildProfessionalReport(user.id, reportPlan);
 
-      if (report.items.length > 0) {
-        const chartUrl = await generateExpenseChart(report.items, {
-          title: report.title,
-          totalLabel: report.totalLabel,
-          totalValue: report.totalValue,
-          preserveOrder: reportRequest.grouping !== "CATEGORY",
-        });
-        const { sendWhatsAppMedia } = await import("@/lib/evolution");
-        const mediaSent = await sendWhatsAppMedia(remoteJid, chartUrl, "image", summary);
-        if (!mediaSent) {
-          await sendWhatsAppMessage(
-            remoteJid,
-            `${summary}\n\n⚠️ Não consegui anexar o gráfico agora, mas seu resumo está acima.`,
-          );
-        }
-        await rememberReply(summary);
-        return NextResponse.json({ success: true, replyMessage: summary, mediaSent });
+      if (report.emptyMessage) {
+        await sendReplyWithMemory(report.emptyMessage);
+        return NextResponse.json({ success: true, replyMessage: report.emptyMessage });
       }
 
-      const emptyMessage = `Não encontrei movimentações para esse relatório em ${reportRequest.periodLabel}.\n\n${summary}`;
-      await sendReplyWithMemory(emptyMessage);
-      return NextResponse.json({ success: true, replyMessage: emptyMessage });
+      let mediaSent = false;
+      try {
+        const chart = await generateProfessionalReportChart(report);
+        const { sendWhatsAppMedia } = await import("@/lib/evolution");
+        mediaSent = await sendWhatsAppMedia(remoteJid, chart, "image", report.summary);
+      } catch (error) {
+        console.error("[Relatório] Falha ao renderizar ou enviar gráfico:", error);
+      }
+
+      if (!mediaSent) {
+        await sendWhatsAppMessage(
+          remoteJid,
+          `${report.summary}\n\n⚠️ Não consegui anexar o gráfico agora, mas os valores do resumo continuam válidos.`,
+        );
+      }
+      await rememberReply(report.summary);
+      return NextResponse.json({
+        success: true,
+        replyMessage: report.summary,
+        reportPlan,
+        mediaSent,
+      });
     }
 
     // 6.6 Tratamento de Não-Transações em geral
