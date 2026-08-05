@@ -41,12 +41,13 @@ export function LandingMotion() {
 
     if (heroVisual) {
       heroVisual.dataset.tilt = "true";
-      const directChildren = Array.from(heroVisual.children) as HTMLElement[];
-      directChildren[0]?.setAttribute("data-floating", "balance");
-      directChildren[1]?.setAttribute("data-floating", "phone");
-      directChildren[2]?.setAttribute("data-floating", "budget");
+      const balance = heroVisual.querySelector<HTMLElement>('[data-hero-element="balance"]');
+      const phone = heroVisual.querySelector<HTMLElement>('[data-hero-element="phone"]');
+      const budget = heroVisual.querySelector<HTMLElement>('[data-hero-element="budget"]');
 
-      const phone = directChildren[1];
+      balance?.setAttribute("data-floating", "balance");
+      phone?.setAttribute("data-floating", "phone");
+      budget?.setAttribute("data-floating", "budget");
       const chat = phone?.children[1] as HTMLElement | undefined;
       Array.from(chat?.children || []).forEach((child, index) => {
         const bubble = child as HTMLElement;
@@ -54,7 +55,7 @@ export function LandingMotion() {
         setDelay(bubble, index, 180);
       });
 
-      const progressFill = directChildren[2]?.querySelector<HTMLElement>("i");
+      const progressFill = budget?.querySelector<HTMLElement>("i");
       progressFill?.setAttribute("data-progress-fill", "true");
 
       const canTilt = window.matchMedia("(pointer: fine)").matches && !reducedMotion.matches;
