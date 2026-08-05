@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Database, EyeOff, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
 import { PublicIridescence } from "@/components/landing/public-iridescence";
+import { PublicHeader } from "@/components/landing/public-header";
 import styles from "../landing.module.css";
 
 export const metadata: Metadata = {
@@ -37,17 +38,9 @@ export default function SecurityPage() {
   return (
     <main className={styles.page}>
       <PublicIridescence />
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <Link className={styles.brand} href="/"><Image src="/logo-icon.png" alt="" width={40} height={40} priority /><span>Pila</span></Link>
-          <nav className={styles.nav} aria-label="Navegação principal">
-            <Link href="/features">Recursos</Link><Link href="/how-it-works">Como funciona</Link><Link href="/security">Segurança</Link><Link href="/#preco">Preço</Link>
-          </nav>
-          <div className={styles.headerActions}><Link className={styles.loginLink} href="/login">Entrar</Link><Link className={styles.smallCta} href="/register" data-specular-button>Testar grátis por 7 dias <ArrowRight size={16} /></Link></div>
-        </div>
-      </header>
+      <PublicHeader />
 
-      <section className={styles.hero}>
+      <section className={styles.hero} data-public-hero data-chat-safe-zone>
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
             <div className={styles.eyebrow}><ShieldCheck size={15} /> SEGURANÇA E PRIVACIDADE</div>
@@ -75,7 +68,7 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      <section className={styles.finalCta}><div><span>Organização com transparência.</span><h2>Conheça o Pila sem abrir mão do controle.</h2></div><Link className={styles.lightCta} href="/register">Testar grátis por 7 dias <ArrowRight size={19} /></Link></section>
+      <section className={styles.finalCta} data-chat-safe-zone><div><span>Organização com transparência.</span><h2>Conheça o Pila sem abrir mão do controle.</h2></div><Link className={styles.lightCta} href="/register">Testar grátis por 7 dias <ArrowRight size={19} /></Link></section>
       <footer className={styles.footer}><Link className={styles.brand} href="/"><Image src="/logo-icon.png" alt="" width={34} height={34} /><span>Pila</span></Link><p>Organização financeira simples, todos os dias.</p><div><Link href="/features">Recursos</Link><Link href="/how-it-works">Como funciona</Link><Link href="/privacy">Privacidade</Link><Link href="/terms">Termos</Link></div></footer>
     </main>
   );
