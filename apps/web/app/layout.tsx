@@ -4,6 +4,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next";
 import { LandingAiChat } from "@/components/landing-ai-chat";
 import { ProductEventTracker } from "@/components/product-event-tracker";
 import { ServiceWorkerRegister } from "@/components/service-worker-register";
+import { SpecularButtons } from "@/components/ui/specular-buttons";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -56,6 +57,7 @@ export default function RootLayout({
         <LandingAiChat />
         <ProductEventTracker />
         <ServiceWorkerRegister />
+        <SpecularButtons />
         <Analytics />
         <SpeedInsights />
       </body>

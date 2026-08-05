@@ -15,6 +15,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { Aurora } from "@/components/landing/aurora";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -79,7 +80,7 @@ export default function LandingPage() {
           </nav>
           <div className={styles.headerActions}>
             <Link className={styles.loginLink} href="/login">Entrar</Link>
-            <Link className={styles.smallCta} href="/register">
+            <Link className={styles.smallCta} href="/register" data-specular-button>
               Começar grátis <ArrowRight size={16} />
             </Link>
           </div>
@@ -98,7 +99,7 @@ export default function LandingPage() {
               Envie texto, áudio ou foto. O Pila registra suas movimentações, organiza seus dados e mostra com clareza para onde seu dinheiro está indo.
             </p>
             <div className={styles.heroActions}>
-              <Link className={styles.primaryCta} href="/register">
+              <Link className={styles.primaryCta} href="/register" data-specular-button>
                 Testar grátis por 7 dias <ArrowRight size={19} />
               </Link>
               <Link className={styles.secondaryCta} href="/how-it-works">Ver como funciona</Link>
@@ -203,7 +204,7 @@ export default function LandingPage() {
           <div className={styles.priceFeatures}>
             {["Registros pelo WhatsApp e Telegram", "Dashboard completo", "Metas e orçamentos", "Lembretes e despesas recorrentes", "Relatórios inteligentes", "Cancele quando quiser"].map((item) => <span key={item}><Check size={17} /> {item}</span>)}
           </div>
-          <Link className={styles.primaryCta} href="/register">Começar meu teste grátis <ArrowRight size={19} /></Link>
+          <Link className={styles.primaryCta} href="/register" data-specular-button>Começar meu teste grátis <ArrowRight size={19} /></Link>
           <p className={styles.secureNote}><ShieldCheck size={16} /> Pagamento seguro processado pela Stripe</p>
         </div>
       </section>
@@ -222,8 +223,15 @@ export default function LandingPage() {
       </section>
 
       <section className={styles.finalCta}>
-        <div><span>Seu próximo mês pode ser mais claro.</span><h2>Comece a organizar seu dinheiro hoje.</h2></div>
-        <Link className={styles.lightCta} href="/register">Testar o Pila grátis <ArrowRight size={19} /></Link>
+        <Aurora
+          className={styles.finalCtaAurora}
+          colorStops={["#7cff67", "#B497CF", "#5227FF"]}
+          blend={0.5}
+          amplitude={1}
+          speed={1}
+        />
+        <div className={styles.finalCtaContent}><span>Seu próximo mês pode ser mais claro.</span><h2>Comece a organizar seu dinheiro hoje.</h2></div>
+        <Link className={styles.lightCta} href="/register" data-specular-button>Testar o Pila grátis <ArrowRight size={19} /></Link>
       </section>
 
       <footer className={styles.footer}>
