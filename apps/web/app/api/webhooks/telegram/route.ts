@@ -279,7 +279,7 @@ export async function POST(req: Request) {
     await sendTelegramMessage(
       chatId,
       result.success
-        ? "✅ Telegram conectado ao Pila! Você pode registrar gastos, ganhos e lembretes por texto, áudio ou foto de comprovante."
+        ? "✅ Telegram conectado ao Pila! Pode falar comigo naturalmente: registre gastos e ganhos por texto, áudio ou foto, crie lembretes e peça consultas ou relatórios. Para testar, conte sua última movimentação."
         : result.error,
     );
     return NextResponse.json({ ok: true, linked: result.success });
