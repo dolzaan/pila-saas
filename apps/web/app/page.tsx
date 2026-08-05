@@ -68,6 +68,13 @@ const steps = [
 export default function LandingPage() {
   return (
     <main className={styles.page} data-landing-root>
+      <Iridescence
+        className={styles.pageIridescence}
+        color={[0.42, 0.9, 0.72]}
+        mouseReact={false}
+        amplitude={0.06}
+        speed={0.22}
+      />
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link className={styles.brand} href="/" aria-label="Pila — início">
@@ -114,13 +121,6 @@ export default function LandingPage() {
           </div>
 
           <div className={styles.heroVisual} aria-label="Exemplo de uso do Pila pelo WhatsApp">
-            <Iridescence
-              className={styles.heroIridescence}
-              color={[0.32, 1, 0.72]}
-              mouseReact={false}
-              amplitude={0.08}
-              speed={0.35}
-            />
             <div className={`${styles.floatCard} ${styles.balanceCard}`} data-hero-element="balance">
               <span>Saldo do mês</span>
               <strong>R$ 2.847,10</strong>
