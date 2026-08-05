@@ -41,7 +41,7 @@ export default function SecurityPage() {
           <nav className={styles.nav} aria-label="Navegação principal">
             <Link href="/features">Recursos</Link><Link href="/how-it-works">Como funciona</Link><Link href="/security">Segurança</Link><Link href="/#preco">Preço</Link>
           </nav>
-          <div className={styles.headerActions}><Link className={styles.loginLink} href="/login">Entrar</Link><Link className={styles.smallCta} href="/register">Começar grátis <ArrowRight size={16} /></Link></div>
+          <div className={styles.headerActions}><Link className={styles.loginLink} href="/login">Entrar</Link><Link className={styles.smallCta} href="/register" data-specular-button>Começar grátis <ArrowRight size={16} /></Link></div>
         </div>
       </header>
 
@@ -51,7 +51,7 @@ export default function SecurityPage() {
             <div className={styles.eyebrow}><ShieldCheck size={15} /> SEGURANÇA E PRIVACIDADE</div>
             <h1>Transparência para cuidar dos seus dados.</h1>
             <p>Dados financeiros exigem responsabilidade. Aqui você encontra os controles que o Pila realmente usa, sem promessas vagas ou termos difíceis.</p>
-            <div className={styles.heroActions}><Link className={styles.primaryCta} href="/privacy">Ver Política de Privacidade <ArrowRight size={19} /></Link><Link className={styles.secondaryCta} href="/register">Começar grátis</Link></div>
+            <div className={styles.heroActions}><Link className={styles.primaryCta} href="/privacy" data-specular-button>Ver Política de Privacidade <ArrowRight size={19} /></Link><Link className={styles.secondaryCta} href="/register">Começar grátis</Link></div>
           </div>
         </div>
       </section>

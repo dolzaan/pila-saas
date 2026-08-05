@@ -282,6 +282,7 @@ img, svg { display: block; max-width: 100%; }
   transition: all var(--transition-fast);
   position: relative;
   overflow: hidden;
+  isolation: isolate;
 }
 
 .btn-primary::before {
@@ -297,6 +298,48 @@ img, svg { display: block; max-width: 100%; }
 .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 20px rgba(16, 185, 129, 0.35); }
 .btn-primary:active:not(:disabled) { transform: translateY(0); }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* Pointer-following specular edge shared by the product's main actions. */
+.app-button--primary,
+.btn-primary,
+[data-specular-button] {
+  --specular-x: 50%;
+  --specular-y: 50%;
+  --specular-opacity: 0;
+  position: relative;
+  isolation: isolate;
+}
+
+.app-button--primary::after,
+.btn-primary::after,
+[data-specular-button]::after {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  padding: 1px;
+  border-radius: inherit;
+  background: radial-gradient(
+    70px circle at var(--specular-x) var(--specular-y),
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.32) 28%,
+    transparent 72%
+  );
+  content: "";
+  opacity: var(--specular-opacity);
+  pointer-events: none;
+  transition: opacity 120ms ease;
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+}
+
+@media (hover: none), (pointer: coarse), (prefers-reduced-motion: reduce) {
+  .app-button--primary::after,
+  .btn-primary::after,
+  [data-specular-button]::after {
+    display: none;
+  }
+}
 
 .btn-loading {
   display: flex;

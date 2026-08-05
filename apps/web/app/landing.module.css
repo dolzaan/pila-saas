@@ -496,10 +496,13 @@
 .faqList details[open] summary::after { content: "−"; }
 .faqList p { margin: -7px 0 23px; padding-right: 45px; color: #8f9daf; font-size: 0.88rem; line-height: 1.72; }
 
-.finalCta { display: flex; width: min(1160px, calc(100% - 40px)); min-height: 250px; align-items: center; justify-content: space-between; gap: 35px; margin: 0 auto 80px; padding: 48px 56px; border-radius: 22px; color: #06140f; background: #35e6a1; }
-.finalCta span { font-size: 0.76rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
-.finalCta h2 { max-width: 650px; margin: 11px 0 0; color: #07150f; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.055em; line-height: 1.05; }
-.lightCta { flex: 0 0 auto; min-height: 54px; padding: 0 23px; color: #f4f7fb; background: #0b121d; }
+.finalCta { position: relative; display: flex; width: min(1160px, calc(100% - 40px)); min-height: 250px; align-items: center; justify-content: space-between; gap: 35px; margin: 0 auto 80px; padding: 48px 56px; overflow: hidden; border: 1px solid rgba(255, 255, 255, 0.14); border-radius: 22px; color: white; background: #07120f; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.28); }
+.finalCta::after { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(4, 13, 11, 0.42), rgba(4, 8, 18, 0.18)); content: ""; pointer-events: none; }
+.finalCtaAurora { position: absolute; inset: -25%; width: 150%; height: 150%; opacity: 0.95; filter: saturate(1.12); pointer-events: none; }
+.finalCtaContent { position: relative; z-index: 1; }
+.finalCta span { color: rgba(255, 255, 255, 0.78); font-size: 0.76rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.finalCta h2 { max-width: 650px; margin: 11px 0 0; color: white; font-size: clamp(2rem, 4vw, 3.2rem); letter-spacing: -0.055em; line-height: 1.05; text-shadow: 0 2px 22px rgba(0, 0, 0, 0.22); }
+.lightCta { position: relative; z-index: 1; flex: 0 0 auto; min-height: 54px; padding: 0 23px; border: 1px solid rgba(255, 255, 255, 0.16); color: #f4f7fb; background: rgba(7, 14, 24, 0.88); box-shadow: 0 14px 34px rgba(0, 0, 0, 0.25); backdrop-filter: blur(10px); }
 .lightCta:hover { color: #fff; background: #172334; }
 
 .footer { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 20px; min-height: 105px; border-top: 1px solid var(--landing-border); }
