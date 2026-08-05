@@ -4,10 +4,39 @@
   --landing-card: #141e2e;
   --landing-border: rgba(255, 255, 255, 0.09);
   --landing-muted: #98a7ba;
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   overflow: hidden;
   color: #f5f8fb;
-  background: var(--landing-bg);
+  background: #050912;
+}
+
+.page::before {
+  position: fixed;
+  z-index: 1;
+  inset: 0;
+  background:
+    radial-gradient(circle at 78% 16%, rgba(4, 11, 18, 0.18), rgba(4, 9, 17, 0.58) 48%),
+    linear-gradient(180deg, rgba(5, 9, 18, 0.5), rgba(5, 9, 18, 0.72));
+  content: "";
+  pointer-events: none;
+}
+
+.page > :where(:not(.pageIridescence)) {
+  position: relative;
+  z-index: 2;
+}
+
+.pageIridescence {
+  position: fixed;
+  z-index: 0;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  opacity: 0.36;
+  filter: saturate(1.12) contrast(1.05);
+  pointer-events: none;
 }
 
 .header {
@@ -99,7 +128,7 @@
   background:
     radial-gradient(circle at 80% 20%, rgba(16, 185, 129, 0.16), transparent 35%),
     radial-gradient(circle at 14% 52%, rgba(99, 102, 241, 0.11), transparent 32%),
-    linear-gradient(180deg, #080d17 0%, #0b111d 100%);
+    linear-gradient(180deg, rgba(8, 13, 23, 0.58), rgba(11, 17, 29, 0.28));
 }
 
 .hero::after {
@@ -187,23 +216,6 @@
 .heroNotes svg { color: #35e6a1; }
 
 .heroVisual { position: relative; min-height: 560px; }
-.heroIridescence {
-  position: absolute;
-  z-index: 1;
-  top: 50%;
-  left: 50%;
-  width: min(560px, 115%);
-  height: 560px;
-  overflow: hidden;
-  border-radius: 50%;
-  opacity: 0.42;
-  filter: blur(5px) saturate(1.15);
-  -webkit-mask-image: radial-gradient(circle, #000 35%, rgba(0, 0, 0, 0.72) 58%, transparent 74%);
-  mask-image: radial-gradient(circle, #000 35%, rgba(0, 0, 0, 0.72) 58%, transparent 74%);
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-}
-
 .phone {
   position: absolute;
   z-index: 2;
@@ -308,7 +320,8 @@
   padding: 18px 30px;
   border-block: 1px solid var(--landing-border);
   color: #aab6c6;
-  background: #0d1420;
+  background: rgba(13, 20, 32, 0.76);
+  backdrop-filter: blur(8px);
 }
 
 .proofStrip span { display: flex; align-items: center; gap: 9px; font-size: 0.83rem; font-weight: 650; }
@@ -446,7 +459,7 @@
 .step h3 { margin: 20px 0 11px; color: #f7f9fc; font-size: 1.15rem; }
 .step p { margin: 0; color: #8f9db0; font-size: 0.88rem; line-height: 1.7; }
 
-.featuresSection { width: 100%; max-width: none; padding-inline: max(20px, calc((100% - 1160px) / 2)); background: #0d1420; }
+.featuresSection { width: 100%; max-width: none; padding-inline: max(20px, calc((100% - 1160px) / 2)); background: rgba(13, 20, 32, 0.72); backdrop-filter: blur(8px); }
 .featureGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
 .featureCard { min-height: 230px; padding: 29px; border: 1px solid var(--landing-border); border-radius: 15px; background: linear-gradient(145deg, rgba(255, 255, 255, 0.035), rgba(255, 255, 255, 0.008)); }
 .featureIcon { display: grid; width: 43px; height: 43px; place-items: center; border: 1px solid rgba(53, 230, 161, 0.18); border-radius: 11px; color: #35e6a1; background: rgba(53, 230, 161, 0.08); }
@@ -486,7 +499,7 @@
 .dotPurple { background: #818cf8; }
 .dotBlue { background: #38bdf8; }
 
-.pricingSection { padding: 122px 20px; border-block: 1px solid var(--landing-border); background: #0d1420; }
+.pricingSection { padding: 122px 20px; border-block: 1px solid var(--landing-border); background: rgba(13, 20, 32, 0.72); backdrop-filter: blur(8px); }
 .priceCard { position: relative; width: min(580px, 100%); margin: 0 auto; padding: 38px; overflow: hidden; border: 1px solid rgba(53, 230, 161, 0.3); border-radius: 20px; background: linear-gradient(145deg, #172435, #111a28); box-shadow: 0 30px 70px rgba(0, 0, 0, 0.3); }
 .priceCard::after { position: absolute; top: -170px; right: -130px; width: 340px; height: 340px; border-radius: 50%; background: rgba(53, 230, 161, 0.08); content: ""; filter: blur(10px); }
 .priceBadge { position: absolute; z-index: 2; top: 22px; right: 22px; padding: 7px 10px; border-radius: 6px; color: #062217; background: #65efb9; font-size: 0.66rem; font-weight: 900; letter-spacing: 0.08em; }
@@ -569,7 +582,7 @@
   .chat { min-height: 365px; }
   .balanceCard { top: 47px; right: -12px; width: 188px; }
   .budgetCard { bottom: 0; left: -7px; width: 190px; }
-  .heroIridescence { width: 430px; height: 430px; opacity: 0.34; }
+  .pageIridescence { opacity: 0.29; }
   .proofStrip { align-items: flex-start; flex-direction: column; gap: 14px; padding: 25px 30px; }
   .section,
   .faqSection { padding-block: 90px; }
