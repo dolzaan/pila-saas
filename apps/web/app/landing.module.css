@@ -12,31 +12,9 @@
   background: #050912;
 }
 
-.page::before {
-  position: fixed;
-  z-index: 1;
-  inset: 0;
-  background:
-    radial-gradient(circle at 78% 16%, rgba(4, 11, 18, 0.18), rgba(4, 9, 17, 0.58) 48%),
-    linear-gradient(180deg, rgba(5, 9, 18, 0.5), rgba(5, 9, 18, 0.72));
-  content: "";
-  pointer-events: none;
-}
-
-.page > :where(:not(.pageIridescence)) {
+.page > :where(:not([data-public-background])) {
   position: relative;
   z-index: 2;
-}
-
-.pageIridescence {
-  position: fixed;
-  z-index: 0;
-  inset: 0;
-  width: 100vw;
-  height: 100vh;
-  opacity: 0.36;
-  filter: saturate(1.12) contrast(1.05);
-  pointer-events: none;
 }
 
 .header {
@@ -216,6 +194,7 @@
 .heroNotes svg { color: #35e6a1; }
 
 .heroVisual { position: relative; min-height: 560px; }
+
 .phone {
   position: absolute;
   z-index: 2;
@@ -582,7 +561,6 @@
   .chat { min-height: 365px; }
   .balanceCard { top: 47px; right: -12px; width: 188px; }
   .budgetCard { bottom: 0; left: -7px; width: 190px; }
-  .pageIridescence { opacity: 0.29; }
   .proofStrip { align-items: flex-start; flex-direction: column; gap: 14px; padding: 25px 30px; }
   .section,
   .faqSection { padding-block: 90px; }
