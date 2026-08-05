@@ -12,9 +12,9 @@ import {
   ShieldCheck,
   Sparkles,
   Target,
-  Wallet,
 } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
+import { LandingPhoneDemo } from "@/components/landing/landing-phone-demo";
 import { Aurora } from "@/components/landing/aurora";
 import { MagicRings } from "@/components/landing/magic-rings";
 import { PublicIridescence } from "@/components/landing/public-iridescence";
@@ -120,25 +120,7 @@ export default function LandingPage() {
               <strong>R$ 2.847,10</strong>
               <small>+8,4% em relação ao mês passado</small>
             </div>
-            <div className={styles.phone} data-hero-element="phone">
-              <div className={styles.phoneTop}>
-                <div className={styles.avatar}><Wallet size={20} /></div>
-                <div><strong>Pila</strong><span>online</span></div>
-              </div>
-              <div className={styles.chat}>
-                <div className={styles.userMessage}>Gastei R$ 42,90 no mercado</div>
-                <div className={styles.botMessage}>
-                  <span className={styles.botLabel}>PILA</span>
-                  Anotado! <strong>R$ 42,90</strong> em Alimentação.
-                  <small>Seu orçamento da categoria está em 68%.</small>
-                </div>
-                <div className={styles.userMessage}>Como estão meus gastos este mês?</div>
-                <div className={styles.botMessage}>
-                  Você gastou <strong>R$ 1.486,70</strong> até agora. Moradia e alimentação são as maiores categorias.
-                </div>
-              </div>
-              <div className={styles.messageInput}><span>Mensagem</span><ArrowRight size={18} /></div>
-            </div>
+            <LandingPhoneDemo className={styles.phone} />
             <div className={`${styles.floatCard} ${styles.budgetCard}`} data-hero-element="budget">
               <div className={styles.floatTitle}><Target size={17} /> Meta: reserva</div>
               <strong>R$ 6.400</strong><span> de R$ 10.000</span>
