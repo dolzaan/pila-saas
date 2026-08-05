@@ -22,6 +22,7 @@ import {
   formatConversationMemory,
   type ConversationExchange,
 } from "@/lib/conversation-memory";
+import { AiReportPlanSchema, type AiReportPlan } from "@/lib/report-plan";
 
 const DEFAULT_GEMINI_DAILY_REQUEST_LIMIT = 200;
 const GEMINI_DAILY_WINDOW_MS = 26 * 60 * 60 * 1000;
@@ -68,6 +69,7 @@ export type ParsedTransaction = {
   isReminder?: boolean;
   dueDate?: string; // Formato ISO "YYYY-MM-DD"
   isReport?: boolean;
+  reportPlan?: AiReportPlan;
   reminderAction?: "MARK_PAID" | "SNOOZE";
   reminderDescription?: string;
   snoozeUntil?: string;
@@ -102,6 +104,7 @@ const ParsedTransactionSchema = z.object({
   isReminder: z.boolean().optional(),
   dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
   isReport: z.boolean().optional(),
+  reportPlan: AiReportPlanSchema.optional(),
   reminderAction: z.enum(["MARK_PAID", "SNOOZE"]).optional(),
   reminderDescription: z.string().trim().max(255).optional(),
   snoozeUntil: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
@@ -171,7 +174,10 @@ ${SYSTEM_CATEGORY_GUIDE}
 6. ALERTA DE ORÇAMENTO (BUDGET): Se identificar que a transação fará o usuário estourar (ou chegar muito perto) do Limite do Orçamento cadastrado no "CONTEXTO FINANCEIRO", inclua uma bronca amigável ou aviso no \`replyMessage\`.
 7. CONTAS A PAGAR (LEMBRETES): Se o usuário disser algo como "Me lembra de pagar o aluguel dia 10 (valor X)", retorne \`isReminder: true\`, extraindo o \`amount\`, \`description\`, e calculando a \`dueDate\` no formato "YYYY-MM-DD". A \`replyMessage\` deve confirmar o agendamento amigavelmente.
 8. AÇÕES EM LEMBRETES: Se disser que pagou uma conta, retorne \`reminderAction: "MARK_PAID"\` e \`reminderDescription\`. Se pedir para lembrar depois, retorne \`reminderAction: "SNOOZE"\`, a descrição se houver e \`snoozeUntil\` em YYYY-MM-DD.
-9. RELATÓRIOS E GRÁFICOS: Se o usuário pedir um gráfico, resumo visual ou relatório ("Quero um gráfico dos meus gastos"), retorne \`isReport: true\`.
+9. RELATÓRIOS E GRÁFICOS: Se o usuário pedir um gráfico, resumo visual, comparação ou relatório, retorne \`isReport: true\` e monte \`reportPlan\`. O plano descreve a intenção; o sistema consultará e calculará os valores no banco. Nunca coloque valores financeiros inventados no plano.
+9.1 FONTES DO RELATÓRIO: Use TRANSACTIONS para gastos, receitas, categorias, evolução e maiores movimentações; BUDGETS para limites e uso de orçamentos; ACCOUNTS para saldos por conta; CARDS para compras e pagamentos por cartão; GOALS para metas; RECURRING para receitas/despesas fixas; REMINDERS para contas pendentes e vencimentos; CASH_FLOW para projeção de saldo.
+9.2 MÉTRICAS: Escolha EXPENSE, INCOME, INCOME_VS_EXPENSE, BUDGET_USAGE, ACCOUNT_BALANCE, CARD_SPENDING, GOAL_PROGRESS, RECURRING_FORECAST, UPCOMING_BILLS ou CASH_FLOW_FORECAST de acordo com a fonte.
+9.3 VISUALIZAÇÃO: Respeite pedidos explícitos de DONUT, BAR, LINE, AREA ou STACKED_BAR. Use AUTO quando o usuário não escolher. Para filtros, preencha \`categoryName\` e \`accountName\` somente com nomes mencionados ou presentes no contexto. Use \`comparePreviousPeriod: true\` somente quando houver pedido real de comparação.
 10. PERGUNTAS FINANCEIRAS: Se a mensagem for uma pergunta sobre os dados financeiros do usuário (não relatório visual nem consulta de cartão), use exclusivamente o "CONTEXTO FINANCEIRO". Não invente valores ou transações.
 11. ATENDIMENTO E ONBOARDING: Responda dúvidas sobre o Pila usando exclusivamente as "INFORMAÇÕES OFICIAIS DO PILA". Explique de forma curta e natural, faça no máximo uma pergunta por vez e conduza interessados ao cadastro. Sempre entregue o link oficial completo quando perguntarem pelo site ou cadastro.
 12. SEGURANÇA: Nunca peça senha, número de cartão, CVV, código de autenticação ou dado bancário pelo WhatsApp. Nunca afirme que uma conta foi criada se o sistema não confirmou isso.
@@ -211,7 +217,13 @@ Formato JSON esperado para Lembrete:
 { "isTransaction": false, "isReminder": true, "amount": 1500.00, "description": "Aluguel", "dueDate": "2024-05-10", "replyMessage": "Anotado! Vou te lembrar de pagar o Aluguel no dia 10." }
 
 Formato JSON esperado para Relatório Visual (Gráfico):
-{ "isTransaction": false, "isReport": true, "replyMessage": "Aqui está o gráfico dos seus gastos!" }
+{ "isTransaction": false, "isReport": true, "reportPlan": { "source": "TRANSACTIONS", "metric": "EXPENSE", "grouping": "CATEGORY", "chartType": "DONUT", "comparePreviousPeriod": false, "includeInsights": true }, "replyMessage": "Vou preparar seus gastos por categoria." }
+
+Mensagem: "Compare meu orçamento com o que gastei"
+Resposta: { "isTransaction": false, "isReport": true, "reportPlan": { "source": "BUDGETS", "metric": "BUDGET_USAGE", "grouping": "CATEGORY", "chartType": "BAR", "comparePreviousPeriod": false, "includeInsights": true }, "replyMessage": "Vou analisar o uso dos seus orçamentos." }
+
+Mensagem: "Projete meu saldo para os próximos 90 dias"
+Resposta: { "isTransaction": false, "isReport": true, "reportPlan": { "source": "CASH_FLOW", "metric": "CASH_FLOW_FORECAST", "grouping": "WEEK", "chartType": "AREA", "comparePreviousPeriod": false, "includeInsights": true }, "replyMessage": "Vou montar sua projeção financeira." }
 
 Formato JSON esperado para Não-Transação/Pergunta:
 { "isTransaction": false, "replyMessage": "Sua resposta amigável aqui." }

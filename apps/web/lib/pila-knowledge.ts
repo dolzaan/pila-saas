@@ -26,6 +26,8 @@ INFORMAÇÕES OFICIAIS DO PILA:
 - O Pila é um SaaS de organização financeira pessoal integrado ao WhatsApp.
 - Pelo WhatsApp, o cliente pode registrar receitas e despesas com texto, áudio, foto ou PDF, pedir resumos, gráficos e lembretes.
 - No painel web, o cliente acompanha transações, categorias, orçamentos, recorrências, relatórios e configurações.
+- O Pila pode gerar relatórios de receitas, despesas, categorias, evolução por período, comparações, saldos por conta, cartões, orçamentos, metas, recorrências, contas a pagar e projeção de fluxo de caixa.
+- Os relatórios podem ser apresentados como gráfico de barras, linha, área, barras empilhadas ou pizza/rosca. Os valores são sempre calculados com os dados da conta, nunca estimados pela IA.
 - O plano Pila Pro custa R$ 19,90 por mês.
 - Novos clientes recebem 7 dias grátis, sem precisar cadastrar cartão.
 - Depois do teste, o cliente escolhe se deseja assinar o Pila Pro.

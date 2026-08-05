@@ -59,8 +59,22 @@ export function parseReportRequest(text: string, now = new Date()): ReportReques
   const explicitYear = query.match(/\b(20\d{2})\b/)?.[1];
   const monthIndex = MONTHS.findIndex((month) => new RegExp(`\\b${month}\\b`).test(query));
   const lastDays = query.match(/ultim(?:o|os|a|as)\s+(\d{1,3})\s+dias?/);
+  const lastWeeks = query.match(/ultim(?:o|os|a|as)\s+(\d{1,2})\s+semanas?/);
+  const lastMonths = query.match(/ultim(?:o|os|a|as)\s+(\d{1,2})\s+mes(?:es)?/);
 
-  if (lastDays) {
+  if (lastMonths) {
+    const months = Math.min(24, Math.max(1, Number(lastMonths[1])));
+    const firstMonth = today.month - (months - 1);
+    start = atSaoPauloMidnight(today.year, firstMonth, 1);
+    end = atSaoPauloMidnight(today.year, today.month + 1, 1);
+    periodLabel = `ultimos ${months} meses`;
+    grouping = "MONTH";
+  } else if (lastWeeks) {
+    const weeks = Math.min(52, Math.max(1, Number(lastWeeks[1])));
+    start = addDays(start, -(weeks * 7 - 1));
+    periodLabel = `ultimas ${weeks} semanas`;
+    grouping = "DAY";
+  } else if (lastDays) {
     const days = Math.min(365, Math.max(1, Number(lastDays[1])));
     start = addDays(start, -(days - 1));
     periodLabel = `ultimos ${days} dias`;
@@ -96,6 +110,12 @@ export function parseReportRequest(text: string, now = new Date()): ReportReques
     start = atSaoPauloMidnight(today.year, 0, 1);
     end = atSaoPauloMidnight(today.year + 1, 0, 1);
     periodLabel = String(today.year);
+    grouping = "MONTH";
+  } else if (/\b(?:este trimestre|trimestre atual)\b/.test(query)) {
+    const quarterStart = Math.floor(today.month / 3) * 3;
+    start = atSaoPauloMidnight(today.year, quarterStart, 1);
+    end = atSaoPauloMidnight(today.year, quarterStart + 3, 1);
+    periodLabel = `${Math.floor(today.month / 3) + 1}º trimestre de ${today.year}`;
     grouping = "MONTH";
   } else if (monthIndex >= 0) {
     const year = explicitYear ? Number(explicitYear) : today.year;
