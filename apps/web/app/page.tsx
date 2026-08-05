@@ -84,7 +84,7 @@ export default function LandingPage() {
           <div className={styles.headerActions}>
             <Link className={styles.loginLink} href="/login">Entrar</Link>
             <Link className={styles.smallCta} href="/register" data-specular-button>
-              Começar grátis <ArrowRight size={16} />
+              Testar grátis por 7 dias <ArrowRight size={16} />
             </Link>
           </div>
         </div>
@@ -189,7 +189,7 @@ export default function LandingPage() {
           <div className={styles.priceFeatures}>
             {["Registros pelo WhatsApp e Telegram", "Dashboard completo", "Metas e orçamentos", "Lembretes e despesas recorrentes", "Relatórios inteligentes", "Cancele quando quiser"].map((item) => <span key={item}><Check size={17} /> {item}</span>)}
           </div>
-          <Link className={styles.primaryCta} href="/register" data-specular-button>Começar meu teste grátis <ArrowRight size={19} /></Link>
+          <Link className={styles.primaryCta} href="/register" data-specular-button>Testar grátis por 7 dias <ArrowRight size={19} /></Link>
           <p className={styles.secureNote}><ShieldCheck size={16} /> Pagamento seguro processado pela Stripe</p>
         </div>
       </section>
@@ -241,7 +241,7 @@ export default function LandingPage() {
           />
         </div>
         <div className={styles.finalCtaContent}><span>Seu próximo mês pode ser mais claro.</span><h2>Comece a organizar seu dinheiro hoje.</h2></div>
-        <Link className={styles.lightCta} href="/register" data-specular-button>Testar o Pila grátis <ArrowRight size={19} /></Link>
+        <Link className={styles.lightCta} href="/register" data-specular-button>Testar grátis por 7 dias <ArrowRight size={19} /></Link>
       </section>
 
       <footer className={styles.footer}>
