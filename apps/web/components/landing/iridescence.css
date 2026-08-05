@@ -16,8 +16,8 @@
   width: 100vw;
   height: 100vh;
   overflow: hidden;
-  opacity: 0.68;
-  filter: saturate(1.35) contrast(1.12);
+  opacity: 0.52;
+  filter: saturate(1.22) contrast(1.07);
   pointer-events: none;
 }
 
@@ -39,6 +39,6 @@
 
 @media (max-width: 680px) {
   .public-iridescence-background {
-    opacity: 0.58;
+    opacity: 0.46;
   }
 }
