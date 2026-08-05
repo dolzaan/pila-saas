@@ -439,8 +439,9 @@
 .dotBlue { background: #38bdf8; }
 
 .pricingSection { padding: 122px 20px; border-block: 1px solid rgba(188, 255, 229, 0.08); background: linear-gradient(180deg, rgba(7, 14, 25, 0.46), rgba(10, 20, 32, 0.58)); backdrop-filter: blur(7px); }
-.priceCard { position: relative; width: min(580px, 100%); margin: 0 auto; padding: 38px; overflow: hidden; border: 1px solid rgba(83, 239, 178, 0.34); border-radius: 20px; background: linear-gradient(145deg, rgba(20, 38, 56, 0.88), rgba(7, 16, 29, 0.82)); box-shadow: 0 30px 70px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.06); backdrop-filter: blur(14px); }
+.priceCard { position: relative; width: min(680px, 100%); margin: 0 auto; padding: 38px; overflow: hidden; border: 1px solid rgba(83, 239, 178, 0.34); border-radius: 20px; background: linear-gradient(145deg, rgba(20, 38, 56, 0.88), rgba(7, 16, 29, 0.82)); box-shadow: 0 30px 70px rgba(0, 0, 0, 0.28), inset 0 1px rgba(255, 255, 255, 0.06); backdrop-filter: blur(14px); }
 .priceCard::after { position: absolute; top: -170px; right: -130px; width: 340px; height: 340px; border-radius: 50%; background: rgba(53, 230, 161, 0.08); content: ""; filter: blur(10px); }
+.priceCard > :where(*) { position: relative; z-index: 2; }
 .priceBadge { position: absolute; z-index: 2; top: 22px; right: 22px; padding: 7px 10px; border-radius: 6px; color: #062217; background: #65efb9; font-size: 0.66rem; font-weight: 900; letter-spacing: 0.08em; }
 .priceIntro { position: relative; z-index: 2; padding-bottom: 27px; border-bottom: 1px solid var(--landing-border); }
 .priceIntro > p { margin: 0 0 20px; color: white; font-size: 1rem; font-weight: 750; }
@@ -449,9 +450,22 @@
 .price strong { color: #fff; font-size: 3.55rem; letter-spacing: -0.06em; line-height: 1; }
 .price span { margin-left: 8px; color: #8998aa; font-size: 0.85rem; }
 .priceIntro small { display: block; margin-top: 10px; color: #8190a4; }
+.trialTimeline { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin: 0; padding: 27px 0; border-bottom: 1px solid var(--landing-border); list-style: none; }
+.trialTimeline::before { position: absolute; z-index: 0; top: 47px; right: 30px; left: 30px; height: 1px; background: linear-gradient(90deg, #35e6a1, rgba(53, 230, 161, 0.14)); content: ""; }
+.trialTimeline li { position: relative; z-index: 1; display: grid; grid-template-columns: 42px 1fr; align-items: start; gap: 12px; }
+.trialIcon { display: grid; width: 42px; height: 42px; place-items: center; border: 1px solid rgba(255, 255, 255, 0.11); border-radius: 50%; color: #91a1b4; background: #122033; box-shadow: 0 0 0 6px rgba(9, 18, 31, 0.85); }
+.trialActive .trialIcon { border-color: rgba(53, 230, 161, 0.38); color: #062117; background: #35e6a1; box-shadow: 0 0 0 6px rgba(53, 230, 161, 0.08), 0 0 24px rgba(53, 230, 161, 0.16); }
+.trialTimeline li > div:last-child { display: grid; gap: 3px; padding-top: 1px; }
+.trialTimeline span { color: #63e9b4; font-size: 0.62rem; font-weight: 900; letter-spacing: 0.12em; }
+.trialTimeline strong { color: #f5f8fb; font-size: 0.91rem; }
+.trialTimeline small { color: #8291a4; font-size: 0.69rem; line-height: 1.45; }
 .priceFeatures { display: grid; grid-template-columns: 1fr 1fr; gap: 14px 20px; padding: 28px 0; }
 .priceFeatures span { display: flex; align-items: center; gap: 9px; color: #c5cfdb; font-size: 0.82rem; }
 .priceFeatures svg { flex: 0 0 auto; color: #35e6a1; }
+.trialAssurances { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 0 22px; }
+.trialAssurances span { display: flex; min-height: 48px; align-items: center; gap: 7px; padding: 10px 12px; border: 1px solid rgba(53, 230, 161, 0.13); border-radius: 11px; color: #8697aa; background: rgba(53, 230, 161, 0.045); font-size: 0.69rem; }
+.trialAssurances svg { flex: 0 0 auto; color: #35e6a1; }
+.trialAssurances strong { color: #cfe9df; }
 .priceCard .primaryCta { width: 100%; }
 .secureNote { display: flex; align-items: center; justify-content: center; gap: 7px; margin: 15px 0 0; color: #77869a; font-size: 0.71rem; }
 
@@ -539,6 +553,9 @@
   .priceBadge { top: 20px; right: 17px; }
   .price strong { font-size: 3rem; }
   .priceFeatures { grid-template-columns: 1fr; }
+  .trialTimeline { grid-template-columns: 1fr; gap: 22px; }
+  .trialTimeline::before { top: 48px; right: auto; bottom: 48px; left: 20px; width: 1px; height: auto; background: linear-gradient(180deg, #35e6a1, rgba(53, 230, 161, 0.1)); }
+  .trialAssurances { grid-template-columns: 1fr; }
   .finalCta { width: calc(100% - 28px); min-height: 0; margin-bottom: 55px; padding: 37px 27px; }
   .finalCtaRings { top: 68%; right: 50%; width: 430px; height: 430px; transform: translate(50%, -50%); opacity: 0.72; }
   .lightCta { width: 100%; }
