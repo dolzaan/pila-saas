@@ -17,6 +17,7 @@ import {
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { Aurora } from "@/components/landing/aurora";
 import { MagicRings } from "@/components/landing/magic-rings";
+import Iridescence from "@/components/landing/iridescence";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -113,6 +114,13 @@ export default function LandingPage() {
           </div>
 
           <div className={styles.heroVisual} aria-label="Exemplo de uso do Pila pelo WhatsApp">
+            <Iridescence
+              className={styles.heroIridescence}
+              color={[0.32, 1, 0.72]}
+              mouseReact={false}
+              amplitude={0.08}
+              speed={0.35}
+            />
             <div className={`${styles.floatCard} ${styles.balanceCard}`}>
               <span>Saldo do mês</span>
               <strong>R$ 2.847,10</strong>
