@@ -45,6 +45,7 @@ import {
   getConversationMemory,
   rememberConversationExchange,
 } from "@/lib/conversation-memory";
+import { buildVisitorDiscoveryReply } from "@/lib/visitor-onboarding";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -291,7 +292,7 @@ export async function POST(req: Request) {
             }),
           ]);
 
-          const successMsg = "✅ Conta vinculada com sucesso! Você já pode me enviar seus gastos e ganhos.";
+          const successMsg = "✅ Pronto, sua conta foi vinculada! A partir de agora, pode falar comigo do seu jeito: mande um gasto ou ganho por texto, áudio ou foto, peça um lembrete ou solicite um relatório. Se quiser testar agora, é só me contar sua última movimentação.";
           await sendWhatsAppMessage(remoteJid, successMsg);
           return NextResponse.json({ success: true, processed: true, replyMessage: successMsg });
         }
@@ -300,6 +301,12 @@ export async function POST(req: Request) {
       const wantsToRegister = /\b(quero (?:criar|fazer|abrir)|criar (?:uma )?conta|começar|cadastrar|cadastro|assinar|testar)\b/i.test(text);
       const asksForOfficialLink = /\b(link|site|página|pagina|endereço|endereco|url)\b/i.test(text);
       const pinWasInvalid = /^\d{6}$/.test(text.trim());
+      const previousContactCount = await prisma.whatsappInboundMessage.count({
+        where: { phone: phoneNumber, id: { not: messageId } },
+      });
+      const visitorDiscoveryReply = buildVisitorDiscoveryReply(text, {
+        isFirstContact: previousContactCount === 0,
+      });
 
       let replyMessage: string;
       if (onboarding && isCancellation(text)) {
@@ -399,7 +406,7 @@ export async function POST(req: Request) {
           });
 
           const activationUrl = `${PILA_APP_URL}/activate?token=${activation.token}`;
-          replyMessage = `✅ Sua conta foi criada e este WhatsApp já está vinculado!\n\nDefina sua senha neste link seguro, válido por 30 minutos:\n${activationUrl}\n\nSeu teste grátis de 7 dias já começou.`;
+          replyMessage = `✅ Sua conta foi criada e este WhatsApp já está vinculado!\n\nDefina sua senha neste link seguro, válido por 30 minutos:\n${activationUrl}\n\nSeu teste grátis de 7 dias já começou. Depois de definir a senha, volte aqui e fale comigo naturalmente: você pode registrar movimentações, enviar comprovantes, criar lembretes e pedir relatórios com gráficos.`;
         }
       } else if (wantsToRegister) {
         await prisma.whatsappOnboardingSession.upsert({
@@ -407,10 +414,12 @@ export async function POST(req: Request) {
           create: { phone: phoneNumber, step: "NAME", expiresAt: new Date(Date.now() + ONBOARDING_TTL_MS) },
           update: { step: "NAME", name: null, email: null, expiresAt: new Date(Date.now() + ONBOARDING_TTL_MS) },
         });
-        replyMessage = "Vamos criar sua conta por aqui! Primeiro, qual é o seu nome e sobrenome?\n\nVocê pode cancelar a qualquer momento escrevendo “cancelar”.";
+        replyMessage = "Boa! O cadastro leva só alguns passos e você já sai com 7 dias de acesso Pro, sem cartão. Para começar, qual é o seu nome e sobrenome?\n\nSe mudar de ideia, pode escrever “cancelar” a qualquer momento.";
+      } else if (visitorDiscoveryReply) {
+        replyMessage = visitorDiscoveryReply;
       } else {
         // Visitantes também podem conversar com a IA para conhecer o produto.
-        const visitorContext = `${PILA_PUBLIC_KNOWLEDGE}\n\nO número ainda não está vinculado a uma conta. Não use nem invente dados financeiros pessoais.`;
+        const visitorContext = `${PILA_PUBLIC_KNOWLEDGE}\n\nO número ainda não está vinculado a uma conta. Não use nem invente dados financeiros pessoais. ${previousContactCount === 0 ? "Este é o primeiro contato deste visitante: acolha, explique o valor do Pila de forma concreta e faça somente uma pergunta leve." : "A conversa já começou antes: não repita uma apresentação completa sem necessidade."}`;
         const aiResult = await parseFinancialMessage(text, visitorContext, mediaBase64, mediaMimeType);
         replyMessage = aiResult.replyMessage
           || `Olá! Eu sou o Pila Bot. Posso explicar como o Pila funciona ou ajudar você a começar: ${PILA_REGISTER_URL}`;
