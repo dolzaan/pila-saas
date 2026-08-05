@@ -37,6 +37,15 @@ const SUGGESTIONS: Record<"demo" | "account", string[]> = {
 
 export function LandingAiChat() {
   const pathname = usePathname();
+  const isPublicLandingPath = [
+    "/",
+    "/features",
+    "/recursos",
+    "/how-it-works",
+    "/como-funciona",
+    "/security",
+    "/seguranca",
+  ].includes(pathname);
   const isAuthenticatedArea =
     pathname.startsWith("/dashboard") || pathname.startsWith("/painel");
   const chatMode = isAuthenticatedArea ? "account" : "demo";
@@ -45,7 +54,7 @@ export function LandingAiChat() {
   const [messages, setMessages] = useState<Message[]>([INITIAL_MESSAGES[chatMode]]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [demoHeroVisible, setDemoHeroVisible] = useState(pathname === "/");
+  const [landingChatBlocked, setLandingChatBlocked] = useState(isPublicLandingPath);
   const endRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -62,24 +71,34 @@ export function LandingAiChat() {
 
   useEffect(() => {
     if (chatMode !== "demo") {
-      setDemoHeroVisible(false);
+      setLandingChatBlocked(false);
       return;
     }
 
-    const demo = document.querySelector<HTMLElement>("[data-interactive-demo]");
-    const hero = demo?.closest("section");
-    if (!hero || !("IntersectionObserver" in window)) {
-      setDemoHeroVisible(false);
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => setDemoHeroVisible(entry.isIntersecting),
-      { threshold: 0.12 },
+    const protectedZones = Array.from(
+      document.querySelectorAll<HTMLElement>("[data-public-hero], [data-chat-safe-zone]"),
     );
-    observer.observe(hero);
+    if (!protectedZones.length || !("IntersectionObserver" in window)) {
+      setLandingChatBlocked(false);
+      return;
+    }
+
+    const visibleZones = new Set<Element>();
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) visibleZones.add(entry.target);
+          else visibleZones.delete(entry.target);
+        });
+        const blocked = visibleZones.size > 0;
+        setLandingChatBlocked(blocked);
+        if (blocked) setOpen(false);
+      },
+      { threshold: 0.01 },
+    );
+    protectedZones.forEach((zone) => observer.observe(zone));
     return () => observer.disconnect();
-  }, [chatMode, pathname]);
+  }, [chatMode, isPublicLandingPath, pathname]);
 
   async function sendMessage(text: string) {
     const message = text.trim();
@@ -127,7 +146,7 @@ export function LandingAiChat() {
     return null;
   }
 
-  if (!open && demoHeroVisible) {
+  if (chatMode === "demo" && landingChatBlocked) {
     return null;
   }
 
