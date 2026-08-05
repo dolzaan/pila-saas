@@ -17,7 +17,7 @@ import {
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { Aurora } from "@/components/landing/aurora";
 import { MagicRings } from "@/components/landing/magic-rings";
-import Iridescence from "@/components/landing/iridescence";
+import { PublicIridescence } from "@/components/landing/public-iridescence";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -68,13 +68,7 @@ const steps = [
 export default function LandingPage() {
   return (
     <main className={styles.page} data-landing-root>
-      <Iridescence
-        className={styles.pageIridescence}
-        color={[0.42, 0.9, 0.72]}
-        mouseReact={false}
-        amplitude={0.06}
-        speed={0.22}
-      />
+      <PublicIridescence />
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link className={styles.brand} href="/" aria-label="Pila — início">
