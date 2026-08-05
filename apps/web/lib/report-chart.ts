@@ -1,11 +1,52 @@
 import * as echarts from "echarts";
 import type { EChartsOption, TitleComponentOption } from "echarts";
-import sharp from "sharp";
+import { existsSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import type { ProfessionalReport, ReportKpi } from "@/lib/report-engine";
+import { REPORT_FONT_BASE64 } from "@/lib/report-font";
 
 const WIDTH = 1080;
 const HEIGHT = 1350;
 const COLORS = ["#35e6a1", "#7c83ff", "#ff6b7a", "#ffbd59", "#4cc9f0", "#b497cf"];
+const REPORT_FONT_FAMILY = "DejaVu Sans";
+
+let reportFontPrepared = false;
+
+function prepareReportFont() {
+  if (reportFontPrepared) return;
+
+  const fontDirectory = join(tmpdir(), "pila-report-font-v1");
+  const fontPath = join(fontDirectory, "DejaVuSans.ttf");
+  const fontConfigPath = join(fontDirectory, "fonts.conf");
+
+  mkdirSync(fontDirectory, { recursive: true });
+
+  if (!existsSync(fontPath)) {
+    writeFileSync(fontPath, Buffer.from(REPORT_FONT_BASE64, "base64"));
+  }
+
+  if (!existsSync(fontConfigPath)) {
+    writeFileSync(
+      fontConfigPath,
+      `<?xml version="1.0"?>
+<!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+<fontconfig>
+  <dir>${fontDirectory}</dir>
+  <cachedir>${join(fontDirectory, "cache")}</cachedir>
+  <config><rescan><int>0</int></rescan></config>
+</fontconfig>`,
+      "utf8",
+    );
+  }
+
+  // sharp/librsvg uses Fontconfig when rasterizing the SVG. Vercel's runtime
+  // does not guarantee that any system font is installed, so point it to the
+  // font bundled with the report generator before sharp is loaded.
+  process.env.FONTCONFIG_FILE = fontConfigPath;
+  process.env.FONTCONFIG_PATH = fontDirectory;
+  reportFontPrepared = true;
+}
 
 function money(value: number) {
   return new Intl.NumberFormat("pt-BR", {
@@ -44,7 +85,7 @@ function titleCards(report: ProfessionalReport): TitleComponentOption[] {
     borderRadius: 14,
     textStyle: {
       color: index === 0 ? "#62edb8" : "#f5f8fb",
-      fontFamily: "DejaVu Sans, sans-serif",
+      fontFamily: REPORT_FONT_FAMILY,
       fontSize: 23,
       fontWeight: 700,
       width: 244,
@@ -52,7 +93,7 @@ function titleCards(report: ProfessionalReport): TitleComponentOption[] {
     },
     subtextStyle: {
       color: "#8291a5",
-      fontFamily: "DejaVu Sans, sans-serif",
+      fontFamily: REPORT_FONT_FAMILY,
       fontSize: 11,
       fontWeight: 700,
     },
@@ -67,13 +108,13 @@ function titleCards(report: ProfessionalReport): TitleComponentOption[] {
       itemGap: 10,
       textStyle: {
         color: "#ffffff",
-        fontFamily: "DejaVu Sans, sans-serif",
+        fontFamily: REPORT_FONT_FAMILY,
         fontSize: 34,
         fontWeight: 800,
       },
       subtextStyle: {
         color: "#8fa0b4",
-        fontFamily: "DejaVu Sans, sans-serif",
+        fontFamily: REPORT_FONT_FAMILY,
         fontSize: 16,
       },
     },
@@ -81,7 +122,7 @@ function titleCards(report: ProfessionalReport): TitleComponentOption[] {
     {
       text: report.insights.length > 0 ? "LEITURA DO PILA" : "RELATÓRIO DO PILA",
       subtext: report.insights.length > 0
-        ? report.insights.slice(0, 3).map((item) => `• ${item}`).join("\n")
+        ? report.insights.slice(0, 3).map((item) => `- ${item}`).join("\n")
         : "Os valores deste relatório foram calculados com os dados registrados na sua conta.",
       left: 48,
       top: 1090,
@@ -93,13 +134,13 @@ function titleCards(report: ProfessionalReport): TitleComponentOption[] {
       borderRadius: 14,
       textStyle: {
         color: "#62edb8",
-        fontFamily: "DejaVu Sans, sans-serif",
+        fontFamily: REPORT_FONT_FAMILY,
         fontSize: 12,
         fontWeight: 800,
       },
       subtextStyle: {
         color: "#c5d0dc",
-        fontFamily: "DejaVu Sans, sans-serif",
+        fontFamily: REPORT_FONT_FAMILY,
         fontSize: 15,
         lineHeight: 25,
         width: 920,
@@ -107,20 +148,20 @@ function titleCards(report: ProfessionalReport): TitleComponentOption[] {
       },
     },
     {
-      text: "PILA  •  SUA IA FINANCEIRA",
+      text: "PILA  |  SUA IA FINANCEIRA",
       subtext: "Relatório gerado com os dados da sua conta",
       left: 48,
       top: 1284,
       itemGap: 5,
       textStyle: {
         color: "#35e6a1",
-        fontFamily: "DejaVu Sans, sans-serif",
+        fontFamily: REPORT_FONT_FAMILY,
         fontSize: 11,
         fontWeight: 800,
       },
       subtextStyle: {
         color: "#56677b",
-        fontFamily: "DejaVu Sans, sans-serif",
+        fontFamily: REPORT_FONT_FAMILY,
         fontSize: 10,
       },
     },
@@ -133,7 +174,7 @@ function axisStyle() {
     axisTick: { show: false },
     axisLabel: {
       color: "#91a0b2",
-      fontFamily: "DejaVu Sans, sans-serif",
+      fontFamily: REPORT_FONT_FAMILY,
       fontSize: 12,
     },
     splitLine: { lineStyle: { color: "rgba(145,160,178,0.13)", type: "dashed" as const } },
@@ -146,7 +187,7 @@ function chartOption(report: ProfessionalReport): EChartsOption {
     animation: false,
     title: titleCards(report),
     aria: { enabled: true, decal: { show: false } },
-    textStyle: { fontFamily: "DejaVu Sans, sans-serif" },
+    textStyle: { fontFamily: REPORT_FONT_FAMILY },
     color: report.series.map((series, index) => series.color || COLORS[index % COLORS.length]),
   };
 
@@ -154,6 +195,7 @@ function chartOption(report: ProfessionalReport): EChartsOption {
     const values = report.series[0]?.values || [];
     return {
       ...common,
+      color: report.labels.map((_, index) => COLORS[index % COLORS.length]),
       legend: {
         type: "plain",
         top: 302,
@@ -276,6 +318,8 @@ function chartOption(report: ProfessionalReport): EChartsOption {
 }
 
 export async function generateProfessionalReportChart(report: ProfessionalReport) {
+  prepareReportFont();
+  const { default: sharp } = await import("sharp");
   const chart = echarts.init(null, undefined, {
     renderer: "svg",
     ssr: true,
