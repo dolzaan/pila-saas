@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, Database, EyeOff, KeyRound, ShieldCheck, UserCheck } from "lucide-react";
+import { PublicIridescence } from "@/components/landing/public-iridescence";
 import styles from "../landing.module.css";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ const points = [
 export default function SecurityPage() {
   return (
     <main className={styles.page}>
+      <PublicIridescence />
       <header className={styles.header}>
         <div className={styles.headerInner}>
           <Link className={styles.brand} href="/"><Image src="/logo-icon.png" alt="" width={40} height={40} priority /><span>Pila</span></Link>
