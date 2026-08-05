@@ -48,12 +48,15 @@ export function LandingMotion() {
       balance?.setAttribute("data-floating", "balance");
       phone?.setAttribute("data-floating", "phone");
       budget?.setAttribute("data-floating", "budget");
-      const chat = phone?.children[1] as HTMLElement | undefined;
-      Array.from(chat?.children || []).forEach((child, index) => {
-        const bubble = child as HTMLElement;
-        bubble.dataset.chatBubble = "true";
-        setDelay(bubble, index, 180);
-      });
+
+      if (phone && !phone.hasAttribute("data-interactive-demo")) {
+        const chat = phone.children[1] as HTMLElement | undefined;
+        Array.from(chat?.children || []).forEach((child, index) => {
+          const bubble = child as HTMLElement;
+          bubble.dataset.chatBubble = "true";
+          setDelay(bubble, index, 180);
+        });
+      }
 
       const progressFill = budget?.querySelector<HTMLElement>("i");
       progressFill?.setAttribute("data-progress-fill", "true");
