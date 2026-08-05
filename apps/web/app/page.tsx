@@ -6,9 +6,13 @@ import {
   BarChart3,
   Bell,
   BrainCircuit,
+  CalendarDays,
   Check,
+  CircleCheck,
+  CreditCard,
   MessageCircle,
   PieChart,
+  RefreshCcw,
   ShieldCheck,
   Sparkles,
   Target,
@@ -18,6 +22,7 @@ import { LandingPhoneDemo } from "@/components/landing/landing-phone-demo";
 import { Aurora } from "@/components/landing/aurora";
 import { MagicRings } from "@/components/landing/magic-rings";
 import { PublicIridescence } from "@/components/landing/public-iridescence";
+import { PublicHeader } from "@/components/landing/public-header";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -69,28 +74,9 @@ export default function LandingPage() {
   return (
     <main className={styles.page} data-landing-root>
       <PublicIridescence />
-      <header className={styles.header}>
-        <div className={styles.headerInner}>
-          <Link className={styles.brand} href="/" aria-label="Pila — início">
-            <Image src="/logo-icon.png" alt="" width={40} height={40} priority />
-            <span>Pila</span>
-          </Link>
-          <nav className={styles.nav} aria-label="Navegação principal">
-            <Link href="/features">Recursos</Link>
-            <Link href="/how-it-works">Como funciona</Link>
-            <Link href="/security">Segurança</Link>
-            <a href="#preco">Preço</a>
-          </nav>
-          <div className={styles.headerActions}>
-            <Link className={styles.loginLink} href="/login">Entrar</Link>
-            <Link className={styles.smallCta} href="/register" data-specular-button>
-              Testar grátis por 7 dias <ArrowRight size={16} />
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
 
-      <section className={styles.hero}>
+      <section className={styles.hero} data-public-hero data-chat-safe-zone>
         <div className={styles.heroGlow} />
         <div className={styles.heroGrid}>
           <div className={styles.heroCopy}>
@@ -179,18 +165,32 @@ export default function LandingPage() {
           <span>UM PLANO, SEM LETRINHAS</span>
           <h2>Comece grátis. Continue porque fez sentido.</h2>
         </div>
-        <div className={styles.priceCard}>
+        <div className={styles.priceCard} data-chat-safe-zone>
           <div className={styles.priceBadge}>7 DIAS GRÁTIS</div>
           <div className={styles.priceIntro}>
             <p>Pila Pro</p>
             <div className={styles.price}><sup>R$</sup><strong>19,90</strong><span>/mês</span></div>
-            <small>Cobrança mensal após o período de teste.</small>
+            <small>R$ 19,90/mês somente se você escolher continuar.</small>
           </div>
+          <ol className={styles.trialTimeline} aria-label="Como funciona o teste grátis">
+            <li className={styles.trialActive}>
+              <div className={styles.trialIcon}><CalendarDays size={19} /></div>
+              <div><span>DIAS 1–7</span><strong>Pila Pro grátis</strong><small>Acesso completo, sem cartão.</small></div>
+            </li>
+            <li>
+              <div className={styles.trialIcon}><CircleCheck size={19} /></div>
+              <div><span>DIA 8</span><strong>Você escolhe</strong><small>Assine para continuar ou encerre sem cobrança.</small></div>
+            </li>
+          </ol>
           <div className={styles.priceFeatures}>
             {["Registros pelo WhatsApp e Telegram", "Dashboard completo", "Metas e orçamentos", "Lembretes e despesas recorrentes", "Relatórios inteligentes", "Cancele quando quiser"].map((item) => <span key={item}><Check size={17} /> {item}</span>)}
           </div>
+          <div className={styles.trialAssurances}>
+            <span><CreditCard size={17} /><strong>Sem cartão</strong> durante o teste</span>
+            <span><RefreshCcw size={17} /><strong>Cancelamento fácil</strong> quando quiser</span>
+          </div>
           <Link className={styles.primaryCta} href="/register" data-specular-button>Testar grátis por 7 dias <ArrowRight size={19} /></Link>
-          <p className={styles.secureNote}><ShieldCheck size={16} /> Pagamento seguro processado pela Stripe</p>
+          <p className={styles.secureNote}><ShieldCheck size={16} /> Sem cobrança automática no fim do teste</p>
         </div>
       </section>
 
@@ -207,7 +207,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      <section className={styles.finalCta}>
+      <section className={styles.finalCta} data-chat-safe-zone>
         <Aurora
           className={styles.finalCtaAurora}
           colorStops={["#7cff67", "#B497CF", "#5227FF"]}
