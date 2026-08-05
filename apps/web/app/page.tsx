@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { LandingMotion } from "@/components/landing/landing-motion";
 import { Aurora } from "@/components/landing/aurora";
+import { MagicRings } from "@/components/landing/magic-rings";
 import styles from "./landing.module.css";
 
 export const metadata: Metadata = {
@@ -230,6 +231,31 @@ export default function LandingPage() {
           amplitude={1}
           speed={1}
         />
+        <div className={styles.finalCtaRings}>
+          <MagicRings
+            color="#35E6A1"
+            colorTwo="#6366F1"
+            ringCount={5}
+            speed={0.45}
+            attenuation={16}
+            lineThickness={1}
+            baseRadius={0.3}
+            radiusStep={0.11}
+            scaleRate={0.06}
+            opacity={0.35}
+            blur={0.3}
+            noiseAmount={0.04}
+            rotation={-8}
+            ringGap={1.6}
+            fadeIn={0.8}
+            fadeOut={0.7}
+            followMouse={false}
+            mouseInfluence={0.2}
+            hoverScale={1.08}
+            parallax={0.02}
+            clickBurst={false}
+          />
+        </div>
         <div className={styles.finalCtaContent}><span>Seu próximo mês pode ser mais claro.</span><h2>Comece a organizar seu dinheiro hoje.</h2></div>
         <Link className={styles.lightCta} href="/register" data-specular-button>Testar o Pila grátis <ArrowRight size={19} /></Link>
       </section>
