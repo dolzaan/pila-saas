@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { ArrowRight, BarChart3, BrainCircuit, Check, MessageCircle, Send, Sparkles } from "lucide-react";
+import { PublicIridescence } from "@/components/landing/public-iridescence";
 import styles from "../landing.module.css";
 
 export const metadata: Metadata = {
@@ -19,6 +20,7 @@ const steps = [
 export default function HowItWorksPage() {
   return (
     <main className={styles.page}>
+      <PublicIridescence />
       <header className={styles.header}><div className={styles.headerInner}><Link className={styles.brand} href="/"><Image src="/logo-icon.png" alt="" width={40} height={40} priority /><span>Pila</span></Link><nav className={styles.nav}><Link href="/features">Recursos</Link><Link href="/how-it-works">Como funciona</Link><Link href="/security">Segurança</Link><Link href="/#preco">Preço</Link></nav><div className={styles.headerActions}><Link className={styles.loginLink} href="/login">Entrar</Link><Link className={styles.smallCta} href="/register" data-specular-button>Começar grátis <ArrowRight size={16} /></Link></div></div></header>
       <section className={styles.hero}><div className={styles.heroGrid}><div className={styles.heroCopy}><div className={styles.eyebrow}><Sparkles size={15} /> COMO O PILA FUNCIONA</div><h1>Da conversa ao controle financeiro.</h1><p>Você fala do seu jeito. O Pila interpreta, organiza e transforma cada mensagem em informação útil para o seu dia a dia.</p><div className={styles.heroActions}><Link className={styles.primaryCta} href="/register" data-specular-button>Criar minha conta <ArrowRight size={19} /></Link><Link className={styles.secondaryCta} href="/features">Conhecer recursos</Link></div><div className={styles.heroNotes}><span><Check size={15} /> Texto, áudio e foto</span><span><Check size={15} /> WhatsApp e Telegram</span><span><Check size={15} /> Dashboard atualizado</span></div></div></div></section>
       <section className={styles.section}><div className={styles.sectionHeading}><span>DO ENVIO À DECISÃO</span><h2>Um fluxo simples em quatro etapas.</h2><p>Sem formulários longos e sem precisar adaptar sua rotina a mais um aplicativo.</p></div><div className={styles.featureGrid}>{steps.map(([number, Icon, title, text]) => <article className={styles.featureCard} key={number}><div className={styles.featureIcon}><Icon size={22} /></div><span className={styles.stepNumber}>{number}</span><h3>{title}</h3><p>{text}</p></article>)}</div></section>
