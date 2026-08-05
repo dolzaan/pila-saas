@@ -121,12 +121,12 @@ export default function LandingPage() {
               amplitude={0.08}
               speed={0.35}
             />
-            <div className={`${styles.floatCard} ${styles.balanceCard}`}>
+            <div className={`${styles.floatCard} ${styles.balanceCard}`} data-hero-element="balance">
               <span>Saldo do mês</span>
               <strong>R$ 2.847,10</strong>
               <small>+8,4% em relação ao mês passado</small>
             </div>
-            <div className={styles.phone}>
+            <div className={styles.phone} data-hero-element="phone">
               <div className={styles.phoneTop}>
                 <div className={styles.avatar}><Wallet size={20} /></div>
                 <div><strong>Pila</strong><span>online</span></div>
@@ -145,7 +145,7 @@ export default function LandingPage() {
               </div>
               <div className={styles.messageInput}><span>Mensagem</span><ArrowRight size={18} /></div>
             </div>
-            <div className={`${styles.floatCard} ${styles.budgetCard}`}>
+            <div className={`${styles.floatCard} ${styles.budgetCard}`} data-hero-element="budget">
               <div className={styles.floatTitle}><Target size={17} /> Meta: reserva</div>
               <strong>R$ 6.400</strong><span> de R$ 10.000</span>
               <div className={styles.progress}><i /></div>
