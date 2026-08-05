@@ -187,6 +187,22 @@
 .heroNotes svg { color: #35e6a1; }
 
 .heroVisual { position: relative; min-height: 560px; }
+.heroIridescence {
+  position: absolute;
+  z-index: 1;
+  top: 50%;
+  left: 50%;
+  width: min(560px, 115%);
+  height: 560px;
+  overflow: hidden;
+  border-radius: 50%;
+  opacity: 0.42;
+  filter: blur(5px) saturate(1.15);
+  -webkit-mask-image: radial-gradient(circle, #000 35%, rgba(0, 0, 0, 0.72) 58%, transparent 74%);
+  mask-image: radial-gradient(circle, #000 35%, rgba(0, 0, 0, 0.72) 58%, transparent 74%);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+}
 
 .phone {
   position: absolute;
@@ -553,6 +569,7 @@
   .chat { min-height: 365px; }
   .balanceCard { top: 47px; right: -12px; width: 188px; }
   .budgetCard { bottom: 0; left: -7px; width: 190px; }
+  .heroIridescence { width: 430px; height: 430px; opacity: 0.34; }
   .proofStrip { align-items: flex-start; flex-direction: column; gap: 14px; padding: 25px 30px; }
   .section,
   .faqSection { padding-block: 90px; }
