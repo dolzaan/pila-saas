@@ -45,9 +45,15 @@ import {
   getConversationMemory,
   rememberConversationExchange,
 } from "@/lib/conversation-memory";
-import { buildVisitorDiscoveryReply } from "@/lib/visitor-onboarding";
 import {
-  buildUnlinkedWhatsappReply,
+  appendContextualVisitorCta,
+  buildVisitorDiscoveryReply,
+  buildVisitorProtectedActionReply,
+  visitorConversationMemoryKey,
+} from "@/lib/visitor-onboarding";
+import {
+  isPersonalFinancialWhatsappIntent,
+  isWhatsappRegistrationIntent,
   shouldBlockUnlinkedWhatsappAiResult,
 } from "@/lib/whatsapp-access-gate";
 
@@ -302,9 +308,10 @@ export async function POST(req: Request) {
         }
       }
 
-      const wantsToRegister = /\b(quero (?:criar|fazer|abrir)|criar (?:uma )?conta|começar|cadastrar|cadastro|assinar|testar)\b/i.test(text);
+      const wantsToRegister = isWhatsappRegistrationIntent(text);
       const asksForOfficialLink = /\b(link|site|página|pagina|endereço|endereco|url)\b/i.test(text);
       const pinWasInvalid = /^\d{6}$/.test(text.trim());
+      const visitorMemoryKey = visitorConversationMemoryKey(phoneNumber);
       const previousContactCount = await prisma.whatsappInboundMessage.count({
         where: { phone: phoneNumber, id: { not: messageId } },
       });
@@ -313,6 +320,8 @@ export async function POST(req: Request) {
       });
 
       let replyMessage: string;
+      let visitorConversationMemory: Awaited<ReturnType<typeof getConversationMemory>> = [];
+      let shouldRememberVisitorReply = false;
       if (onboarding && isCancellation(text)) {
         await prisma.whatsappOnboardingSession.delete({ where: { phone: phoneNumber } });
         replyMessage = "Tudo bem, cancelei o cadastro. Quando quiser retomar, é só dizer “quero criar minha conta”.";
@@ -420,15 +429,30 @@ export async function POST(req: Request) {
         });
         replyMessage = "Boa! O cadastro leva só alguns passos e você já sai com 7 dias de acesso Pro, sem cartão. Para começar, qual é o seu nome e sobrenome?\n\nSe mudar de ideia, pode escrever “cancelar” a qualquer momento.";
       } else if (visitorDiscoveryReply) {
+        visitorConversationMemory = await getConversationMemory(visitorMemoryKey);
         replyMessage = visitorDiscoveryReply;
+        shouldRememberVisitorReply = true;
       } else {
         // Visitantes também podem conversar com a IA para conhecer o produto.
+        visitorConversationMemory = await getConversationMemory(visitorMemoryKey);
         const visitorContext = `${PILA_PUBLIC_KNOWLEDGE}\n\nO número ainda não está vinculado a uma conta. Não use nem invente dados financeiros pessoais. ${previousContactCount === 0 ? "Este é o primeiro contato deste visitante: acolha, explique o valor do Pila de forma concreta e faça somente uma pergunta leve." : "A conversa já começou antes: não repita uma apresentação completa sem necessidade."}`;
-        const aiResult = await parseFinancialMessage(text, visitorContext, mediaBase64, mediaMimeType);
-        replyMessage = shouldBlockUnlinkedWhatsappAiResult(aiResult)
-          ? buildUnlinkedWhatsappReply()
-          : aiResult.replyMessage
-            || `Olá! Eu sou o Pila Bot. Posso explicar como o Pila funciona ou ajudar você a começar: ${PILA_REGISTER_URL}`;
+        const aiResult = await parseFinancialMessage(
+          text,
+          visitorContext,
+          mediaBase64,
+          mediaMimeType,
+          visitorConversationMemory,
+        );
+        const shouldBlockVisitorAction = shouldBlockUnlinkedWhatsappAiResult(aiResult);
+        replyMessage = shouldBlockVisitorAction
+          ? buildVisitorProtectedActionReply(aiResult)
+          : appendContextualVisitorCta(
+              aiResult.replyMessage
+                || `Olá! Eu sou o Pila Bot. Posso explicar como o Pila funciona ou ajudar você a começar: ${PILA_REGISTER_URL}`,
+              text,
+            );
+        shouldRememberVisitorReply = !shouldBlockVisitorAction
+          && !isPersonalFinancialWhatsappIntent(text);
 
         if (asksForOfficialLink && !replyMessage.includes(PILA_APP_URL)) {
           replyMessage += `\n\nSite oficial: ${PILA_APP_URL}`;
@@ -436,6 +460,14 @@ export async function POST(req: Request) {
       }
 
       await sendWhatsAppMessage(remoteJid, replyMessage);
+      if (shouldRememberVisitorReply) {
+        await rememberConversationExchange(
+          visitorMemoryKey,
+          visitorConversationMemory,
+          text,
+          replyMessage,
+        );
+      }
       return NextResponse.json({ success: true, replyMessage });
     }
 
