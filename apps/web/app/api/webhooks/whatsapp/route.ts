@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+import { recordBillReminderPayment } from "@/lib/bill-reminder-payment";
 import { auth } from "@/lib/auth";
 import { getUserSubscriptionStatus, hasProAccess } from "@/lib/subscription";
 import { parseFinancialMessage } from "@/lib/ai";
@@ -25,6 +26,8 @@ import {
   failWhatsappInboundMessage,
 } from "@/lib/whatsapp-inbound";
 import { rawMessageForStorage } from "@/lib/privacy";
+import { parseReminderDate } from "@/lib/reminders";
+import { resolveMonthPeriod } from "@/lib/month-period";
 import {
   buildAccountClarificationMessage,
   formatFinancialAccountsForAi,
@@ -76,19 +79,6 @@ async function authorizeWebhook(req: Request) {
   // Permite o simulador apenas para uma sessão administrativa autenticada.
   const session = await auth();
   return session?.user?.role === "ADMIN";
-}
-
-function startOfCurrentMonth() {
-  const date = new Date();
-  date.setDate(1);
-  date.setHours(0, 0, 0, 0);
-  return date;
-}
-
-function startOfNextMonth(startOfMonth: Date) {
-  const date = new Date(startOfMonth);
-  date.setMonth(date.getMonth() + 1);
-  return date;
 }
 
 async function getCardInvoiceTotals(
@@ -503,10 +493,18 @@ export async function POST(req: Request) {
     }
 
     // 5. Preparar Contexto Financeiro do Mês
-    const startOfMonth = startOfCurrentMonth();
-    const nextMonth = startOfNextMonth(startOfMonth);
+    const currentMonth = resolveMonthPeriod();
+    const startOfMonth = currentMonth.start;
+    const nextMonth = currentMonth.end;
 
-    const [recentTransactions, budgets, rawFinancialAccounts, expensesByAccount] = await Promise.all([
+    const [
+      recentTransactions,
+      budgets,
+      rawFinancialAccounts,
+      expensesByAccount,
+      monthlyTotals,
+      expensesByCategoryTotals,
+    ] = await Promise.all([
       prisma.transaction.findMany({
         where: {
           userId: user.id,
@@ -555,6 +553,24 @@ export async function POST(req: Request) {
         },
         _sum: { amount: true },
       }),
+      prisma.transaction.groupBy({
+        by: ["kind"],
+        where: {
+          userId: user.id,
+          occurredAt: { gte: startOfMonth, lt: nextMonth },
+        },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ["categoryId"],
+        where: {
+          userId: user.id,
+          kind: "EXPENSE",
+          categoryId: { not: null },
+          occurredAt: { gte: startOfMonth, lt: nextMonth },
+        },
+        _sum: { amount: true },
+      }),
     ]);
 
     const financialAccounts: FinancialAccountForAi[] = rawFinancialAccounts.map((account) => ({
@@ -578,25 +594,24 @@ export async function POST(req: Request) {
       }
     }
 
-    let monthExpenses = 0;
-    let monthIncomes = 0;
+    const monthExpenses = Number(
+      monthlyTotals.find((item) => item.kind === "EXPENSE")?._sum.amount || 0,
+    );
+    const monthIncomes = Number(
+      monthlyTotals.find((item) => item.kind === "INCOME")?._sum.amount || 0,
+    );
 
-    // Calcular gastos por categoria para bater com o orçamento e para o gráfico
+    // Os totais usam o mês inteiro; somente o contexto textual é limitado.
     const expensesByCategory: Record<string, number> = {};
-    const expensesByCategoryName: Record<string, number> = {};
+    for (const item of expensesByCategoryTotals) {
+      if (item.categoryId) {
+        expensesByCategory[item.categoryId] = Number(item._sum.amount || 0);
+      }
+    }
 
     const contextLines = recentTransactions.map((transaction) => {
       const value = Number(transaction.amount);
-      if (transaction.kind === "EXPENSE") {
-        monthExpenses += value;
-        if (transaction.categoryId) {
-          expensesByCategory[transaction.categoryId] = (expensesByCategory[transaction.categoryId] || 0) + value;
-        }
-        const categoryName = transaction.category?.name || "Sem categoria";
-        expensesByCategoryName[categoryName] = (expensesByCategoryName[categoryName] || 0) + value;
-      }
-      if (transaction.kind === "INCOME") monthIncomes += value;
-      return `- ${transaction.occurredAt.toLocaleDateString("pt-BR")}: R$ ${value.toFixed(2)} - ${transaction.category?.name || "Sem categoria"} - ${transaction.kind === "EXPENSE" ? "Gasto" : "Ganho"}`;
+      return `- ${transaction.occurredAt.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}: R$ ${value.toFixed(2)} - ${transaction.category?.name || "Sem categoria"} - ${transaction.kind === "EXPENSE" ? "Gasto" : "Ganho"}`;
     });
 
     const budgetLines = budgets.map((budget) => {
@@ -611,7 +626,7 @@ export async function POST(req: Request) {
     );
 
     const userContext = `
-Resumo de ${startOfMonth.toLocaleDateString("pt-BR", { month: "long", year: "numeric" })}:
+Resumo de ${currentMonth.label}:
 Total de Gastos: R$ ${monthExpenses.toFixed(2)}
 Total de Ganhos: R$ ${monthIncomes.toFixed(2)}
 
@@ -783,21 +798,25 @@ ${contextLines.slice(0, 20).join("\n")}
       }
 
       if (aiResult.reminderAction === "MARK_PAID") {
-        await prisma.billReminder.update({
-          where: { id: reminder.id },
-          data: { isPaid: true, paidAt: new Date() },
-        });
-        const replyMessage = `✅ Marquei “${reminder.description}” como paga.`;
+        await recordBillReminderPayment(user.id, reminder.id);
+        const replyMessage = `✅ Marquei “${reminder.description}” como paga e registrei a despesa.`;
         await sendReplyWithMemory(replyMessage);
         return NextResponse.json({ success: true, replyMessage });
       }
 
-      const snoozedUntil = new Date(`${aiResult.snoozeUntil}T12:00:00`);
+      const snoozedUntil = aiResult.snoozeUntil
+        ? parseReminderDate(aiResult.snoozeUntil)
+        : null;
+      if (!snoozedUntil) {
+        const replyMessage = "Não consegui entender a nova data. Pode enviar no formato dia/mês/ano?";
+        await sendReplyWithMemory(replyMessage);
+        return NextResponse.json({ success: true, replyMessage });
+      }
       await prisma.billReminder.update({
         where: { id: reminder.id },
         data: { snoozedUntil, lastNotifiedAt: null },
       });
-      const replyMessage = `Combinado! Vou lembrar você novamente em ${snoozedUntil.toLocaleDateString("pt-BR")}.`;
+      const replyMessage = `Combinado! Vou lembrar você novamente em ${snoozedUntil.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}.`;
       await sendReplyWithMemory(replyMessage);
       return NextResponse.json({ success: true, replyMessage });
     }
@@ -805,12 +824,18 @@ ${contextLines.slice(0, 20).join("\n")}
     // 6.4 Tratamento de Lembretes de Contas a Pagar
     if (aiResult.isReminder) {
       if (aiResult.dueDate && aiResult.amount && aiResult.description) {
+        const dueDate = parseReminderDate(aiResult.dueDate);
+        if (!dueDate) {
+          const replyMessage = "A data do lembrete parece inválida. Pode enviar no formato dia/mês/ano?";
+          await sendReplyWithMemory(replyMessage);
+          return NextResponse.json({ success: true, replyMessage });
+        }
         await prisma.billReminder.create({
           data: {
             userId: user.id,
             description: aiResult.description,
             amount: aiResult.amount,
-            dueDate: new Date(aiResult.dueDate),
+            dueDate,
           },
         });
       }

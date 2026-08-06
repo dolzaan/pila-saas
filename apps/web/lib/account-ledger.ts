@@ -1,4 +1,4 @@
-import type { FinancialAccountType, Prisma } from "@prisma/client";
+import { Prisma, type FinancialAccountType } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 
 export type LedgerAccount = {
@@ -165,9 +165,20 @@ type AccountTransferRow = {
   amount: Prisma.Decimal;
 };
 
-export async function getAccountLedgerSummaries(userId: string) {
+export async function getAccountLedgerSummaries(
+  userId: string,
+  options: {
+    before?: Date;
+    client?: Pick<
+      typeof prisma,
+      "financialAccount" | "transaction" | "creditCardPayment" | "$queryRaw"
+    >;
+  } = {},
+) {
+  const before = options.before;
+  const client = options.client || prisma;
   const [accounts, transactionTotals, cardPayments, transfers] = await Promise.all([
-    prisma.financialAccount.findMany({
+    client.financialAccount.findMany({
       where: { userId },
       select: {
         id: true,
@@ -176,27 +187,32 @@ export async function getAccountLedgerSummaries(userId: string) {
         creditLimit: true,
       },
     }),
-    prisma.transaction.groupBy({
+    client.transaction.groupBy({
       by: ["financialAccountId", "kind"],
       where: {
         userId,
         financialAccountId: { not: null },
+        ...(before ? { occurredAt: { lt: before } } : {}),
       },
       _sum: { amount: true },
     }),
-    prisma.creditCardPayment.findMany({
-      where: { userId },
+    client.creditCardPayment.findMany({
+      where: {
+        userId,
+        ...(before ? { paidAt: { lt: before } } : {}),
+      },
       select: {
         creditCardId: true,
         sourceAccountId: true,
         amount: true,
       },
     }),
-    prisma.$queryRaw<AccountTransferRow[]>`
+    client.$queryRaw<AccountTransferRow[]>(Prisma.sql`
       SELECT "sourceAccountId", "destinationAccountId", "amount"
       FROM "account_transfers"
       WHERE "userId" = ${userId}
-    `,
+      ${before ? Prisma.sql`AND "occurredAt" < ${before}` : Prisma.empty}
+    `),
   ]);
 
   return calculateAccountLedgerSummaries({

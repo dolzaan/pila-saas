@@ -1,11 +1,12 @@
 "use server";
 
 import { auth } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
 import {
-  confirmRecurringPayment,
-  RecurringPaymentError,
-} from "@/lib/recurring-payments";
+  BillReminderPaymentError,
+  recordBillReminderPayment,
+} from "@/lib/bill-reminder-payment";
+import { prisma } from "@/lib/prisma";
+import { RecurringPaymentError } from "@/lib/recurring-payments";
 import { parseReminderDate, reminderDateKey, saoPauloDateKey } from "@/lib/reminders";
 import { BillReminderSchema } from "@/lib/schemas";
 import { revalidatePath } from "next/cache";
@@ -104,89 +105,23 @@ export async function setBillReminderPaid(id: string, isPaid: boolean) {
   if (!session?.user?.id) return { error: "Não autorizado." };
 
   try {
-    const reminder = await prisma.billReminder.findFirst({
-      where: { id, userId: session.user.id },
-      select: {
-        id: true,
-        description: true,
-        amount: true,
-        dueDate: true,
-        isPaid: true,
-      },
-    });
-
-    if (!reminder) return { error: "Lembrete não encontrado." };
-
     if (isPaid) {
-      const recurring = await prisma.recurringTransaction.findFirst({
-        where: {
-          userId: session.user.id,
-          description: reminder.description,
-          amount: reminder.amount,
-          nextDate: reminder.dueDate,
-        },
-        select: { id: true },
-      });
-
-      if (recurring) {
-        const result = await confirmRecurringPayment({
-          userId: session.user.id,
-          recurringTransactionId: recurring.id,
-          expectedDueDate: reminder.dueDate,
-          amount: reminder.amount.toNumber(),
-        });
-
-        revalidateReminderPages();
-        return {
-          success: true,
-          transactionId: result.transactionId,
-          alreadyRecorded: result.alreadyRecorded,
-        };
-      }
-
-      const paidAt = new Date();
-      const paymentFingerprint = `bill-reminder-payment:${reminder.id}`;
-
-      const result = await prisma.$transaction(async (transaction) => {
-        const transactionRecord = await transaction.transaction.upsert({
-          where: {
-            userId_importFingerprint: {
-              userId: session.user.id,
-              importFingerprint: paymentFingerprint,
-            },
-          },
-          update: {},
-          create: {
-            userId: session.user.id,
-            amount: reminder.amount,
-            kind: "EXPENSE",
-            description: reminder.description,
-            occurredAt: paidAt,
-            source: "reminder",
-            importFingerprint: paymentFingerprint,
-          },
-          select: { id: true },
-        });
-
-        await transaction.billReminder.update({
-          where: { id: reminder.id },
-          data: {
-            isPaid: true,
-            paidAt,
-            snoozedUntil: null,
-          },
-        });
-
-        return transactionRecord;
-      });
+      const result = await recordBillReminderPayment(session.user.id, id);
 
       revalidateReminderPages();
       return {
         success: true,
-        transactionId: result.id,
-        alreadyRecorded: reminder.isPaid,
+        transactionId: result.transactionId,
+        alreadyRecorded: result.alreadyRecorded,
       };
     }
+
+    const reminder = await prisma.billReminder.findFirst({
+      where: { id, userId: session.user.id },
+      select: { id: true },
+    });
+
+    if (!reminder) return { error: "Lembrete não encontrado." };
 
     await prisma.$transaction(async (transaction) => {
       await transaction.billReminder.update({
@@ -210,7 +145,7 @@ export async function setBillReminderPaid(id: string, isPaid: boolean) {
     revalidateReminderPages();
     return { success: true };
   } catch (error) {
-    if (error instanceof RecurringPaymentError) {
+    if (error instanceof BillReminderPaymentError || error instanceof RecurringPaymentError) {
       return { error: error.message };
     }
     console.error("[setBillReminderPaid]", error);

@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { getAccountLedgerSummaries } from "@/lib/account-ledger";
 import { prisma } from "@/lib/prisma";
@@ -42,7 +43,7 @@ function revalidateFinancialPages() {
 
 export async function createAccountTransfer(_state: unknown, formData: FormData) {
   const session = await auth();
-  if (!session?.user?.id) return { error: "Não autorizado." };
+  if (!session?.user?.id) return { success: false, error: "Não autorizado." };
 
   const parsed = AccountTransferSchema.safeParse({
     sourceAccountId: formData.get("sourceAccountId")?.toString(),
@@ -54,79 +55,103 @@ export async function createAccountTransfer(_state: unknown, formData: FormData)
 
   if (!parsed.success) {
     return {
+      success: false,
       error: "Revise os dados da transferência.",
       details: parsed.error.format(),
     };
   }
 
-  const accountIds = [
-    parsed.data.sourceAccountId,
-    parsed.data.destinationAccountId,
-  ];
-  const accounts = await prisma.financialAccount.findMany({
-    where: {
-      id: { in: accountIds },
-      userId: session.user.id,
-      isArchived: false,
-    },
-    select: { id: true, name: true, type: true },
-  });
-
-  if (accounts.length !== 2) {
-    return { error: "Uma das contas não existe ou está arquivada." };
-  }
-
-  if (accounts.some((account) => account.type === "CREDIT_CARD" || account.type === "BENEFIT_CARD")) {
-    return {
-      error: "Cartões não participam de transferências. Use pagamento de fatura ou recarga de benefício.",
-    };
-  }
-
-  const summaries = await getAccountLedgerSummaries(session.user.id);
-  const sourceSummary = summaries.get(parsed.data.sourceAccountId);
-  if (!sourceSummary) return { error: "Conta de origem não encontrada." };
-
-  if (sourceSummary.balance < parsed.data.amount) {
-    return {
-      error: `Saldo insuficiente. Disponível: ${new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-      }).format(sourceSummary.balance)}.`,
-    };
-  }
-
   try {
-    await prisma.$executeRaw`
-      INSERT INTO "account_transfers" (
-        "id",
-        "userId",
-        "sourceAccountId",
-        "destinationAccountId",
-        "amount",
-        "description",
-        "occurredAt",
-        "source",
-        "createdAt",
-        "updatedAt"
-      )
-      VALUES (
-        ${randomUUID()},
-        ${session.user.id},
-        ${parsed.data.sourceAccountId},
-        ${parsed.data.destinationAccountId},
-        ${parsed.data.amount},
-        ${parsed.data.description || null},
-        ${parseDate(parsed.data.occurredAt)},
-        'manual',
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP
-      )
-    `;
+    const result = await prisma.$transaction(async (transaction) => {
+      await transaction.$executeRaw(Prisma.sql`
+        SELECT pg_advisory_xact_lock(hashtext(${`account-transfer:${parsed.data.sourceAccountId}`}))
+      `);
+
+      const accountIds = [
+        parsed.data.sourceAccountId,
+        parsed.data.destinationAccountId,
+      ];
+      const accounts = await transaction.financialAccount.findMany({
+        where: {
+          id: { in: accountIds },
+          userId: session.user.id,
+          isArchived: false,
+        },
+        select: { id: true, type: true },
+      });
+
+      if (accounts.length !== 2) {
+        return {
+          success: false,
+          error: "Uma das contas não existe ou está arquivada.",
+        } as const;
+      }
+      if (accounts.some(
+        (account) => account.type === "CREDIT_CARD" || account.type === "BENEFIT_CARD",
+      )) {
+        return {
+          success: false,
+          error: "Cartões não participam de transferências. Use pagamento de fatura ou recarga de benefício.",
+        } as const;
+      }
+
+      const summaries = await getAccountLedgerSummaries(session.user.id, {
+        client: transaction,
+      });
+      const sourceSummary = summaries.get(parsed.data.sourceAccountId);
+      if (!sourceSummary) {
+        return { success: false, error: "Conta de origem não encontrada." } as const;
+      }
+
+      if (sourceSummary.balance < parsed.data.amount) {
+        return {
+          success: false,
+          error: `Saldo insuficiente. Disponível: ${new Intl.NumberFormat("pt-BR", {
+            style: "currency",
+            currency: "BRL",
+          }).format(sourceSummary.balance)}.`,
+        } as const;
+      }
+
+      await transaction.$executeRaw(Prisma.sql`
+        INSERT INTO "account_transfers" (
+          "id",
+          "userId",
+          "sourceAccountId",
+          "destinationAccountId",
+          "amount",
+          "description",
+          "occurredAt",
+          "source",
+          "createdAt",
+          "updatedAt"
+        )
+        VALUES (
+          ${randomUUID()},
+          ${session.user.id},
+          ${parsed.data.sourceAccountId},
+          ${parsed.data.destinationAccountId},
+          ${parsed.data.amount},
+          ${parsed.data.description || null},
+          ${parseDate(parsed.data.occurredAt)},
+          'manual',
+          CURRENT_TIMESTAMP,
+          CURRENT_TIMESTAMP
+        )
+      `);
+
+      return { success: true } as const;
+    }, {
+      maxWait: 5_000,
+      timeout: 10_000,
+    });
+
+    if ("error" in result) return result;
 
     revalidateFinancialPages();
-    return { success: true };
+    return result;
   } catch (error) {
     console.error("[createAccountTransfer]", error);
-    return { error: "Não foi possível concluir a transferência." };
+    return { success: false, error: "Não foi possível concluir a transferência." };
   }
 }

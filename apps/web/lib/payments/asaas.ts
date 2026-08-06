@@ -45,6 +45,17 @@ interface AsaasPaymentsResponse {
   }>;
 }
 
+export class AsaasApiError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+    this.name = "AsaasApiError";
+  }
+}
+
+export function isAsaasNotFoundError(error: unknown): boolean {
+  return error instanceof AsaasApiError && error.status === 404;
+}
+
 function getAsaasConfig() {
   const apiKey = process.env.ASAAS_API_KEY;
   const apiUrl = process.env.ASAAS_API_URL ?? "https://api-sandbox.asaas.com/v3";
@@ -91,7 +102,10 @@ async function asaasRequest<T>(
     if (!response.ok) {
       const payload = (await response.json().catch(() => ({}))) as AsaasErrorPayload;
       const message = payload.errors?.map((error) => error.description).filter(Boolean).join("; ");
-      throw new Error(message || `Asaas respondeu com HTTP ${response.status}`);
+      throw new AsaasApiError(
+        message || `Asaas respondeu com HTTP ${response.status}`,
+        response.status,
+      );
     }
 
     if (response.status === 204) return undefined as T;
