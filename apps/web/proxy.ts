@@ -6,8 +6,7 @@ import {
   buildUnlinkedWhatsappReply,
   buildWhatsappAccessCheckFailureReply,
   buildWhatsappLinkHelpReply,
-  canUnlinkedWhatsappMessageReachBot,
-  isWhatsappLinkHelpIntent,
+  getUnlinkedWhatsappGateReplyKind,
   shouldCheckWhatsappAccountAccess,
   type WhatsappGateReplyKind,
 } from "@/lib/whatsapp-access-gate";
@@ -223,16 +222,10 @@ export default auth(async (req) => {
         const access = await checkWhatsappAccess(req, whatsappContext.phone);
 
         if (access && !access.linked && !access.onboardingActive) {
-          let replyKind: WhatsappGateReplyKind | null = null;
-
-          const canContinue = !whatsappContext.hasMedia
-            && canUnlinkedWhatsappMessageReachBot(whatsappContext.text);
-
-          if (!canContinue) {
-            replyKind = isWhatsappLinkHelpIntent(whatsappContext.text)
-              ? "LINK_HELP"
-              : "UNLINKED";
-          }
+          const replyKind = getUnlinkedWhatsappGateReplyKind(
+            whatsappContext.text,
+            whatsappContext.hasMedia,
+          );
 
           if (replyKind) {
             await sendWhatsappGateReply(req, whatsappContext, replyKind);
