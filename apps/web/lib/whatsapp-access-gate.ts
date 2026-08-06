@@ -37,6 +37,13 @@ const LINK_HELP_INTENTS = [
 const PUBLIC_PRODUCT_INTENTS = [
   /\bcomo funciona (?:o )?pila\b/i,
   /\bo que [ée] (?:o )?pila\b/i,
+  /\bquem (?:[ée]|eh) (?:voc[eê]|vc|c[eê]|o pila)\b/i,
+  /\bo que (?:voc[eê]|vc|c[eê]|o pila) (?:faz|consegue fazer)\b/i,
+  /\b(?:como|no que) (?:voc[eê]|vc|c[eê]|o pila) (?:pode )?me ajud(?:a|ar)\b/i,
+  /\b(?:me explica|me explique|fala|fale|conte) (?:mais )?(?:sobre )?(?:voc[eê]|vc|o pila)\b/i,
+  /\bquero (?:conhecer|entender|saber) mais (?:sobre )?(?:voc[eê]|vc|o pila)\b/i,
+  /\b(?:n[aã]o sei|como) (?:por onde )?come[cç]ar\b/i,
+  /^(?:obrigad[oa]|valeu|entendi|beleza|legal|show|top|bacana)[!,.?\s]*$/i,
   /\bpre[cç]o|valor do plano|quanto custa|plano pro\b/i,
   /\bteste gr[aá]tis|7 dias gr[aá]tis\b/i,
   /\bassinatura|cancelar assinatura\b/i,
@@ -108,7 +115,6 @@ export function canUnlinkedWhatsappMessageReachBot(
 
 export function shouldCheckWhatsappAccountAccess(text: string, hasMedia = false) {
   return hasMedia
-    || isWhatsappGreeting(text)
     || isPersonalFinancialWhatsappIntent(text)
     || isWhatsappAccountAccessQuestion(text)
     || isWhatsappLinkHelpIntent(text)
