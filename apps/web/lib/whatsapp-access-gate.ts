@@ -8,6 +8,8 @@ const PERSONAL_FINANCIAL_ACTIONS = [
   /\b(meus gastos|minhas despesas|minhas receitas|quanto eu gastei|quanto gastei|quanto recebi)\b/i,
   /\b(gr[aá]fico (?:dos|de) meus|relat[oó]rio (?:dos|de) meus|resumo (?:dos|de) meus)\b/i,
   /\b(parcelad[oa] em \d+|\d+\s*x\b)/i,
+  /\b(?:mercado|supermercado|aluguel|sal[aá]rio|internet|luz|energia|[aá]gua|combust[ií]vel|gasolina|farm[aá]cia|restaurante|lanche|pix|cart[aã]o)\b.{0,40}\b(?:r\$\s*)?\d+(?:[.,]\d{1,2})?\b/i,
+  /\b(?:r\$\s*)?\d+(?:[.,]\d{1,2})?\b.{0,40}\b(?:mercado|supermercado|aluguel|sal[aá]rio|internet|luz|energia|[aá]gua|combust[ií]vel|gasolina|farm[aá]cia|restaurante|lanche|pix|cart[aã]o)\b/i,
 ];
 
 const ACCOUNT_ACCESS_QUESTIONS = [
@@ -38,7 +40,7 @@ const PUBLIC_PRODUCT_INTENTS = [
   /\bcomo funciona (?:o )?pila\b/i,
   /\bo que [ée] (?:o )?pila\b/i,
   /\bquem (?:[ée]|eh) (?:voc[eê]|vc|c[eê]|o pila)\b/i,
-  /\bo que (?:voc[eê]|vc|c[eê]|o pila) (?:faz|consegue fazer)\b/i,
+  /\b(?:o que|oq) (?:voc[eê]|vc|c[eê]|o pila) (?:faz|pode fazer|consegue fazer)\b/i,
   /\b(?:como|no que) (?:voc[eê]|vc|c[eê]|o pila) (?:pode )?me ajud(?:a|ar)\b/i,
   /\b(?:me explica|me explique|fala|fale|conte) (?:mais )?(?:sobre )?(?:voc[eê]|vc|o pila)\b/i,
   /\bquero (?:conhecer|entender|saber) mais (?:sobre )?(?:voc[eê]|vc|o pila)\b/i,
@@ -62,6 +64,17 @@ export type WhatsappGateReplyKind =
   | "UNLINKED"
   | "LINK_HELP"
   | "CHECK_FAILED";
+
+type WhatsappVisitorAiResult = {
+  isTransaction?: boolean;
+  isReminder?: boolean;
+  isReport?: boolean;
+  isCardQuery?: boolean;
+  needsClarification?: boolean;
+  reminderAction?: string;
+  reportPlan?: unknown;
+  cardQuery?: unknown;
+};
 
 export function isPersonalFinancialWhatsappIntent(text: string, hasMedia = false) {
   if (hasMedia) return true;
@@ -105,20 +118,33 @@ export function canUnlinkedWhatsappMessageReachBot(
   const normalizedText = text.trim();
 
   if (options.onboardingActive) return true;
+  if (!normalizedText) return false;
   if (/^\d{6}$/.test(normalizedText)) return true;
-  if (isWhatsappGreeting(normalizedText)) return true;
-  if (isWhatsappRegistrationIntent(normalizedText)) return true;
-  if (isWhatsappPublicProductIntent(normalizedText)) return true;
 
-  return false;
+  // Um visitante pode conversar livremente sobre o produto. O bloqueio existe
+  // somente para ações que exigem uma conta, e não para uma lista limitada de
+  // frases que inevitavelmente deixaria de fora abreviações e perguntas novas.
+  return !isPersonalFinancialWhatsappIntent(normalizedText)
+    && !isWhatsappAccountAccessQuestion(normalizedText)
+    && !isWhatsappLinkHelpIntent(normalizedText);
 }
 
 export function shouldCheckWhatsappAccountAccess(text: string, hasMedia = false) {
   return hasMedia
     || isPersonalFinancialWhatsappIntent(text)
     || isWhatsappAccountAccessQuestion(text)
-    || isWhatsappLinkHelpIntent(text)
-    || !canUnlinkedWhatsappMessageReachBot(text);
+    || isWhatsappLinkHelpIntent(text);
+}
+
+export function shouldBlockUnlinkedWhatsappAiResult(result: WhatsappVisitorAiResult) {
+  return result.isTransaction === true
+    || result.isReminder === true
+    || result.isReport === true
+    || result.isCardQuery === true
+    || result.needsClarification === true
+    || Boolean(result.reminderAction)
+    || Boolean(result.reportPlan)
+    || Boolean(result.cardQuery);
 }
 
 export function buildUnlinkedGreetingReply() {
@@ -138,17 +164,16 @@ export function buildUnlinkedGreetingReply() {
 
 export function buildUnlinkedWhatsappReply() {
   return [
-    "🔒 Não registrei essa movimentação.",
+    "Entendi o que você quer fazer — mas este WhatsApp ainda não está conectado a uma conta do Pila.",
     "",
-    "Este número ainda não está vinculado a uma conta do Pila. Por segurança, nenhuma transação, lembrete, relatório ou consulta financeira pessoal é processada antes do vínculo.",
+    "🔒 Não registrei nem consultei nenhum dado financeiro. Assim suas informações continuam protegidas.",
     "",
-    "Se você já tem uma conta:",
+    "Já usa o Pila? É rapidinho conectar:",
     `1. Entre em ${PILA_APP_URL}/dashboard/whatsapp`,
     "2. Clique em “Gerar PIN de Vínculo”",
     "3. Envie aqui o código de 6 dígitos.",
     "",
-    "Se ainda não tem uma conta, responda “quero criar minha conta” e eu começo o cadastro por aqui, ou acesse:",
-    PILA_REGISTER_URL,
+    `Ainda não tem conta? Responda “quero criar minha conta” e eu faço o cadastro por aqui, com 7 dias grátis e sem cartão. Se preferir: ${PILA_REGISTER_URL}`,
   ].join("\n");
 }
 
