@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildVisitorDiscoveryReply } from "@/lib/visitor-onboarding";
+import {
+  appendContextualVisitorCta,
+  buildVisitorDiscoveryReply,
+  buildVisitorProtectedActionReply,
+  visitorConversationMemoryKey,
+} from "@/lib/visitor-onboarding";
 
 describe("visitor onboarding conversation", () => {
   it("welcomes a first-time visitor with practical capabilities", () => {
@@ -38,5 +43,46 @@ describe("visitor onboarding conversation", () => {
 
   it("lets specific questions continue to the AI", () => {
     expect(buildVisitorDiscoveryReply("Quanto custa o plano?", { isFirstContact: true })).toBeNull();
+  });
+
+  it("adds a CTA that follows the visitor's interest", () => {
+    const reply = appendContextualVisitorCta(
+      "Os relatórios podem comparar períodos e separar gastos por categoria.",
+      "E como funcionam os relatórios?",
+    );
+
+    expect(reply).toContain("esse tipo de relatório");
+    expect(reply).toContain("quero criar minha conta");
+    expect(reply).toContain("/register");
+  });
+
+  it("does not force a CTA when the message has no conversion context", () => {
+    expect(appendContextualVisitorCta("Por nada!", "Obrigado"))
+      .toBe("Por nada!");
+  });
+
+  it("does not duplicate a CTA already present in the reply", () => {
+    const reply = "Responda “quero criar minha conta” para começar.";
+    expect(appendContextualVisitorCta(reply, "Quero ver relatórios"))
+      .toBe(reply);
+  });
+
+  it("previews a transaction without claiming it was saved", () => {
+    const reply = buildVisitorProtectedActionReply({
+      isTransaction: true,
+      amount: 50,
+      kind: "EXPENSE",
+      description: "Mercado",
+    });
+
+    expect(reply).toContain("um gasto de R$ 50,00 em Mercado");
+    expect(reply).toContain("não salvei nem consultei nada");
+    expect(reply).toContain("PIN de 6 dígitos");
+    expect(reply).toContain("7 dias grátis");
+  });
+
+  it("uses an isolated visitor memory namespace", () => {
+    expect(visitorConversationMemoryKey("5547999999999"))
+      .toBe("visitor:whatsapp:5547999999999");
   });
 });
