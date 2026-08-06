@@ -19,6 +19,7 @@ describe("visitor onboarding conversation", () => {
 
   it.each([
     "O que você consegue fazer?",
+    "O que vc faz?",
     "Quem é você?",
     "Como o Pila funciona?",
     "Quero saber mais sobre o Pila",
