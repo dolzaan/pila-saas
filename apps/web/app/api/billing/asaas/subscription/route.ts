@@ -55,6 +55,12 @@ const RequestSchema = z.object({
 });
 
 type PaymentCustomerRow = { providerCustomerId: string };
+type PaymentSubscriptionRow = {
+  providerSubscriptionId: string;
+  billingType: "PIX" | "BOLETO" | null;
+  status: string;
+  nextDueDate: Date | null;
+};
 
 function getMonthlyValue(): number {
   const value = Number(process.env.ASAAS_PRO_MONTHLY_VALUE);
@@ -98,78 +104,112 @@ export async function POST(request: Request) {
   }
 
   try {
-    const existingCustomers = await prisma.$queryRaw<PaymentCustomerRow[]>(Prisma.sql`
-      SELECT "providerCustomerId"
-      FROM "payment_customers"
-      WHERE "userId" = ${user.id} AND "provider" = 'ASAAS'
-      LIMIT 1
-    `);
-
-    let customerId = existingCustomers[0]?.providerCustomerId;
-    const customerData = {
-      name: user.name || user.email,
-      email: user.email,
-      mobilePhone: user.whatsappNumber || undefined,
-      cpfCnpj: parsed.data.cpfCnpj,
-      externalReference: user.id,
-    };
-
-    if (!customerId) {
-      const customer = await asaasGateway.createCustomer(customerData);
-      customerId = customer.id;
-
-      await prisma.$executeRaw(Prisma.sql`
-        INSERT INTO "payment_customers"
-          ("id", "userId", "provider", "providerCustomerId", "createdAt", "updatedAt")
-        VALUES
-          (${randomUUID()}, ${user.id}, 'ASAAS', ${customerId}, NOW(), NOW())
-        ON CONFLICT ("userId", "provider")
-        DO UPDATE SET "providerCustomerId" = EXCLUDED."providerCustomerId", "updatedAt" = NOW()
+    const result = await prisma.$transaction(async (transaction) => {
+      // Serializa solicitações deste usuário. Assim, cliques duplos e retries
+      // reusam a assinatura persistida em vez de criarem cobranças paralelas.
+      await transaction.$executeRaw(Prisma.sql`
+        SELECT pg_advisory_xact_lock(hashtext(${`asaas-subscription:${user.id}`}))
       `);
-    } else {
-      await asaasGateway.updateCustomer(customerId, customerData);
-    }
 
-    const now = new Date();
-    const nextDueDate =
-      user.subscription?.currentPeriodEnd && user.subscription.currentPeriodEnd > now
-        ? user.subscription.currentPeriodEnd
-        : now;
+      const existingSubscriptions = await transaction.$queryRaw<PaymentSubscriptionRow[]>(Prisma.sql`
+        SELECT "providerSubscriptionId", "billingType", "status", "nextDueDate"
+        FROM "payment_subscriptions"
+        WHERE "userId" = ${user.id} AND "provider" = 'ASAAS'
+        LIMIT 1
+      `);
+      const existingSubscription = existingSubscriptions[0];
 
-    const subscription = await asaasGateway.createSubscription({
-      customerId,
-      billingType: parsed.data.billingType,
-      value: getMonthlyValue(),
-      nextDueDate: formatDate(nextDueDate),
-      cycle: "MONTHLY",
-      description: "Pila Pro - assinatura mensal",
-      externalReference: user.id,
+      if (existingSubscription && existingSubscription.status !== "CANCELED") {
+        const payment = await asaasGateway.getFirstSubscriptionPayment(
+          existingSubscription.providerSubscriptionId,
+        );
+        return {
+          subscriptionId: existingSubscription.providerSubscriptionId,
+          status: existingSubscription.status,
+          nextDueDate: existingSubscription.nextDueDate,
+          paymentUrl: payment?.invoiceUrl ?? payment?.bankSlipUrl ?? null,
+          billingType: existingSubscription.billingType || parsed.data.billingType,
+          reused: true,
+        };
+      }
+
+      const existingCustomers = await transaction.$queryRaw<PaymentCustomerRow[]>(Prisma.sql`
+        SELECT "providerCustomerId"
+        FROM "payment_customers"
+        WHERE "userId" = ${user.id} AND "provider" = 'ASAAS'
+        LIMIT 1
+      `);
+
+      let customerId = existingCustomers[0]?.providerCustomerId;
+      const customerData = {
+        name: user.name || user.email,
+        email: user.email,
+        mobilePhone: user.whatsappNumber || undefined,
+        cpfCnpj: parsed.data.cpfCnpj,
+        externalReference: user.id,
+      };
+
+      if (!customerId) {
+        const customer = await asaasGateway.createCustomer(customerData);
+        customerId = customer.id;
+
+        await transaction.$executeRaw(Prisma.sql`
+          INSERT INTO "payment_customers"
+            ("id", "userId", "provider", "providerCustomerId", "createdAt", "updatedAt")
+          VALUES
+            (${randomUUID()}, ${user.id}, 'ASAAS', ${customerId}, NOW(), NOW())
+          ON CONFLICT ("userId", "provider")
+          DO UPDATE SET "providerCustomerId" = EXCLUDED."providerCustomerId", "updatedAt" = NOW()
+        `);
+      } else {
+        await asaasGateway.updateCustomer(customerId, customerData);
+      }
+
+      const now = new Date();
+      const nextDueDate =
+        user.subscription?.currentPeriodEnd && user.subscription.currentPeriodEnd > now
+          ? user.subscription.currentPeriodEnd
+          : now;
+
+      const subscription = await asaasGateway.createSubscription({
+        customerId,
+        billingType: parsed.data.billingType,
+        value: getMonthlyValue(),
+        nextDueDate: formatDate(nextDueDate),
+        cycle: "MONTHLY",
+        description: "Pila Pro - assinatura mensal",
+        externalReference: user.id,
+      });
+
+      await transaction.$executeRaw(Prisma.sql`
+        INSERT INTO "payment_subscriptions"
+          ("id", "userId", "provider", "providerSubscriptionId", "billingType", "status", "nextDueDate", "createdAt", "updatedAt")
+        VALUES
+          (${randomUUID()}, ${user.id}, 'ASAAS', ${subscription.id}, ${parsed.data.billingType}, ${subscription.status}, ${subscription.nextDueDate ? new Date(subscription.nextDueDate) : null}, NOW(), NOW())
+        ON CONFLICT ("userId", "provider")
+        DO UPDATE SET
+          "providerSubscriptionId" = EXCLUDED."providerSubscriptionId",
+          "billingType" = EXCLUDED."billingType",
+          "status" = EXCLUDED."status",
+          "nextDueDate" = EXCLUDED."nextDueDate",
+          "updatedAt" = NOW()
+      `);
+
+      const payment = await asaasGateway.getFirstSubscriptionPayment(subscription.id);
+      return {
+        subscriptionId: subscription.id,
+        status: subscription.status,
+        nextDueDate: subscription.nextDueDate,
+        paymentUrl: payment?.invoiceUrl ?? payment?.bankSlipUrl ?? null,
+        billingType: parsed.data.billingType,
+        reused: false,
+      };
+    }, {
+      maxWait: 5_000,
+      timeout: 45_000,
     });
 
-    await prisma.$executeRaw(Prisma.sql`
-      INSERT INTO "payment_subscriptions"
-        ("id", "userId", "provider", "providerSubscriptionId", "billingType", "status", "nextDueDate", "createdAt", "updatedAt")
-      VALUES
-        (${randomUUID()}, ${user.id}, 'ASAAS', ${subscription.id}, ${parsed.data.billingType}, ${subscription.status}, ${subscription.nextDueDate ? new Date(subscription.nextDueDate) : null}, NOW(), NOW())
-      ON CONFLICT ("userId", "provider")
-      DO UPDATE SET
-        "providerSubscriptionId" = EXCLUDED."providerSubscriptionId",
-        "billingType" = EXCLUDED."billingType",
-        "status" = EXCLUDED."status",
-        "nextDueDate" = EXCLUDED."nextDueDate",
-        "updatedAt" = NOW()
-    `);
-
-    const payment = await asaasGateway.getFirstSubscriptionPayment(subscription.id);
-    const paymentUrl = payment?.invoiceUrl ?? payment?.bankSlipUrl ?? null;
-
-    return NextResponse.json({
-      subscriptionId: subscription.id,
-      status: subscription.status,
-      nextDueDate: subscription.nextDueDate,
-      paymentUrl,
-      billingType: parsed.data.billingType,
-    });
+    return NextResponse.json(result);
   } catch (error) {
     console.error("[billing.asaas.subscription]", error);
     return NextResponse.json(

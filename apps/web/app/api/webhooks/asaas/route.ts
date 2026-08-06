@@ -23,16 +23,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
-  await prisma.$executeRaw(Prisma.sql`
+  const insertedEvents = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     INSERT INTO "payment_webhook_events"
       ("id", "provider", "eventType", "payload", "receivedAt")
     VALUES
       (${payload.id}, 'ASAAS', ${payload.event}, ${JSON.stringify(payload)}::jsonb, NOW())
-    ON CONFLICT ("id") DO UPDATE SET
-      "eventType" = EXCLUDED."eventType",
-      "payload" = EXCLUDED."payload",
-      "receivedAt" = NOW()
+    ON CONFLICT ("id") DO NOTHING
+    RETURNING "id"
   `);
+
+  if (insertedEvents.length === 0) {
+    const existingEvents = await prisma.$queryRaw<Array<{ processedAt: Date | null }>>(Prisma.sql`
+      SELECT "processedAt"
+      FROM "payment_webhook_events"
+      WHERE "id" = ${payload.id} AND "provider" = 'ASAAS'
+      LIMIT 1
+    `);
+    if (existingEvents[0]?.processedAt) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+  }
 
   try {
     const status = mapAsaasPaymentEvent(payload.event);
@@ -122,6 +132,10 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     console.error("[webhooks.asaas]", error);
-    return NextResponse.json({ received: true, processingError: true });
+    // O Asaas repete a entrega quando recebe resposta fora da faixa 2xx.
+    return NextResponse.json(
+      { received: false, processingError: true },
+      { status: 500 },
+    );
   }
 }

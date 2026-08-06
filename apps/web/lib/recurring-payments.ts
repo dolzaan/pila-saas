@@ -25,6 +25,7 @@ type ConfirmRecurringPaymentInput = {
   amount?: number;
   financialAccountId?: string | null;
   paidAt?: Date;
+  transaction?: Prisma.TransactionClient;
 };
 
 export async function confirmRecurringPayment({
@@ -34,6 +35,7 @@ export async function confirmRecurringPayment({
   amount,
   financialAccountId,
   paidAt = new Date(),
+  transaction: transactionClient,
 }: ConfirmRecurringPaymentInput) {
   const expectedDate =
     expectedDueDate instanceof Date
@@ -63,8 +65,7 @@ export async function confirmRecurringPayment({
     );
   }
 
-  return prisma.$transaction(
-    async (transaction) => {
+  const confirmWithTransaction = async (transaction: Prisma.TransactionClient) => {
       const recurring = await transaction.recurringTransaction.findFirst({
         where: { id: recurringTransactionId, userId },
         select: {
@@ -261,7 +262,14 @@ export async function confirmRecurringPayment({
         nextDate,
         reachedEnd,
       };
-    },
+  };
+
+  if (transactionClient) {
+    return confirmWithTransaction(transactionClient);
+  }
+
+  return prisma.$transaction(
+    confirmWithTransaction,
     {
       isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
       maxWait: 5_000,

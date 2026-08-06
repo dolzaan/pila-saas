@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { mapAsaasSubscriptionStatus } from "../lib/payments/asaas";
+import {
+  AsaasApiError,
+  isAsaasNotFoundError,
+  mapAsaasSubscriptionStatus,
+} from "../lib/payments/asaas";
 import {
   getAsaasExternalReference,
   getAsaasSubscriptionId,
@@ -15,6 +19,14 @@ describe("mapAsaasSubscriptionStatus", () => {
     ["UNKNOWN", "INACTIVE"],
   ] as const)("converte %s para %s", (asaasStatus, localStatus) => {
     expect(mapAsaasSubscriptionStatus(asaasStatus)).toBe(localStatus);
+  });
+});
+
+describe("erros da API do Asaas", () => {
+  it("reconhece somente HTTP 404 como recurso já removido", () => {
+    expect(isAsaasNotFoundError(new AsaasApiError("Não encontrado", 404))).toBe(true);
+    expect(isAsaasNotFoundError(new AsaasApiError("Indisponível", 503))).toBe(false);
+    expect(isAsaasNotFoundError(new Error("Falha genérica"))).toBe(false);
   });
 });
 

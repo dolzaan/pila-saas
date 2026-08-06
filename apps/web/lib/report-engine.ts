@@ -1,4 +1,5 @@
 import { addDays } from "date-fns";
+import { getAccountLedgerSummaries } from "@/lib/account-ledger";
 import { buildCashFlowForecast } from "@/lib/cash-flow-forecast";
 import { prisma } from "@/lib/prisma";
 import { saoPauloDayBounds } from "@/lib/reminders";
@@ -334,31 +335,17 @@ async function budgetReport(userId: string, plan: ReportPlan): Promise<Professio
 }
 
 async function accountReport(userId: string, plan: ReportPlan): Promise<ProfessionalReport> {
-  const accounts = await prisma.financialAccount.findMany({
-    where: { userId, isArchived: false, type: { not: "CREDIT_CARD" } },
-    select: { id: true, name: true, initialBalance: true },
-    orderBy: { createdAt: "asc" },
-  });
-  const transactions = accounts.length > 0
-    ? await prisma.transaction.groupBy({
-        by: ["financialAccountId", "kind"],
-        where: {
-          userId,
-          financialAccountId: { in: accounts.map((item) => item.id) },
-          occurredAt: { lt: plan.period.end },
-        },
-        _sum: { amount: true },
-      })
-    : [];
-  const totals = new Map<string, number>();
-  for (const transaction of transactions) {
-    if (!transaction.financialAccountId) continue;
-    const signed = numeric(transaction._sum.amount) * (transaction.kind === "INCOME" ? 1 : -1);
-    totals.set(transaction.financialAccountId, (totals.get(transaction.financialAccountId) || 0) + signed);
-  }
+  const [accounts, ledger] = await Promise.all([
+    prisma.financialAccount.findMany({
+      where: { userId, isArchived: false, type: { not: "CREDIT_CARD" } },
+      select: { id: true, name: true },
+      orderBy: { createdAt: "asc" },
+    }),
+    getAccountLedgerSummaries(userId, { before: plan.period.end }),
+  ]);
   const allRows = accounts.map((account) => ({
     label: account.name,
-    value: numeric(account.initialBalance) + (totals.get(account.id) || 0),
+    value: ledger.get(account.id)?.balance || 0,
   })).sort((left, right) => right.value - left.value);
   const rows = allRows.slice(0, plan.topN);
   const total = allRows.reduce((sum, item) => sum + item.value, 0);

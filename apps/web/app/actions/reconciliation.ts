@@ -1,9 +1,9 @@
 "use server";
 
 import { auth } from "@/lib/auth";
+import { getAccountLedgerSummaries } from "@/lib/account-ledger";
 import {
   calculateReconciliationDifference,
-  calculateStatementBalance,
   isReconciliationBalanced,
 } from "@/lib/reconciliation";
 import { AccountReconciliationSchema } from "@/lib/schemas";
@@ -35,7 +35,10 @@ function statementDateEnd(value: string) {
 async function reconciliationSnapshot(
   userId: string,
   input: ReconciliationInput,
-  client: Pick<typeof prisma, "financialAccount" | "transaction"> = prisma,
+  client: Pick<
+    typeof prisma,
+    "financialAccount" | "transaction" | "creditCardPayment" | "$queryRaw"
+  > = prisma,
 ) {
   const parsed = AccountReconciliationSchema.safeParse(input);
   if (!parsed.success) return { error: "Informe conta, data e saldo válidos." } as const;
@@ -45,20 +48,13 @@ async function reconciliationSnapshot(
 
   const account = await client.financialAccount.findFirst({
     where: { id: parsed.data.accountId, userId },
-    select: { id: true, name: true, type: true, initialBalance: true },
+    select: { id: true, name: true, type: true },
   });
   if (!account) return { error: "Conta não encontrada." } as const;
 
-  const [totals, unreconciledCount] = await Promise.all([
-    client.transaction.groupBy({
-      by: ["kind"],
-      where: {
-        userId,
-        financialAccountId: account.id,
-        occurredAt: { lte: statementDate },
-      },
-      _sum: { amount: true },
-    }),
+  const ledgerBefore = new Date(statementDate.getTime() + 1);
+  const [ledger, unreconciledCount] = await Promise.all([
+    getAccountLedgerSummaries(userId, { before: ledgerBefore, client }),
     client.transaction.count({
       where: {
         userId,
@@ -68,15 +64,10 @@ async function reconciliationSnapshot(
       },
     }),
   ]);
-  const income =
-    totals.find((item) => item.kind === "INCOME")?._sum.amount?.toNumber() || 0;
-  const expense =
-    totals.find((item) => item.kind === "EXPENSE")?._sum.amount?.toNumber() || 0;
-  const systemBalance = calculateStatementBalance(
-    account.type,
-    account.initialBalance.toNumber(),
-    { income, expense },
-  );
+  const systemBalance = ledger.get(account.id)?.balance;
+  if (systemBalance === undefined) {
+    return { error: "Não foi possível calcular o saldo da conta." } as const;
+  }
   const difference = calculateReconciliationDifference(
     parsed.data.statementBalance,
     systemBalance,

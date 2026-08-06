@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { asaasGateway } from "@/lib/payments/asaas";
+import { asaasGateway, isAsaasNotFoundError } from "@/lib/payments/asaas";
 
 type PaymentSubscriptionRow = {
   providerSubscriptionId: string;
@@ -72,7 +72,9 @@ export async function DELETE() {
   }
 
   try {
-    await asaasGateway.cancelSubscription(subscription.providerSubscriptionId);
+    await asaasGateway.cancelSubscription(subscription.providerSubscriptionId).catch((error) => {
+      if (!isAsaasNotFoundError(error)) throw error;
+    });
 
     await prisma.$transaction([
       prisma.$executeRaw(Prisma.sql`
