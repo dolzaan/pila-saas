@@ -40,7 +40,7 @@ describe("WhatsApp account access gate", () => {
     for (const greeting of ["oi", "oii", "oiii!", "oie", "olá", "oláá", "e aí", "opaa"]) {
       expect(isWhatsappGreeting(greeting)).toBe(true);
       expect(canUnlinkedWhatsappMessageReachBot(greeting)).toBe(true);
-      expect(shouldCheckWhatsappAccountAccess(greeting)).toBe(true);
+      expect(shouldCheckWhatsappAccountAccess(greeting)).toBe(false);
     }
   });
 
@@ -49,6 +49,18 @@ describe("WhatsApp account access gate", () => {
     expect(canUnlinkedWhatsappMessageReachBot("oii")).toBe(true);
     expect(canUnlinkedWhatsappMessageReachBot("como funciona o Pila?")).toBe(true);
     expect(canUnlinkedWhatsappMessageReachBot("quanto custa o plano?")).toBe(true);
+  });
+
+  it.each([
+    "O que vc faz",
+    "Quem é vc?",
+    "Como você pode me ajudar?",
+    "Quero saber mais sobre o Pila",
+    "Não sei por onde começar",
+    "Obrigado",
+  ])("allows natural first-contact conversation: %s", (message) => {
+    expect(canUnlinkedWhatsappMessageReachBot(message)).toBe(true);
+    expect(shouldCheckWhatsappAccountAccess(message)).toBe(false);
   });
 
   it("allows onboarding continuation only when a session is active", () => {
