@@ -20,6 +20,7 @@ describe("visitor onboarding conversation", () => {
   it.each([
     "O que você consegue fazer?",
     "O que vc faz?",
+    "Oq vc pode fazer?",
     "Quem é você?",
     "Como o Pila funciona?",
     "Quero saber mais sobre o Pila",
@@ -30,6 +31,8 @@ describe("visitor onboarding conversation", () => {
     expect(reply).toContain("sem você precisar abrir uma planilha ou decorar comandos");
     expect(reply).toContain("texto, áudio, foto ou PDF");
     expect(reply).toContain("orçamentos, metas e recorrências");
+    expect(reply).toContain("quero criar minha conta");
+    expect(reply).toContain("7 dias grátis");
     expect(reply?.match(/\?/g)).toHaveLength(1);
   });
 
