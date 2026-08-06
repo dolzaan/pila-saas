@@ -26,6 +26,7 @@ const REGISTRATION_INTENTS = [
   /\bcomeçar (?:meu )?cadastro\b/i,
   /\bquero me cadastrar\b/i,
   /\bquero testar (?:o )?pila\b/i,
+  /\bquero assinar (?:o )?pila\b/i,
 ];
 
 const LINK_HELP_INTENTS = [
@@ -134,6 +135,19 @@ export function shouldCheckWhatsappAccountAccess(text: string, hasMedia = false)
     || isPersonalFinancialWhatsappIntent(text)
     || isWhatsappAccountAccessQuestion(text)
     || isWhatsappLinkHelpIntent(text);
+}
+
+export function getUnlinkedWhatsappGateReplyKind(
+  text: string,
+  hasMedia = false,
+): WhatsappGateReplyKind | null {
+  if (isWhatsappLinkHelpIntent(text)) return "LINK_HELP";
+  if (hasMedia || !text.trim()) return "UNLINKED";
+
+  // Textos seguem para o webhook em modo visitante. Essa rota não possui um
+  // usuário e, portanto, só pode conversar, iniciar cadastro ou apresentar uma
+  // prévia; qualquer intenção financeira detectada recebe o CTA seguro.
+  return null;
 }
 
 export function shouldBlockUnlinkedWhatsappAiResult(result: WhatsappVisitorAiResult) {
