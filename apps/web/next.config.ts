@@ -42,7 +42,11 @@ const nextConfig: NextConfig = {
     ];
   },
 
-  output: "standalone",
+  // Vercel injects a build adapter. Next.js 16.3.0 does not emit the root
+  // trace files when an adapter is active, but standalone output still tries
+  // to read them. Vercel does not use the standalone bundle, so keep it only
+  // for Docker/self-hosted builds.
+  output: process.env.VERCEL ? undefined : "standalone",
 
   env: {
     NEXT_PUBLIC_APP_NAME: "Pila",
