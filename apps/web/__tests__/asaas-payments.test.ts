@@ -5,6 +5,7 @@ import {
   mapAsaasSubscriptionStatus,
 } from "../lib/payments/asaas";
 import {
+  getAsaasEventOccurredAt,
   getAsaasExternalReference,
   getAsaasSubscriptionId,
   isValidAsaasWebhookToken,
@@ -51,6 +52,20 @@ describe("mapAsaasPaymentEvent", () => {
 });
 
 describe("helpers do webhook", () => {
+  it("usa a data de criação do evento para impedir regressão de estado", () => {
+    const fallback = new Date("2026-08-06T13:00:00.000Z");
+    expect(getAsaasEventOccurredAt({
+      id: "evt_1",
+      event: "PAYMENT_CONFIRMED",
+      dateCreated: "2026-08-06T09:59:30-03:00",
+    }, fallback)).toEqual(new Date("2026-08-06T12:59:30.000Z"));
+    expect(getAsaasEventOccurredAt({
+      id: "evt_2",
+      event: "PAYMENT_CONFIRMED",
+      dateCreated: "inválida",
+    }, fallback)).toBe(fallback);
+  });
+
   afterEach(() => {
     delete process.env.ASAAS_WEBHOOK_TOKEN;
   });

@@ -220,7 +220,14 @@ export async function POST(request: Request) {
       : null;
     const context = accountData?.context || buildVisitorContext(transcript);
 
-    const result = await parseFinancialMessage(parsed.data.message, context);
+    const result = await parseFinancialMessage(
+      parsed.data.message,
+      context,
+      undefined,
+      undefined,
+      [],
+      userId ? `user:${userId}` : `landing-ip:${ip}`,
+    );
     const fallback = userId
       ? "Posso consultar seus gastos, ganhos, saldo, categorias, orçamentos e transações por período."
       : "Posso explicar como a IA do Pila funciona no WhatsApp ou ajudar você a começar seu teste grátis.";

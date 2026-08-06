@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   checkRateLimits,
   getSaoPauloDateKey,
+  privateRateLimitKey,
   RateLimitUnavailableError,
 } from "@/lib/rate-limit";
 import { externalTimeoutSignal, isTimeoutError } from "@/lib/external-service";
@@ -25,6 +26,7 @@ import {
 import { AiReportPlanSchema, type AiReportPlan } from "@/lib/report-plan";
 
 const DEFAULT_GEMINI_DAILY_REQUEST_LIMIT = 200;
+const DEFAULT_GEMINI_IDENTITY_DAILY_REQUEST_LIMIT = 50;
 const GEMINI_DAILY_WINDOW_MS = 26 * 60 * 60 * 1000;
 const SYSTEM_CATEGORY_GUIDE = [
   `Despesas: ${DEFAULT_EXPENSE_CATEGORIES.map((category) => category.name).join(", ")}.`,
@@ -36,6 +38,13 @@ function getGeminiDailyRequestLimit() {
   return Number.isSafeInteger(configured) && configured > 0
     ? configured
     : DEFAULT_GEMINI_DAILY_REQUEST_LIMIT;
+}
+
+function getGeminiIdentityDailyRequestLimit() {
+  const configured = Number(process.env.GEMINI_IDENTITY_DAILY_REQUEST_LIMIT);
+  return Number.isSafeInteger(configured) && configured > 0
+    ? configured
+    : DEFAULT_GEMINI_IDENTITY_DAILY_REQUEST_LIMIT;
 }
 
 // Inicialização preguiçosa para não quebrar a compilação caso a chave esteja ausente no .env
@@ -135,6 +144,7 @@ export async function parseFinancialMessage(
   mediaBase64?: string,
   mediaMimeType?: string,
   conversationMemory: ConversationExchange[] = [],
+  rateLimitIdentity?: string,
 ): Promise<ParsedTransaction> {
   if (isHumanSupportRequest(text)) {
     return {
@@ -241,10 +251,20 @@ Mensagem do usuário: "${safeText}"
     }
 
     const dailyLimit = getGeminiDailyRequestLimit();
+    const dateKey = getSaoPauloDateKey();
+    const identityKey = privateRateLimitKey(
+      "ai:gemini:identity",
+      rateLimitIdentity || "unidentified-server-request",
+    );
     const dailyDecision = await checkRateLimits([
       {
-        key: `ai:gemini:daily:${getSaoPauloDateKey()}`,
+        key: `ai:gemini:daily:${dateKey}`,
         limit: dailyLimit,
+        windowMs: GEMINI_DAILY_WINDOW_MS,
+      },
+      {
+        key: `${identityKey}:${dateKey}`,
+        limit: getGeminiIdentityDailyRequestLimit(),
         windowMs: GEMINI_DAILY_WINDOW_MS,
       },
     ]);

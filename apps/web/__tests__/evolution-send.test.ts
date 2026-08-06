@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 import {
+  hasEvolutionApiKey,
   inspectEvolutionSendPayload,
   normalizeWhatsappRecipient,
 } from "@/lib/evolution";
 
 describe("Evolution outbound validation", () => {
+  it("trata chave ausente ou placeholder como configuração inválida", () => {
+    expect(hasEvolutionApiKey("")).toBe(false);
+    expect(hasEvolutionApiKey("  ")).toBe(false);
+    expect(hasEvolutionApiKey("COLOQUE_SUA_CHAVE_DA_EVOLUTION_API")).toBe(false);
+    expect(hasEvolutionApiKey("evolution-secret")).toBe(true);
+  });
+
   it("normaliza números e JIDs antes do sendText", () => {
     expect(normalizeWhatsappRecipient("5547997785853")).toBe("5547997785853");
     expect(normalizeWhatsappRecipient("5547997785853@s.whatsapp.net")).toBe("5547997785853");

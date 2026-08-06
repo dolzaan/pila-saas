@@ -1,5 +1,4 @@
 import { getStripe } from "@/lib/stripe";
-import { prisma } from "@/lib/prisma";
 import { headers } from "next/headers";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
@@ -8,38 +7,27 @@ import {
   getInvoiceSubscriptionId,
   mapStripeSubscriptionStatus,
 } from "@/lib/stripe-subscription";
+import { applyOrderedSubscriptionState } from "@/lib/payments/subscription-state";
 
 async function syncSubscription(
   subscription: Stripe.Subscription,
-  explicitUserId?: string | null
+  eventId: string,
+  eventAt: Date,
+  explicitUserId?: string | null,
 ) {
   const userId = explicitUserId || subscription.metadata.userId;
   const status = mapStripeSubscriptionStatus(subscription.status);
   const currentPeriodEnd = getCurrentPeriodEnd(subscription);
 
-  if (userId) {
-    await prisma.subscription.upsert({
-      where: { userId },
-      update: {
-        stripeSubscriptionId: subscription.id,
-        status,
-        plan: "pro",
-        currentPeriodEnd,
-      },
-      create: {
-        userId,
-        stripeSubscriptionId: subscription.id,
-        status,
-        plan: "pro",
-        currentPeriodEnd,
-      },
-    });
-    return;
-  }
-
-  await prisma.subscription.updateMany({
-    where: { stripeSubscriptionId: subscription.id },
-    data: { status, currentPeriodEnd },
+  await applyOrderedSubscriptionState({
+    provider: "stripe",
+    eventId,
+    eventAt,
+    providerSubscriptionId: subscription.id,
+    userId,
+    status,
+    currentPeriodEnd,
+    createWhenMissing: Boolean(userId),
   });
 }
 
@@ -82,7 +70,7 @@ export async function POST(req: Request) {
       return new NextResponse("No user ID", { status: 400 });
     }
 
-    await syncSubscription(subscription, userId);
+    await syncSubscription(subscription, event.id, new Date(), userId);
   }
 
   if (event.type === "invoice.paid" || event.type === "invoice.payment_succeeded") {
@@ -98,7 +86,7 @@ export async function POST(req: Request) {
       subscriptionId
     )) as Stripe.Subscription;
 
-    await syncSubscription(subscription);
+    await syncSubscription(subscription, event.id, new Date());
   }
 
   if (event.type === "invoice.payment_failed") {
@@ -106,9 +94,12 @@ export async function POST(req: Request) {
     const subscriptionId = getInvoiceSubscriptionId(invoice);
 
     if (subscriptionId) {
-      await prisma.subscription.updateMany({
-        where: { stripeSubscriptionId: subscriptionId },
-        data: { status: "PAST_DUE" },
+      await applyOrderedSubscriptionState({
+        provider: "stripe",
+        eventId: event.id,
+        eventAt: new Date(event.created * 1_000),
+        providerSubscriptionId: subscriptionId,
+        status: "PAST_DUE",
       });
     }
   }
@@ -117,18 +108,23 @@ export async function POST(req: Request) {
     event.type === "customer.subscription.created" ||
     event.type === "customer.subscription.updated"
   ) {
-    await syncSubscription(event.data.object as Stripe.Subscription);
+    const eventSubscription = event.data.object as Stripe.Subscription;
+    const currentSubscription = (await stripe.subscriptions.retrieve(
+      eventSubscription.id,
+    )) as Stripe.Subscription;
+    await syncSubscription(currentSubscription, event.id, new Date());
   }
 
   if (event.type === "customer.subscription.deleted") {
     const subscription = event.data.object as Stripe.Subscription;
 
-    await prisma.subscription.updateMany({
-      where: { stripeSubscriptionId: subscription.id },
-      data: {
-        status: "CANCELED",
-        currentPeriodEnd: getCurrentPeriodEnd(subscription),
-      },
+    await applyOrderedSubscriptionState({
+      provider: "stripe",
+      eventId: event.id,
+      eventAt: new Date(event.created * 1_000),
+      providerSubscriptionId: subscription.id,
+      status: "CANCELED",
+      currentPeriodEnd: getCurrentPeriodEnd(subscription),
     });
   }
 
