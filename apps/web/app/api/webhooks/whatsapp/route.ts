@@ -46,6 +46,10 @@ import {
   rememberConversationExchange,
 } from "@/lib/conversation-memory";
 import { buildVisitorDiscoveryReply } from "@/lib/visitor-onboarding";
+import {
+  buildUnlinkedWhatsappReply,
+  shouldBlockUnlinkedWhatsappAiResult,
+} from "@/lib/whatsapp-access-gate";
 
 const MAX_MEDIA_BASE64_LENGTH = 14_000_000;
 const MAX_TEXT_LENGTH = 4_000;
@@ -421,8 +425,10 @@ export async function POST(req: Request) {
         // Visitantes também podem conversar com a IA para conhecer o produto.
         const visitorContext = `${PILA_PUBLIC_KNOWLEDGE}\n\nO número ainda não está vinculado a uma conta. Não use nem invente dados financeiros pessoais. ${previousContactCount === 0 ? "Este é o primeiro contato deste visitante: acolha, explique o valor do Pila de forma concreta e faça somente uma pergunta leve." : "A conversa já começou antes: não repita uma apresentação completa sem necessidade."}`;
         const aiResult = await parseFinancialMessage(text, visitorContext, mediaBase64, mediaMimeType);
-        replyMessage = aiResult.replyMessage
-          || `Olá! Eu sou o Pila Bot. Posso explicar como o Pila funciona ou ajudar você a começar: ${PILA_REGISTER_URL}`;
+        replyMessage = shouldBlockUnlinkedWhatsappAiResult(aiResult)
+          ? buildUnlinkedWhatsappReply()
+          : aiResult.replyMessage
+            || `Olá! Eu sou o Pila Bot. Posso explicar como o Pila funciona ou ajudar você a começar: ${PILA_REGISTER_URL}`;
 
         if (asksForOfficialLink && !replyMessage.includes(PILA_APP_URL)) {
           replyMessage += `\n\nSite oficial: ${PILA_APP_URL}`;
