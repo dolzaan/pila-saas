@@ -9,6 +9,7 @@ import {
   isWhatsappGreeting,
   isWhatsappLinkHelpIntent,
   isWhatsappRegistrationIntent,
+  shouldBlockUnlinkedWhatsappAiResult,
   shouldCheckWhatsappAccountAccess,
 } from "@/lib/whatsapp-access-gate";
 
@@ -53,6 +54,7 @@ describe("WhatsApp account access gate", () => {
 
   it.each([
     "O que vc faz",
+    "Oq vc pode fazer",
     "Quem é vc?",
     "Como você pode me ajudar?",
     "Quero saber mais sobre o Pila",
@@ -63,8 +65,20 @@ describe("WhatsApp account access gate", () => {
     expect(shouldCheckWhatsappAccountAccess(message)).toBe(false);
   });
 
-  it("allows onboarding continuation only when a session is active", () => {
-    expect(canUnlinkedWhatsappMessageReachBot("Paulo Cesar Dolzan")).toBe(false);
+  it("allows free-form visitor conversation instead of relying on an allowlist", () => {
+    for (const message of [
+      "Por que isso facilitaria minha vida?",
+      "Funciona para quem é autônomo?",
+      "Eu nunca usei um app financeiro",
+      "Pode explicar isso de outro jeito?",
+    ]) {
+      expect(canUnlinkedWhatsappMessageReachBot(message)).toBe(true);
+      expect(shouldCheckWhatsappAccountAccess(message)).toBe(false);
+    }
+  });
+
+  it("allows onboarding continuation and other visitor text without an allowlist", () => {
+    expect(canUnlinkedWhatsappMessageReachBot("Paulo Cesar Dolzan")).toBe(true);
     expect(canUnlinkedWhatsappMessageReachBot(
       "Paulo Cesar Dolzan",
       { onboardingActive: true },
@@ -86,10 +100,21 @@ describe("WhatsApp account access gate", () => {
     expect(buildWhatsappLinkHelpReply()).toContain("Gerar PIN de Vínculo");
   });
 
-  it("blocks shorthand that is not on the public allowlist", () => {
-    expect(shouldCheckWhatsappAccountAccess("20 mercado")).toBe(true);
-    expect(shouldCheckWhatsappAccountAccess("mercado 20")).toBe(true);
-    expect(shouldCheckWhatsappAccountAccess("salário 5000")).toBe(true);
+  it("still blocks financial shorthand without depending on the public conversation gate", () => {
+    for (const message of ["20 mercado", "mercado 20", "salário 5000"]) {
+      expect(isPersonalFinancialWhatsappIntent(message)).toBe(true);
+      expect(canUnlinkedWhatsappMessageReachBot(message)).toBe(false);
+      expect(shouldCheckWhatsappAccountAccess(message)).toBe(true);
+    }
+  });
+
+  it("blocks financial actions detected semantically in visitor mode", () => {
+    expect(shouldBlockUnlinkedWhatsappAiResult({ isTransaction: true })).toBe(true);
+    expect(shouldBlockUnlinkedWhatsappAiResult({ isReminder: true })).toBe(true);
+    expect(shouldBlockUnlinkedWhatsappAiResult({ isReport: true })).toBe(true);
+    expect(shouldBlockUnlinkedWhatsappAiResult({ isCardQuery: true })).toBe(true);
+    expect(shouldBlockUnlinkedWhatsappAiResult({ needsClarification: true })).toBe(true);
+    expect(shouldBlockUnlinkedWhatsappAiResult({})).toBe(false);
   });
 
   it("answers the first greeting with link and account creation options", () => {
