@@ -7,7 +7,6 @@ import {
   buildWhatsappAccessCheckFailureReply,
   buildWhatsappLinkHelpReply,
   canUnlinkedWhatsappMessageReachBot,
-  isWhatsappGreeting,
   isWhatsappLinkHelpIntent,
   shouldCheckWhatsappAccountAccess,
   type WhatsappGateReplyKind,
@@ -226,17 +225,13 @@ export default auth(async (req) => {
         if (access && !access.linked && !access.onboardingActive) {
           let replyKind: WhatsappGateReplyKind | null = null;
 
-          if (!whatsappContext.hasMedia && isWhatsappGreeting(whatsappContext.text)) {
-            replyKind = "GREETING";
-          } else {
-            const canContinue = !whatsappContext.hasMedia
-              && canUnlinkedWhatsappMessageReachBot(whatsappContext.text);
+          const canContinue = !whatsappContext.hasMedia
+            && canUnlinkedWhatsappMessageReachBot(whatsappContext.text);
 
-            if (!canContinue) {
-              replyKind = isWhatsappLinkHelpIntent(whatsappContext.text)
-                ? "LINK_HELP"
-                : "UNLINKED";
-            }
+          if (!canContinue) {
+            replyKind = isWhatsappLinkHelpIntent(whatsappContext.text)
+              ? "LINK_HELP"
+              : "UNLINKED";
           }
 
           if (replyKind) {
@@ -245,7 +240,7 @@ export default auth(async (req) => {
 
             return NextResponse.json({
               success: true,
-              blocked: replyKind !== "GREETING",
+              blocked: true,
               accountStatus: "UNLINKED",
               replyMessage,
             });
