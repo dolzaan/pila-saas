@@ -4,6 +4,7 @@ import {
   buildUnlinkedWhatsappReply,
   buildWhatsappLinkHelpReply,
   canUnlinkedWhatsappMessageReachBot,
+  getUnlinkedWhatsappGateReplyKind,
   isPersonalFinancialWhatsappIntent,
   isWhatsappAccountAccessQuestion,
   isWhatsappGreeting,
@@ -35,6 +36,8 @@ describe("WhatsApp account access gate", () => {
     expect(isPersonalFinancialWhatsappIntent("quero criar minha conta")).toBe(false);
     expect(isWhatsappRegistrationIntent("quero criar minha conta")).toBe(true);
     expect(canUnlinkedWhatsappMessageReachBot("quero criar minha conta")).toBe(true);
+    expect(isWhatsappRegistrationIntent("quero assinar o Pila")).toBe(true);
+    expect(isWhatsappRegistrationIntent("como começar a me organizar?")).toBe(false);
   });
 
   it("recognizes natural greeting variations on the first message", () => {
@@ -115,6 +118,14 @@ describe("WhatsApp account access gate", () => {
     expect(shouldBlockUnlinkedWhatsappAiResult({ isCardQuery: true })).toBe(true);
     expect(shouldBlockUnlinkedWhatsappAiResult({ needsClarification: true })).toBe(true);
     expect(shouldBlockUnlinkedWhatsappAiResult({})).toBe(false);
+  });
+
+  it("routes financial text to the safe visitor preview but still blocks media", () => {
+    expect(getUnlinkedWhatsappGateReplyKind("gastei 50 no mercado"))
+      .toBeNull();
+    expect(getUnlinkedWhatsappGateReplyKind("", true)).toBe("UNLINKED");
+    expect(getUnlinkedWhatsappGateReplyKind("já tenho conta, como vinculo?"))
+      .toBe("LINK_HELP");
   });
 
   it("answers the first greeting with link and account creation options", () => {
