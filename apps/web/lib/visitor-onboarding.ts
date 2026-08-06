@@ -9,7 +9,7 @@ function normalizeMessage(value: string) {
 }
 
 const GREETING_ONLY = /^(?:oi+|ola|opa|e ai|bom dia|boa tarde|boa noite)(?: pila)?(?: tudo bem| tudo bom| tudo certo| como vai| beleza)?$/;
-const CAPABILITY_DISCOVERY = /\b(?:quem (?:e|eh) (?:voce|o pila)|o que (?:voce|o pila) (?:faz|consegue fazer)|como (?:voce|o pila) funciona|como (?:voce|o pila) pode me ajudar|quais (?:sao )?(?:as )?(?:funcoes|funcionalidades|recursos)|me (?:explica|explique|fala|fale|conte) (?:mais )?(?:sobre )?(?:voce|o pila)|quero (?:conhecer|entender|saber) (?:mais )?(?:sobre )?(?:voce|o pila)|o que da para fazer)\b/;
+const CAPABILITY_DISCOVERY = /\b(?:quem (?:e|eh) (?:voce|vc|ce|o pila)|o que (?:voce|vc|ce|o pila) (?:faz|consegue fazer)|como (?:voce|vc|ce|o pila) funciona|como (?:voce|vc|ce|o pila) pode me ajudar|quais (?:sao )?(?:as )?(?:funcoes|funcionalidades|recursos)|me (?:explica|explique|fala|fale|conte) (?:mais )?(?:sobre )?(?:voce|vc|o pila)|quero (?:conhecer|entender|saber) (?:mais )?(?:sobre )?(?:voce|vc|o pila)|o que da para fazer)\b/;
 
 function welcomeReply(message: string) {
   const opening = message.startsWith("bom dia")
