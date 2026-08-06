@@ -1,7 +1,15 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { sendWhatsAppMessage } from "@/lib/evolution";
+import { sendWhatsAppMessageDirect } from "@/lib/evolution";
 import { saoPauloDayBounds } from "@/lib/reminders";
+import {
+  claimReminderNotifications,
+  completeReminderNotification,
+  releaseReminderNotification,
+} from "@/lib/reminder-notifications";
+import { enqueueWhatsappTextMessage } from "@/lib/whatsapp-outbox";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 export async function GET(req: Request) {
   if (!process.env.CRON_SECRET) {
@@ -14,47 +22,56 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Busca todos os lembretes que não foram pagos e que vencem hoje (ou venceram)
     const { start: startOfToday, end: endOfToday } = saoPauloDayBounds();
-
-    const pendingReminders = await prisma.billReminder.findMany({
-      where: {
-        isPaid: false,
-        dueDate: { lte: endOfToday },
-        OR: [{ snoozedUntil: null }, { snoozedUntil: { lte: endOfToday } }],
-        AND: [{ OR: [{ lastNotifiedAt: null }, { lastNotifiedAt: { lt: startOfToday } }] }],
-      },
-      include: { user: true }
+    const { claimedAt, reminders } = await claimReminderNotifications({
+      startOfToday,
+      endOfToday,
+      limit: 25,
     });
 
     let sentCount = 0;
+    let queuedCount = 0;
+    let failedCount = 0;
 
-    for (const reminder of pendingReminders) {
-      if (reminder.user.whatsappNumber && reminder.user.whatsappVerifiedAt) {
+    for (const reminder of reminders) {
+      try {
         const amountStr = Number(reminder.amount).toFixed(2);
         const dateStr = reminder.dueDate.toLocaleDateString("pt-BR", {
           timeZone: "UTC",
         });
-        
         const message = `⏰ *Lembrete de Conta!* ⏰\n\nChefe, passando pra lembrar que a conta "${reminder.description}" no valor de R$ ${amountStr} está com vencimento para ${dateStr}.\n\nSe já pagou, me avisa pra eu registrar!`;
-        
-        const success = await sendWhatsAppMessage(`${reminder.user.whatsappNumber}@s.whatsapp.net`, message);
-        
-        if (success) {
+
+        const result = await sendWhatsAppMessageDirect(
+          `${reminder.whatsappNumber}@s.whatsapp.net`,
+          message,
+        );
+
+        if (result.success) {
           sentCount++;
-          await prisma.billReminder.update({
-            where: { id: reminder.id },
-            data: {
-              lastNotifiedAt: new Date(),
-              notificationCount: { increment: 1 },
-              snoozedUntil: null,
-            },
+        } else {
+          await enqueueWhatsappTextMessage({
+            phone: reminder.whatsappNumber,
+            text: message,
+            error: result.error,
           });
+          queuedCount++;
         }
+
+        await completeReminderNotification(reminder.id, claimedAt);
+      } catch (error) {
+        failedCount++;
+        console.error("[Cron Reminders] Falha no lembrete:", reminder.id, error);
+        await releaseReminderNotification(reminder.id, claimedAt);
       }
     }
 
-    return NextResponse.json({ success: true, sent: sentCount });
+    return NextResponse.json({
+      success: true,
+      claimed: reminders.length,
+      sent: sentCount,
+      queued: queuedCount,
+      failed: failedCount,
+    });
 
   } catch (error) {
     console.error("[Cron Reminders] Error:", error);

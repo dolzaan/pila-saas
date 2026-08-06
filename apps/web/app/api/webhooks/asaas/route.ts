@@ -4,11 +4,13 @@ import { prisma } from "@/lib/prisma";
 import { asaasGateway } from "@/lib/payments/asaas";
 import {
   getAsaasExternalReference,
+  getAsaasEventOccurredAt,
   getAsaasSubscriptionId,
   isValidAsaasWebhookToken,
   mapAsaasPaymentEvent,
   type AsaasWebhookPayload,
 } from "@/lib/payments/asaas-webhook";
+import { applyOrderedSubscriptionState } from "@/lib/payments/subscription-state";
 
 export const runtime = "nodejs";
 
@@ -23,11 +25,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Payload inválido" }, { status: 400 });
   }
 
+  const receivedAt = new Date();
+  const eventOccurredAt = getAsaasEventOccurredAt(payload, receivedAt);
+
   const insertedEvents = await prisma.$queryRaw<Array<{ id: string }>>(Prisma.sql`
     INSERT INTO "payment_webhook_events"
-      ("id", "provider", "eventType", "payload", "receivedAt")
+      ("id", "provider", "eventType", "payload", "receivedAt", "occurredAt")
     VALUES
-      (${payload.id}, 'ASAAS', ${payload.event}, ${JSON.stringify(payload)}::jsonb, NOW())
+      (${payload.id}, 'ASAAS', ${payload.event}, ${JSON.stringify(payload)}::jsonb, ${receivedAt}, ${eventOccurredAt})
     ON CONFLICT ("id") DO NOTHING
     RETURNING "id"
   `);
@@ -73,9 +78,11 @@ export async function POST(request: Request) {
         SET
           "status" = COALESCE(${status}, "status"),
           "nextDueDate" = COALESCE(${payload.subscription?.nextDueDate ? new Date(payload.subscription.nextDueDate) : null}, "nextDueDate"),
+          "lastEventAt" = ${eventOccurredAt},
           "updatedAt" = NOW()
         WHERE "provider" = 'ASAAS'
           AND "providerSubscriptionId" = ${providerSubscriptionId}
+          AND ("lastEventAt" IS NULL OR "lastEventAt" <= ${eventOccurredAt})
       `);
     }
 
@@ -83,38 +90,22 @@ export async function POST(request: Request) {
     let createdSubscription = false;
 
     if (userId && status) {
-      const existingSubscription = await prisma.subscription.findUnique({
-        where: { userId },
-        select: { id: true },
+      const asaasReference =
+        providerSubscriptionId ?? payload.checkout?.id ?? checkoutExternalReference ?? payload.id;
+      const result = await applyOrderedSubscriptionState({
+        provider: "asaas",
+        eventId: payload.id,
+        eventAt: eventOccurredAt,
+        providerSubscriptionId: asaasReference,
+        userId,
+        status,
+        currentPeriodEnd: payload.subscription?.nextDueDate
+          ? new Date(payload.subscription.nextDueDate)
+          : undefined,
+        createWhenMissing: status === "ACTIVE",
       });
-
-      if (existingSubscription) {
-        await prisma.subscription.update({
-          where: { userId },
-          data: {
-            status,
-            plan: status === "ACTIVE" ? "pro" : undefined,
-          },
-        });
-        updatedSubscriptions = 1;
-      } else if (status === "ACTIVE") {
-        const asaasReference =
-          providerSubscriptionId ?? payload.checkout?.id ?? checkoutExternalReference ?? payload.id;
-
-        await prisma.subscription.create({
-          data: {
-            userId,
-            stripeSubscriptionId: `asaas:${asaasReference}`,
-            status: "ACTIVE",
-            plan: "pro",
-            currentPeriodEnd: payload.subscription?.nextDueDate
-              ? new Date(payload.subscription.nextDueDate)
-              : null,
-          },
-        });
-        updatedSubscriptions = 1;
-        createdSubscription = true;
-      }
+      updatedSubscriptions = result.applied ? 1 : 0;
+      createdSubscription = result.created;
     }
 
     await prisma.$executeRaw(Prisma.sql`

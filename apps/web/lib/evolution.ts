@@ -11,6 +11,14 @@ const EVOLUTION_API_URL = process.env.EVOLUTION_API_URL || "http://localhost:808
 const EVOLUTION_API_KEY = process.env.EVOLUTION_API_KEY || "";
 const EVOLUTION_INSTANCE_NAME = process.env.EVOLUTION_INSTANCE_NAME || "FinZapBot";
 
+export function hasEvolutionApiKey(apiKey = EVOLUTION_API_KEY) {
+  const normalized = apiKey.trim();
+  return Boolean(
+    normalized
+    && normalized !== "COLOQUE_SUA_CHAVE_DA_EVOLUTION_API",
+  );
+}
+
 type SendTextResult = {
   success: boolean;
   error?: string;
@@ -194,13 +202,14 @@ export async function sendWhatsAppMessageDirect(
     return { success: false, error };
   }
 
-  if (!EVOLUTION_API_KEY || EVOLUTION_API_KEY === "COLOQUE_SUA_CHAVE_DA_EVOLUTION_API") {
-    logger.warn("whatsapp_message_mocked", {
+  if (!hasEvolutionApiKey()) {
+    const error = "EVOLUTION_API_KEY não configurada";
+    logger.error("whatsapp_message_configuration_error", {
       requestId,
       phone: normalizedPhone,
       messageLength: text.length,
     });
-    return { success: true };
+    return { success: false, error };
   }
 
   const endpoint = `${EVOLUTION_API_URL}/message/sendText/${EVOLUTION_INSTANCE_NAME}`;
@@ -332,13 +341,13 @@ export async function sendWhatsAppMedia(
     return false;
   }
 
-  if (!EVOLUTION_API_KEY || EVOLUTION_API_KEY === "COLOQUE_SUA_CHAVE_DA_EVOLUTION_API") {
-    logger.warn("whatsapp_media_mocked", {
+  if (!hasEvolutionApiKey()) {
+    logger.error("whatsapp_media_configuration_error", {
       requestId,
       phone: normalizedPhone,
       mediatype,
     });
-    return true;
+    return false;
   }
 
   const endpoint = `${EVOLUTION_API_URL}/message/sendMedia/${EVOLUTION_INSTANCE_NAME}`;

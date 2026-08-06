@@ -1,10 +1,7 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { getRawMessageRetentionDays } from "@/lib/privacy";
+import { runPrivacyRetention } from "@/lib/privacy-retention";
 
 export const dynamic = "force-dynamic";
-
-const PRODUCT_EVENT_RETENTION_DAYS = 180;
 
 export async function GET(request: Request) {
   if (!process.env.CRON_SECRET) {
@@ -16,36 +13,13 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const retentionDays = getRawMessageRetentionDays();
-  const rawMessageCutoff = new Date(
-    Date.now() - retentionDays * 24 * 60 * 60 * 1_000,
-  );
-  const productEventCutoff = new Date(
-    Date.now() - PRODUCT_EVENT_RETENTION_DAYS * 24 * 60 * 60 * 1_000,
-  );
-
   try {
-    const [rawMessageResult, productEventsRemoved] = await Promise.all([
-      prisma.transaction.updateMany({
-        where: {
-          rawMessage: { not: null },
-          createdAt: { lt: rawMessageCutoff },
-        },
-        data: { rawMessage: null },
-      }),
-      prisma.$executeRaw`
-        DELETE FROM "product_events"
-        WHERE "createdAt" < ${productEventCutoff}
-      `,
-    ]);
+    const result = await runPrivacyRetention();
 
     return NextResponse.json(
       {
         success: true,
-        rawMessageRetentionDays: retentionDays,
-        rawMessagesRemoved: rawMessageResult.count,
-        productEventRetentionDays: PRODUCT_EVENT_RETENTION_DAYS,
-        productEventsRemoved,
+        ...result,
       },
       { headers: { "Cache-Control": "no-store" } },
     );

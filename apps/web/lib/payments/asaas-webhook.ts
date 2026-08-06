@@ -3,6 +3,7 @@ import type { LocalSubscriptionStatus } from "./types";
 export interface AsaasWebhookPayload {
   id: string;
   event: string;
+  dateCreated?: string;
   payment?: {
     id: string;
     customer?: string;
@@ -28,6 +29,16 @@ export interface AsaasWebhookPayload {
       endDate?: string;
     } | null;
   };
+}
+
+export function getAsaasEventOccurredAt(
+  payload: AsaasWebhookPayload,
+  fallback = new Date(),
+) {
+  if (!payload.dateCreated) return fallback;
+
+  const parsed = new Date(payload.dateCreated);
+  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
 }
 
 export function isValidAsaasWebhookToken(receivedToken: string | null): boolean {

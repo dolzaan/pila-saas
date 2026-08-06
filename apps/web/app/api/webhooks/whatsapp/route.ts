@@ -432,6 +432,7 @@ export async function POST(req: Request) {
           mediaBase64,
           mediaMimeType,
           visitorConversationMemory,
+          `whatsapp:${phoneNumber}`,
         );
         const shouldBlockVisitorAction = shouldBlockUnlinkedWhatsappAiResult(aiResult);
         replyMessage = shouldBlockVisitorAction
@@ -729,6 +730,7 @@ ${contextLines.slice(0, 20).join("\n")}
       mediaBase64,
       mediaMimeType,
       conversationMemory,
+      `user:${user.id}`,
     );
 
     // 6.2 Consultas de cartão são respondidas com dados determinísticos do banco.

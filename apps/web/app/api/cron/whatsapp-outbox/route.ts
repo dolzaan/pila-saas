@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { sendWhatsAppMessageDirect } from "@/lib/evolution";
 import { logger } from "@/lib/logger";
+import { runPrivacyRetention } from "@/lib/privacy-retention";
 import {
   claimWhatsappOutboxMessages,
   decryptWhatsappOutboxMessage,
@@ -63,6 +64,10 @@ export async function GET(request: Request) {
       staleReleased: released,
     });
 
+    // O plano Hobby permite apenas dois crons diários. A limpeza de dados
+    // compartilha esta execução para não consumir um terceiro agendamento.
+    const privacyRetention = await runPrivacyRetention();
+
     return NextResponse.json(
       {
         success: true,
@@ -71,6 +76,7 @@ export async function GET(request: Request) {
         failed,
         dead,
         staleReleased: released,
+        privacyRetention,
       },
       { headers: { "Cache-Control": "no-store" } },
     );
